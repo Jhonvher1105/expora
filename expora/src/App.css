@@ -41,3 +41,38 @@ header div img:hover{
 body{
     background-color: #f9fafc;
 }
+
+/* log in */
+
+#logIn-body{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #ebebeb;
+
+    #login-main{
+        padding: 2rem;
+        border-radius: 15px;
+        background-color: #f9fafc ;
+    
+        #div-logIn-logo{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            #img-login-logo{
+                width: 40px;
+                height: 40px;
+            }
+        }
+        #div-form-cotainer{
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    }
+    
+
+}
