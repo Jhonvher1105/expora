@@ -1,13 +1,14 @@
-import logo from './logo.svg';
 import './App.css';
 import header from './components/header.js';
 import logIn from "./components/logIn.js";
+import logIn2 from "./login2/logIn2.jsx";
 
 function App() {
   return (
     <div className="App">
       {/* {header()} */}
-      {logIn()}
+      {/* {logIn()} */}
+      {logIn2()}
     </div>
   );
 }

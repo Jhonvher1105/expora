@@ -1,4 +1,6 @@
-header{
+
+
+header {
     background-color: rgb(255, 255, 255);
     display: flex;
     align-items: center;
@@ -7,44 +9,51 @@ header{
     padding: .5rem 0;
     text-align: center;
 }
-header img{
+
+header img {
     width: 2rem;
     height: 2rem;
     margin-left: 1rem;
 }
-header h2{
+
+header h2 {
     margin: auto 0 auto 1.2%;
 }
-header p{
+
+header p {
     margin-left: 65%;
     font-size: 1rem;
 }
-header div img{
+
+header div img {
     width: 2rem;
     height: 2rem;
     margin-left: 1rem;
 }
-header div img:hover{
+
+header div img:hover {
     cursor: pointer;
     transition: all 0.3s ease;
 }
-#logo{
+
+.logo {
     height: 40px;
     width: 40px;
     margin-left: 1.5rem;
 }
-#logo:hover{
+
+.logo:hover {
     cursor: pointer;
     transform: scale(1.1);
 }
 
-body{
+body {
     background-color: #f9fafc;
 }
 
 /* log in */
 
-#logIn-body{
+.logIn-body {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -52,27 +61,78 @@ body{
     min-height: 100vh;
     background-color: #ebebeb;
 
-    #login-main{
+    .login-main {
         padding: 2rem;
         border-radius: 15px;
-        background-color: #f9fafc ;
-    
-        #div-logIn-logo{
+        background-color: #f9fafc;
+        width: 30vw;
+
+        .div-logIn-logo {
             display: flex;
             justify-content: center;
             align-items: center;
 
-            #img-login-logo{
+            .img-login-logo {
                 width: 40px;
                 height: 40px;
             }
         }
-        #div-form-cotainer{
+
+        .div-form-container {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+
+            h2 {
+                margin-bottom: 0px;
+            }
+
+            p {
+                margin-top: 2px;
+            }
         }
+
+        .div-form form {
+            display: block;
+
+            height: fit-content;
+
+            .div-email, .div-pass{
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+
+                width: auto;
+
+                label {
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    color: #2c3442;
+                    margin-bottom: 0.2rem;
+                }
+
+                .email, .password{
+                    width: 90%;
+                    max-width: 500px;
+                    padding: 0.8rem 1rem;
+                    font-size: 1rem;
+                    border: 1px solid #d3d6db;
+                    border-radius: 8px;
+                    background: #fff;
+                    color: #2c3442;
+                    outline: none;
+                    transition: border-color 0.2s;
+                }
+
+                .email:focus, .password:focus{
+                    border-color: #a0a4ab;
+                }
+            }
+        }
+
     }
-    
+
 
 }
