@@ -18,8 +18,8 @@ function App() {
         <div className="container">
             <div className="card">
                 
-                    <div class="div-logIn-logo">
-                        <img src={logo} alt="expora logo" class="img-login-logo" />
+                    <div className="div-logIn-logo">
+                        <img src={logo} alt="expora logo" className="img-login-logo" />
                         <h2>Expora</h2>
                     </div>
                 
