@@ -3,6 +3,8 @@ import { useState } from "react";
 import "./index.css";
 import logo from "../pic/logo.png";
 
+import { Link } from "react-router-dom";
+
 function LogIn2() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
@@ -64,7 +66,7 @@ function LogIn2() {
                     </button>
 
                     <div className="signup-text">
-                        Don’t have an account? <a href="#">Sign up</a>
+                        Don’t have an account? <Link to="/Registration.jsx">Sign Up</Link>
                     </div>
                 </form>
             </div>
