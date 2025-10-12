@@ -6,8 +6,9 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/Registration.jsx" element={<Registration />} />
-                <Route path="/LogIn2.jsx" element={<LogIn2 />} />
+                <Route path="/" element={<LogIn2/>}></Route>
+                <Route path="/Registration" element={<Registration />} />
+                <Route path="/LogIn2" element={<LogIn2 />} />
             </Routes>
         </BrowserRouter>
     );

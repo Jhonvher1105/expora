@@ -3,28 +3,50 @@ import { useState } from "react";
 import "./index.css";
 import logo from "../pic/logo.png";
 
-import { Link } from "react-router-dom";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+import { Link, useNavigate } from "react-router-dom";
+
 
 function LogIn2() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
+    const navigate = useNavigate();
 
     const handleSubmit = (e) => {
         e.preventDefault();
         console.log("Sign in:", { email, password, rememberMe });
+
+        if (!email || !password) {
+            alert("Please fill in both email and password!");
+            return;
+        }
+
+        // Firebase login
+        signInWithEmailAndPassword(auth, email, password)
+            .then((userCredential) => {
+                // Logged in successfully
+                alert("Login successful!");
+                console.log("User:", userCredential.user);
+                navigate("/home")
+            })
+            .catch((error) => {
+                console.error(error);
+                alert("Login failed: " + error.message);
+            });
     };
 
     return (
         <div className="container">
             <div className="card">
-                
-                    <div className="div-logIn-logo">
-                        <img src={logo} alt="expora logo" className="img-login-logo" />
-                        <h2>Expora</h2>
-                    </div>
-                
+
+                <div className="div-logIn-logo">
+                    <img src={logo} alt="expora logo" className="img-login-logo" />
+                    <h2>Expora</h2>
+                </div>
+
 
                 <div className="welcome-text">
                     <h1>Welcome back</h1>
@@ -66,7 +88,7 @@ function LogIn2() {
                     </button>
 
                     <div className="signup-text">
-                        Don’t have an account? <Link to="/Registration.jsx">Sign Up</Link>
+                        Don’t have an account? <Link to="/Registration">Sign Up</Link>
                     </div>
                 </form>
             </div>

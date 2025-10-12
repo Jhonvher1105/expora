@@ -163,6 +163,7 @@ function Registration() {
         password: "",
         confirmPassword: "",
       });
+      window.location.href="{<LogIn2/>}";
     } catch (error) {
       console.error("Error saving data:", error);
       alert("Error saving user data.");
@@ -267,9 +268,6 @@ function Registration() {
             <div className="signup-text">
               Already have an account?{" "}
               <Link to="/LogIn2.jsx">Sign In</Link>
-              {/* <a href={LogIn2} className="link">
-                Sign in
-              </a> */}
             </div>
           </>
         ) : (
