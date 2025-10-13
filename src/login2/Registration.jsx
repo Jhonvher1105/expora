@@ -267,7 +267,7 @@ function Registration() {
 
             <div className="signup-text">
               Already have an account?{" "}
-              <Link to="/LogIn2.jsx">Sign In</Link>
+              <Link to="/LogIn2">Sign In</Link>
             </div>
           </>
         ) : (
