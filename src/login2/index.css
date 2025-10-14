@@ -224,6 +224,7 @@ body {
 }
 
 .registration-card {
+    width: 30vw;
     background-color: white;
     border-radius: 12px;
     padding: 40px;
@@ -279,13 +280,17 @@ body {
 }
 
 /* Form Elements */
+
+.radioGender{
+    display: flex;
+}
 .form-group {
     margin-bottom: 20px;
     flex: 1;
 }
 
 .form-row {
-    display: flex;
+    /* display: flex; */
     gap: 16px;
     margin-bottom: 20px;
 }

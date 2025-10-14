@@ -1,6 +1,8 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import "./index.css";
+
+import Home from '../components/UserFolder/Body'
 import logo from "../pic/logo.png";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -30,7 +32,7 @@ function LogIn2() {
                 // Logged in successfully
                 alert("Login successful!");
                 console.log("User:", userCredential.user);
-                navigate("/home")
+                navigate("Home");
             })
             .catch((error) => {
                 console.error(error);

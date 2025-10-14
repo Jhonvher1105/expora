@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import logo from "../pic/logo.png";
-import LogIn2 from './LogIn2';
 import "./index.css";
-
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 // Firebase imports
 import { auth, db } from "../firebase";
@@ -18,10 +16,13 @@ import { setDoc, doc } from "firebase/firestore";
 function Registration() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [step, setStep] = useState(1); // Step 1 = email verification, Step 2 = user info
+  const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState(null);
   const [verificationSent, setVerificationSent] = useState(false);
+  const [gender, setGender] = useState('');
+  const [otherInput, setOtherInput] = useState('');
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -40,13 +41,23 @@ function Registration() {
     confirmPassword: "",
   });
 
-  // Handle input updates
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // STEP 1: Create account and send verification email
+  const handleGenderChange = (event) => {
+    setGender(event.target.value);
+    setFormData((prev) => ({ ...prev, gender: event.target.value }));
+  };
+
+  const handleOtherInputChange = (e) => {
+    setOtherInput(e.target.value);
+    if (gender === "other") {
+      setFormData((prev) => ({ ...prev, gender: e.target.value }));
+    }
+  };
+
   const handleSendVerification = async (e) => {
     e.preventDefault();
 
@@ -83,23 +94,21 @@ function Registration() {
     }
   };
 
-  // STEP 1.5: Check if user has verified email
   const handleCheckVerification = async () => {
     if (!auth.currentUser) {
       alert("Please create an account first.");
       return;
     }
 
-    await reload(auth.currentUser); // refresh user data
+    await reload(auth.currentUser);
     if (auth.currentUser.emailVerified) {
       alert("✅ Email verified successfully!");
-      setStep(2); // move to next step
+      setStep(2);
     } else {
       alert("❌ Email not verified yet. Please check your inbox again.");
     }
   };
 
-  // STEP 1.6: Resend verification email
   const handleResendVerification = async () => {
     if (!auth.currentUser) {
       alert("Please create an account first.");
@@ -115,7 +124,6 @@ function Registration() {
     }
   };
 
-  // STEP 2: Save profile info to Firestore
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -134,7 +142,7 @@ function Registration() {
         middleName: formData.middleName,
         lastName: formData.lastName,
         dateOfBirth: formData.dateOfBirth,
-        gender: formData.gender,
+        gender: gender === "other" ? otherInput : gender,
         phoneNumber: formData.phoneNumber,
         address: formData.address,
         city: formData.city,
@@ -163,7 +171,7 @@ function Registration() {
         password: "",
         confirmPassword: "",
       });
-      window.location.href="{<LogIn2/>}";
+      navigate("/login");
     } catch (error) {
       console.error("Error saving data:", error);
       alert("Error saving user data.");
@@ -180,7 +188,128 @@ function Registration() {
           <h2>Expora</h2>
         </div>
 
-        {step === 1 ? (
+        {step === 2 ? (
+          <>
+            <div className="welcome-section">
+              <h1 className="main-heading">Complete your profile</h1>
+              <p className="sub-heading">
+                Fill in your personal details to finish registration
+              </p>
+            </div>
+
+            <form className="form-scroll" onSubmit={handleSubmit}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="firstName">First Name *</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    placeholder="First name"
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="middleName">Middle Name</label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    value={formData.middleName}
+                    onChange={handleInputChange}
+                    placeholder="Middle name"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="lastName">Last Name</label>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    placeholder="Last name"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="dateOfBirth">Birthday</label>
+                  <input
+                    type="date"
+                    name="dateOfBirth"
+                    value={formData.dateOfBirth}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <fieldset className="radioGender">
+                    <legend>Gender identity:</legend>
+                    <div>
+                      <input
+                        type="radio"
+                        id="gender-female"
+                        name="gender"
+                        value="Female"
+                        checked={gender === 'Female'}
+                        onChange={handleGenderChange}
+                      />
+                      <label htmlFor="gender-female">Female</label>
+                    </div>
+                    <div>
+                      <input
+                        type="radio"
+                        id="gender-male"
+                        name="gender"
+                        value="Male"
+                        checked={gender === 'Male'}
+                        onChange={handleGenderChange}
+                      />
+                      <label htmlFor="gender-male">Male</label>
+                    </div>
+                    <div>
+                      <input
+                        type="radio"
+                        id="gender-nonbinary"
+                        name="gender"
+                        value="Non-binary"
+                        checked={gender === 'Non-binary'}
+                        onChange={handleGenderChange}
+                      />
+                      <label htmlFor="gender-nonbinary">Non-binary</label>
+                    </div>
+                    <div>
+                      <input
+                        type="radio"
+                        id="gender-other"
+                        name="gender"
+                        value="other"
+                        checked={gender === 'other'}
+                        onChange={handleGenderChange}
+                      />
+                      <label htmlFor="gender-other">Other:</label>
+                      <input
+                        type="text"
+                        value={otherInput}
+                        onChange={handleOtherInputChange}
+                        disabled={gender !== 'other'}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+              {/* ... keep the rest of your form fields ... */}
+              <button type="submit" className="submit-btn" disabled={isLoading}>
+                {isLoading ? "Saving..." : "Create Account"}
+              </button>
+            </form>
+          </>
+        ) : (
           <>
             <div className="welcome-section">
               <h1 className="main-heading">Create your account</h1>
@@ -267,51 +396,8 @@ function Registration() {
 
             <div className="signup-text">
               Already have an account?{" "}
-              <Link to="/LogIn2">Sign In</Link>
+              <Link to="/Login2">Sign In</Link>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="welcome-section">
-              <h1 className="main-heading">Complete your profile</h1>
-              <p className="sub-heading">
-                Fill in your personal details to finish registration
-              </p>
-            </div>
-
-            <form className="form-scroll" onSubmit={handleSubmit}>
-              {/* All your profile inputs go here (same as before) */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">First Name *</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder="First name"
-                    className="form-input"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Middle Name</label>
-                  <input
-                    type="text"
-                    name="middleName"
-                    value={formData.middleName}
-                    onChange={handleInputChange}
-                    placeholder="Middle name"
-                    className="form-input"
-                  />
-                </div>
-              </div>
-              {/* ... keep the rest of your form fields (lastName, address, etc.) exactly the same ... */}
-
-              <button type="submit" className="submit-btn" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Create Account"}
-              </button>
-            </form>
           </>
         )}
       </div>
@@ -332,3 +418,4 @@ function Registration() {
 }
 
 export default Registration;
+// ...existing code...
