@@ -32,7 +32,7 @@ function LogIn2() {
                 // Logged in successfully
                 alert("Login successful!");
                 console.log("User:", userCredential.user);
-                navigate("Home");
+                navigate("/Home");
             })
             .catch((error) => {
                 console.error(error);

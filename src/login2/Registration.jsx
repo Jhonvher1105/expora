@@ -319,6 +319,7 @@ function Registration() {
             </div>
 
             <form className="form-group" onSubmit={handleSendVerification}>
+              
               <label className="form-label">Email address</label>
               <input
                 type="email"

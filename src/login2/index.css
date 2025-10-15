@@ -85,7 +85,7 @@ body {
 }
 
 .form-group input {
-    width: 27.5vw;
+    width: 23.9vw;
     padding: 0.5rem 0.75rem;
     border: 1px solid #d1d5db;
     border-radius: 6px;
@@ -297,6 +297,7 @@ body {
 
 .form-label {
     display: block;
+    margin-top: 8px;
     margin-bottom: 8px;
     font-size: 14px;
     font-weight: 500;
@@ -304,7 +305,6 @@ body {
 }
 
 .form-input {
-    width: 100%;
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 6px;
