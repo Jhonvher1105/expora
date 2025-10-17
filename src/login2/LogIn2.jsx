@@ -2,8 +2,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import "./index.css";
 
-import Home from '../components/UserFolder/Body'
-import logo from "../pic/logo.png";
+import Home from '../components/UserFolder/HomeBody'
+import logo from "../components/pic/logo.png";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";

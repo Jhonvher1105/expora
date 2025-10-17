@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orange Getaways - Find Your Next Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font globally and ensure smooth scrolling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
+            scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar for categories bar on small screens */
+        .category-scroll {
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+        }
+
+        .category-scroll::-webkit-scrollbar {
+            display: none;
+            /* Chrome, Safari, Opera */
+        }
+
+        /* Custom styles for the map icon (inline SVG) */
+        .map-icon {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- Function to simulate search/notification -->
+    <script>
+        function handleSearch() {
+            // Replaces alert() with a custom message box for user feedback
+            const notification = document.getElementById('search-notification');
+            notification.textContent = 'Searching for orange-themed retreats... (Search logic runs here)';
+            notification.classList.remove('hidden');
+            notification.classList.add('opacity-100');
+            setTimeout(() => {
+                notification.classList.remove('opacity-100');
+                notification.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+
+    <!-- Global Notification/Alert Box -->
+    <div id="search-notification"
+        class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg z-50 transition-opacity duration-500 hidden opacity-0 text-sm">
+        Notification Message
+    </div>
+
+    <!-- Header & Navigation -->
+    <header class="sticky top-0 bg-white z-40 shadow-sm border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+
+            <!-- Logo (Orange Getaways) -->
+            <div class="flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-600" viewBox="0 0 24 24"
+                    fill="currentColor">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 16c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zM9.5 10c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5zm5 0c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5-1.5-.67-1.5-1.5.67-1.5 1.5-1.5z" />
+                </svg>
+                <span class="hidden sm:block text-xl font-bold text-gray-800">Orange Getaways</span>
+            </div>
+
+            <!-- Main Search Bar (Desktop/Tablet) -->
+            <div
+                class="hidden md:flex items-center border border-gray-200 rounded-full shadow-md hover:shadow-lg transition duration-200">
+                <button class="px-4 py-2 text-sm font-semibold border-r border-gray-100">Anywhere</button>
+                <button class="px-4 py-2 text-sm font-semibold border-r border-gray-100">Any week</button>
+                <div class="flex items-center pr-2">
+                    <button class="pl-4 py-2 text-sm text-gray-500">Add guests</button>
+                    <button onclick="handleSearch()"
+                        class="ml-2 p-2 bg-orange-600 rounded-full text-white hover:bg-orange-700 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Menu -->
+            <div class="flex items-center space-x-4">
+                <button
+                    class="hidden lg:block text-sm font-medium text-gray-700 hover:bg-gray-100 px-3 py-2 rounded-full transition">
+                    Host your home
+                </button>
+                <div
+                    class="flex items-center border border-gray-200 rounded-full p-1 cursor-pointer hover:shadow-md transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <div
+                        class="w-8 h-8 ml-2 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-semibold text-sm">
+                        JD
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Search Bar (Appears below header on mobile) -->
+        <div class="md:hidden px-4 sm:px-6 py-2 border-t border-gray-100">
+            <button onclick="handleSearch()"
+                class="w-full flex items-center justify-between border border-gray-300 rounded-full p-3 shadow-sm hover:shadow-md transition">
+                <div class="flex items-center space-x-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-orange-600" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800 text-left">Anywhere</p>
+                        <p class="text-xs text-gray-500 text-left">Any week · Add guests</p>
+                    </div>
+                </div>
+                <div class="border p-1.5 rounded-full text-gray-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" stroke="currentColor">
+                        <path d="M12 2a8 8 0 0 0-8 8c0 7.7 8 13 8 13s8-5.3 8-13a8 8 0 0 0-8-8z"
+                            class="map-icon stroke-gray-500"></path>
+                        <circle cx="12" cy="10" r="3" class="map-icon stroke-gray-500"></circle>
+                    </svg>
+                </div>
+            </button>
+        </div>
+    </header>
+
+    <!-- Categories / Filter Bar -->
+    <div class="sticky top-[73px] md:top-[73px] bg-white z-30 border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex space-x-8 overflow-x-scroll category-scroll whitespace-nowrap">
+
+                <!-- Category 1: Active -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer border-b-2 border-orange-600 text-orange-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M20.25 10.5h-16.5m16.5 0s1.5 7.5-6.75 7.5H6.75s-6.75-7.5-6.75-7.5M20.25 10.5c0 3.866-3.88 7-8.625 7s-8.625-3.134-8.625-7" />
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M16.5 10.5v-2.25a3.75 3.75 0 00-3.75-3.75H12a3.75 3.75 0 00-3.75 3.75V10.5" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Beaches</span>
+                </div>
+
+                <!-- Category 2 -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v4.875h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Tiny Homes</span>
+                </div>
+
+                <!-- Category 3 -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Iconic Cities</span>
+                </div>
+
+                <!-- Category 4 -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3 15a4 4 0 014-4h2a4 4 0 014 4v7H3v-7zM18 10h4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21h9M12 3a4 4 0 014 4v3" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Treehouses</span>
+                </div>
+
+                <!-- Category 5 -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M9 13.5l3 3m0 0l3-3m-3 3v-8.5m10 7a8.5 8.5 0 11-17 0 8.5 8.5 0 0117 0z" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Amazing Pools</span>
+                </div>
+
+                <!-- Category 6 -->
+                <div
+                    class="flex flex-col items-center pb-2 cursor-pointer text-gray-500 hover:text-gray-900 border-b-2 border-transparent hover:border-gray-200 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M12 2a5 5 0 00-5 5c0 2.2 2 4 5 4s5-1.8 5-4a5 5 0 00-5-5zM12 13c-4.97 0-9 4.03-9 9h18c0-4.97-4.03-9-9-9z" />
+                    </svg>
+                    <span class="text-xs font-medium mt-1">Cabins</span>
+                </div>
+
+                <!-- Filter Button (Always visible) -->
+                <button
+                    class="flex items-center space-x-2 border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 transition ml-8 self-center h-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18M7 12h10M11 18h2" />
+                    </svg>
+                    <span>Filters</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content: Listing Grid -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <h1 class="sr-only">Orange Getaways Listings</h1>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-10">
+
+            <!-- Listing Card Template (x8) -->
+
+            <!-- Card 1: Orange Oasis -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/f97316/ffffff?text=Orange+Oasis"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Luxury modern orange and white home"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Bali, Indonesia</p>
+                        <p class="text-sm text-gray-500">20-25 Aug</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$250</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.85</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Desert View Villa -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/f97316/000000?text=Desert+View+Villa"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Desert-themed villa with infinity pool"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Scottsdale, Arizona</p>
+                        <p class="text-sm text-gray-500">3-10 Oct</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$420</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.99</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Mountain View Cabin -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/94a3b8/ffffff?text=Mountain+Retreat"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Cozy cabin in the mountains"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Aspen, Colorado</p>
+                        <p class="text-sm text-gray-500">7-14 Nov</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$180</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.72</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4: Coastal Retreat -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/fb923c/ffffff?text=Coastal+Retreat"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Beach house with a view of the ocean"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Positano, Italy</p>
+                        <p class="text-sm text-gray-500">1-5 Jan</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$310</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.91</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 5: Urban Loft -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/fb923c/000000?text=Urban+Loft"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Modern city loft apartment"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">New York, USA</p>
+                        <p class="text-sm text-gray-500">15-22 Dec</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$200</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.68</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 6: Lakeside Cabin -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/fb923c/000000?text=Lakeside+Cabin"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Rustic cabin by a peaceful lake"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Banff, Canada</p>
+                        <p class="text-sm text-gray-500">2-9 Feb</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$195</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.88</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 7: Tropical Villa -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/fb923c/ffffff?text=Tropical+Villa"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Open-air villa with tropical plants"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Phuket, Thailand</p>
+                        <p class="text-sm text-gray-500">10-17 Mar</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$150</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.65</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 8: Scandinavian Flat -->
+            <div class="group cursor-pointer">
+                <div class="relative overflow-hidden rounded-xl h-72 mb-3">
+                    <img src="https://placehold.co/600x400/94a3b8/000000?text=Scandinavian+Flat"
+                        onerror="this.src='https://placehold.co/600x400/f97316/ffffff?text=Image+Unavailable'"
+                        alt="Minimalist apartment in a snowy city"
+                        class="object-cover w-full h-full transition duration-300 ease-in-out group-hover:scale-105">
+                    <button
+                        class="absolute top-3 right-3 p-2 bg-white/70 backdrop-blur-sm rounded-full text-orange-600 hover:text-orange-800 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-semibold text-gray-900 truncate">Oslo, Norway</p>
+                        <p class="text-sm text-gray-500">5-12 Apr</p>
+                        <p class="text-sm text-gray-500 mt-1"><span class="font-semibold text-gray-800">$215</span>
+                            night</p>
+                    </div>
+                    <div class="flex items-center space-x-1 text-sm text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-500 fill-orange-500"
+                            viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                        </svg>
+                        <span>4.95</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Simple Footer Placeholder -->
+    <footer class="mt-12 border-t border-gray-200 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-xs text-gray-500">
+            &copy; 2024 Orange Getaways, Inc. All rights reserved.
+        </div>
+    </footer>
+
+</body>
+
+</html>

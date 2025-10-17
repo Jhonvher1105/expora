@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import logo from "../pic/logo.png";
+import logo from "../components/pic/logo.png";
 import "./index.css";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -397,7 +397,7 @@ function Registration() {
 
             <div className="signup-text">
               Already have an account?{" "}
-              <Link to="/Login2">Sign In</Link>
+              <Link to="/LogIn">Sign In</Link>
             </div>
           </>
         )}

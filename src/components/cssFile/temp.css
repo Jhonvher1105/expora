@@ -5,6 +5,12 @@
     box-sizing: border-box;
 }
 
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f7f7f7;
+    scroll-behavior: smooth;
+}
+
 .homepage {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     min-height: 100vh;
@@ -32,14 +38,6 @@
 .header-left {
     display: flex;
     align-items: center;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: #ff6b35;
-    cursor: pointer;
 }
 
 .logo-text {
@@ -152,6 +150,102 @@
     opacity: 0.95;
 }
 
+.user-menu {
+    position: absolute;
+    width: fit-content;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    margin-right: 3px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    overflow: hidden;
+    z-index: 1000;
+}
+
+.user-menu-item {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    text-align: left;
+    background: none;
+    border: none;
+    color: #333;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-decoration: none;
+}
+
+.user-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.user-menu-divider {
+    height: 1px;
+    background-color: #e5e5e5;
+    margin: 4px 0;
+}
+
+.user-menu-item.logout {
+    color: #dc3545;
+}
+
+/* Modal overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* Modal box */
+.modal {
+    background: white;
+    padding: 20px 25px;
+    border-radius: 12px;
+    text-align: center;
+    width: 280px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.modal h3 {
+    margin-bottom: 8px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+}
+
+.confirm-btn {
+    background: #ff4b4b;
+    color: white;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.cancel-btn {
+    background: #ccc;
+    color: black;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+
 .search-bar {
     background-color: white;
     border-radius: 12px;
@@ -218,7 +312,7 @@
 
 .container {
     max-width: 1400px;
-    margin: 0 auto;
+    margin: 0 0;
 }
 
 /* Tabs */
@@ -254,6 +348,7 @@
 /* Section */
 .section {
     margin-bottom: 48px;
+    width: 90vw;
 }
 
 .section-header {
@@ -289,13 +384,27 @@
 }
 
 /* Trending Grid */
-.trending-grid {
+.trending-grid,
+.destinations-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    /* six columns */
+    grid-auto-rows: 1fr;
+    /* one row height */
+    gap: 1rem;
+    width: 100%;
+    /* allow horizontal scroll if needed */
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    grid-auto-flow: column;
+    /* keep items in a single row */
 }
 
+/* Individual card styling (no longer makes the card itself a grid) */
 .trending-card {
+    min-width: 0;
+    /* prevents overflow inside grid items */
     background-color: white;
     padding: 24px;
     border-radius: 12px;
@@ -303,6 +412,21 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
+}
+
+.destination-card {
+    min-width: 200px;
+    /* ensure visible card width inside the 6-column row */
+    background-color: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .trending-card:hover {
@@ -328,20 +452,6 @@
 }
 
 /* Destinations Grid */
-.destinations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 24px;
-}
-
-.destination-card {
-    background-color: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    transition: transform 0.3s, box-shadow 0.3s;
-    cursor: pointer;
-}
 
 .destination-card:hover {
     transform: translateY(-4px);
@@ -384,24 +494,27 @@
 
 .destination-content {
     padding: 16px;
+    padding-bottom: 0;
 }
 
 .destination-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    justify-content: left;
+    align-items: flex-start;
     margin-bottom: 8px;
 }
 
 .destination-name {
+    text-align: left;
     font-size: 20px;
     font-weight: 600;
     color: #333;
 }
 
 .destination-price {
-    font-size: 18px;
-    font-weight: 700;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 500;
     color: #ff6b35;
 }
 
@@ -415,7 +528,7 @@
 }
 
 .destination-footer {
-    display: flex;
+    display: block;
     justify-content: space-between;
     align-items: center;
 }
@@ -424,6 +537,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    margin-bottom: 10px;
     font-size: 14px;
     font-weight: 600;
     color: #333;
@@ -557,6 +671,42 @@
 
 .explore-btn-large:hover {
     background-color: #e55a2b;
+}
+
+/* profile */
+
+.profile_Body{
+    display: block;
+    background-color: #ff6b35;
+    padding: 1.3rem;
+}
+
+.profile_containter{
+    display: grid;
+    place-items: center;
+    margin: 1rem 1rem;
+    padding: .8rem;
+    background-color: white;
+    border-radius: 10px;
+}
+
+.profile_containter .logo{
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    margin-bottom: 10px;
+}
+.editBtn{
+    background-color: #ff6b35;
+    border: none;
+    width: 8rem;
+    border-radius: 8px;
+    padding: .5rem;
+}
+
+.editBtn_img{
+    width: 17px;
+    height: 17px;
 }
 
 /* Footer */
