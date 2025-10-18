@@ -32,7 +32,7 @@ function Body() {
     return (
         <>
             <Header/>
-            <div className="homepage">
+            <div className="homepage" role="Body">
                 <section className="hero">
                     <div className="hero-content">
                         <h1 className="hero-title">Discover Your Next Adventure</h1>

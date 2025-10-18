@@ -32,11 +32,10 @@ function Registration() {
     dateOfBirth: "",
     gender: "",
     phoneNumber: "",
-    address: "",
+    houseNumber: "",
     city: "",
     state: "",
     zipCode: "",
-    country: "",
     password: "",
     confirmPassword: "",
   });
@@ -144,11 +143,10 @@ function Registration() {
         dateOfBirth: formData.dateOfBirth,
         gender: gender === "other" ? otherInput : gender,
         phoneNumber: formData.phoneNumber,
-        address: formData.address,
+        houseNumber: formData.houseNumber,
         city: formData.city,
         state: formData.state,
         zipCode: formData.zipCode,
-        country: formData.country,
         createdAt: new Date(),
       });
 
@@ -163,11 +161,9 @@ function Registration() {
         dateOfBirth: "",
         gender: "",
         phoneNumber: "",
-        address: "",
         city: "",
         state: "",
         zipCode: "",
-        country: "",
         password: "",
         confirmPassword: "",
       });
@@ -302,6 +298,51 @@ function Registration() {
                     </div>
                   </fieldset>
                 </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="houseNumber">House Number</label>
+                  <input
+                    type="number"
+                    name="houseNumber"
+                    value={formData.houseNumber}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="city">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label" htmlFor="state">State</label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label" htmlFor="zipcode">Zipcode</label>
+                  <input
+                    type="number"
+                    name="sipcode"
+                    value={formData.zipCode}
+                    onChange={handleInputChange}
+                    className="form-input"
+                  />
+                </div>
+
               </div>
               {/* ... keep the rest of your form fields ... */}
               <button type="submit" className="submit-btn" disabled={isLoading}>
