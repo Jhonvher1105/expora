@@ -99,6 +99,9 @@ function Header() {
                                 <Link to="/Profile" className="user-menu-item" role="menuitem">
                                     My Profile
                                 </Link>
+                                <Link to="/Profile" className="user-menu-item" role="menuitem">
+                                    Be come a host
+                                </Link>
                                 <Link to="/settings" className="user-menu-item" role="menuitem">
                                     Settings
                                 </Link>
