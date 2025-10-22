@@ -44,7 +44,7 @@ export default function ProfileForm() {
 
     const handleEditClick = () => {
     setShowSave(true); 
-    setShowEdit(false);// show the Save button
+    setShowEdit(false);
     };
 
     const handleCancelBtn = () => {

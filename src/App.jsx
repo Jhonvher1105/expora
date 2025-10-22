@@ -3,6 +3,7 @@ import Registration from "./login2/Registration";
 import LogIn2 from "./login2/LogIn2";
 import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
+import Settings from './components/UserFolder/Settings';
 
 function App() {
     return (
@@ -13,6 +14,7 @@ function App() {
                 <Route path="/Home" element={<UserHomePage />} />
                 <Route path="/LogIn" element={<LogIn2/>}/>
                 <Route path="/Profile" element={<Profile/>}/>
+                <Route path="/Settings" element={<Settings/>}/>
             </Routes>
         </BrowserRouter>
     );
