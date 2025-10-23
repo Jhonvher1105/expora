@@ -1,13 +1,11 @@
-import { useState, useEffect } from "react";
-import { Bell, User, Menu, X, Copy } from "lucide-react";
-
-import "../cssFile/temp.css";
-import logo from "../pic/logo.png";
-
-// Firebase + Router imports
+import React, { useState, useEffect } from "react";
+import { Bell, User, Menu, X, Copy, MessageCircleMore } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Link, useNavigate } from "react-router-dom";
+import logo from "../pic/logo.png";
+import "../cssFile/temp.css";
+
 
 function Header() {
     const navigate = useNavigate();
@@ -17,6 +15,7 @@ function Header() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [showCoupon, setCoupon] = useState(false);
+    const [showChat, setShowChat] = useState(false);
 
     // coupon/voucher state
     const [voucher, setVoucher] = useState(null);
@@ -94,6 +93,10 @@ function Header() {
         }
     };
 
+    const chatBtn = () =>{
+        setShowChat(true)
+    }
+
     return (
         <header className="header" role="banner">
             <div className="header-container">
@@ -105,13 +108,21 @@ function Header() {
 
                 {/* ✅ Right Section */}
                 <div className="header-right">
-                    <button className="icon-btn" aria-label="Notifications">
-                        <Bell size={20} />
+                    <button className="icon-btn" 
+                    aria-label="Chat"
+                    >
+                        <MessageCircleMore size={20} />
                         <span className="notification-badge" aria-hidden="true">
                             {currentUser ? 3 : 0}
                         </span>
                     </button>
 
+                    {/* Chat */}
+                    <div style={{ position: "relative" }}>
+                        <header>
+                            
+                        </header>
+                    </div>
                     {/* User Menu */}
                     <div style={{ position: "relative" }}>
                         <button
@@ -180,37 +191,35 @@ function Header() {
             {showCoupon && voucher && (
                 <div className="coupon_modal-overlay" role="dialog" aria-modal="true" aria-label="Coupon modal">
                     <div className="modal coupon-modal">
-                        <section className="coupon_modal_header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h3 style={{ margin: 0 }}>Your Voucher</h3>
+                        <section className="coupon_modal_header">
+                            <h3>Your Voucher</h3>
                             <button className="coupon_X_Btn" onClick={() => setCoupon(false)} aria-label="Close coupon">
                                 <X size={20} />
                             </button>
                         </section>
 
-                        <main style={{ padding: "12px 0" }}>
-                            <div className="coupon-card" style={{ textAlign: "center", padding: 16 }}>
-                                <div style={{ fontSize: 20, fontWeight: 700 }}>{voucher.discount}</div>
-                                <div style={{ marginTop: 8 }}>{voucher.description}</div>
+                        <main className="coupon-modal-main">
+                            <div className="coupon-card">
+                                <div className="coupon-discount">{voucher.discount}</div>
+                                <div className="coupon-description">{voucher.description}</div>
 
-                                <div style={{ marginTop: 16, display: "flex", justifyContent: "center", gap: 8, alignItems: "center" }}>
-                                    <div style={{ fontFamily: "monospace", padding: "8px 12px", background: "#f3f4f6", borderRadius: 6 }}>
-                                        {voucher.code}
-                                    </div>
+                                <div className="coupon-code-container">
+                                    <div className="coupon-code">{voucher.code}</div>
                                     <button className="icon-btn" onClick={copyVoucher} aria-label="Copy voucher">
                                         <Copy size={16} />
                                     </button>
                                 </div>
 
-                                <div style={{ marginTop: 12, fontSize: 13, color: "#6b7280" }}>
+                                <div className="coupon-expiry">
                                     Expires: {new Date(voucher.expiresAt).toLocaleDateString()}
                                 </div>
 
-                                <div style={{ marginTop: 16, display: "flex", gap: 8, justifyContent: "center" }}>
+                                <div className="coupon-actions">
                                     <button onClick={applyVoucher} className="editBtn">Apply Voucher</button>
-                                    <button onClick={() => { setCoupon(false); }} className="cancel-btn">Close</button>
+                                    <button onClick={() => setCoupon(false)} className="cancel-btn">Close</button>
                                 </div>
 
-                                {copied && <div style={{ marginTop: 8, color: "#059669" }}>Copied!</div>}
+                                {copied && <div className="copy-success">Copied!</div>}
                             </div>
                         </main>
                     </div>

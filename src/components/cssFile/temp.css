@@ -12,9 +12,42 @@ body {
     scroll-behavior: smooth;
 }
 
+.landing-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('../pic/background/bg2.gif');
+    background-repeat: no-repeat;
+    background-size: 100%;
+}
+
+.landing-page main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: rgba(255, 255, 255, 0.445);
+    border-radius: 10px;
+
+    .logo-card {
+        width: fit-content;
+        display: grid;
+        place-items: center;
+
+        padding: 1rem;
+
+        h1{
+            font-size: 2.5rem;
+        }
+    }
+}
+
 .homepage {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
     min-height: 100vh;
+    background-image: url("../../components/pic/background/bg1.jpg");
     /* background: linear-gradient(to bottom right, #fb923c, #f97316, #ef4444); */
     background: #fb923c;
 }
@@ -141,73 +174,278 @@ body {
     cursor: pointer;
 }
 
-/* Hero Section */
+/* Landing / Hero design */
+
+.landing-header,
+#header {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    padding: 1.5rem 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+    background: rgba(15, 15, 30, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.landing-main{
+        background: rgba(15, 15, 30, 0.8);
+
+}
+
+.landing-header.scrolled,
+#header.scrolled {
+    padding: 1rem 5%;
+    background: rgba(15, 15, 30, 0.95);
+}
+
+.landing-header .logo,
+#header .logo {
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    padding: 0.75rem 2rem;
+    border: none;
+    border-radius: 50px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-login {
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-login:hover {
+    border-color: #ff6b35;
+    color: #ff6b35;
+    transform: translateY(-2px);
+}
+
+.btn-signup {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+}
+
+.btn-signup:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.6);
+}
+
 .hero {
-    background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
-    padding: 80px 24px;
-    color: white;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 0 5%;
+}
+
+.hero-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    opacity: 0.1;
+}
+
+.floating-shapes {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.shape {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(247, 147, 30, 0.2));
+    animation: float 20s infinite ease-in-out;
+}
+
+.shape:nth-child(1) {
+    width: 300px;
+    height: 300px;
+    top: 10%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.shape:nth-child(2) {
+    width: 200px;
+    height: 200px;
+    top: 60%;
+    right: 15%;
+    animation-delay: 5s;
+}
+
+.shape:nth-child(3) {
+    width: 150px;
+    height: 150px;
+    bottom: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 10s;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-50px) rotate(180deg);
+    }
 }
 
 .hero-content {
-    max-width: 900px;
-    margin: 0 auto;
+    position: relative;
+    z-index: 2;
     text-align: center;
+    max-width: 900px;
 }
 
-.hero-title {
-    font-size: 48px;
-    font-weight: 700;
-    margin-bottom: 16px;
+.hero-content h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    margin-bottom: 1.5rem;
     line-height: 1.2;
+    animation: fadeInUp 1s ease;
 }
 
-.hero-subtitle {
-    font-size: 20px;
-    margin-bottom: 40px;
-    opacity: 0.95;
+.gradient-text {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-.user-menu {
-    position: absolute;
-    width: fit-content;
-    top: 100%;
-    right: 0;
-    margin-top: 8px;
-    margin-right: 3px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    min-width: 200px;
-    overflow: hidden;
-    z-index: 1000;
+.hero-content p {
+    font-size: 1.3rem;
+    margin-bottom: 2.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    animation: fadeInUp 1s ease 0.2s backwards;
 }
 
-.user-menu-item {
-    display: block;
-    width: 100%;
-    padding: 12px 20px;
-    text-align: left;
-    background: none;
+.cta-buttons {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    animation: fadeInUp 1s ease 0.4s backwards;
+}
+
+.btn-primary {
+    padding: 1rem 3rem;
+    font-size: 1.1rem;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: #fff;
     border: none;
-    color: #333;
-    font-size: 14px;
+    border-radius: 50px;
     cursor: pointer;
-    transition: background-color 0.2s;
-    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(255, 107, 53, 0.4);
 }
 
-.user-menu-item:hover {
-    background-color: #f5f5f5;
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 40px rgba(255, 107, 53, 0.6);
 }
 
-.user-menu-divider {
-    height: 1px;
-    background-color: #e5e5e5;
-    margin: 4px 0;
+.btn-secondary {
+    padding: 1rem 3rem;
+    font-size: 1.1rem;
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.user-menu-item.logout {
-    color: #dc3545;
+.btn-secondary:hover {
+    border-color: #ff6b35;
+    color: #ff6b35;
+    transform: translateY(-3px);
+}
+
+.features {
+    padding: 6rem 5%;
+    background: #1a1a2e;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    padding: 2.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #ff6b35;
+    box-shadow: 0 20px 40px rgba(255, 107, 53, 0.2);
+}
+
+.feature-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+}
+
+.feature-card h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: #ff6b35;
+}
+
+.feature-card p {
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.6;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* Modal overlay */
@@ -284,10 +522,66 @@ body {
     box-shadow: 0 12px 40px rgba(2, 6, 23, 0.2);
 }
 
-.coupon-card {
+/* Coupon Modal Styles */
+.coupon_modal_header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
     align-items: center;
+}
+
+.coupon_modal_header h3 {
+    margin: 0;
+}
+
+.coupon-modal-main {
+    padding: 12px 0;
+}
+
+.coupon-card {
+    text-align: center;
+    padding: 16px;
+}
+
+.coupon-discount {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.coupon-description {
+    margin-top: 8px;
+}
+
+.coupon-code-container {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    align-items: center;
+}
+
+.coupon-code {
+    font-family: monospace;
+    padding: 8px 12px;
+    background: #f3f4f6;
+    border-radius: 6px;
+}
+
+.coupon-expiry {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.coupon-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.copy-success {
+    margin-top: 8px;
+    color: #059669;
 }
 
 /* Search Bar */
