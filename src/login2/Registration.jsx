@@ -33,6 +33,7 @@ function Registration() {
     gender: "",
     phoneNumber: "",
     houseNumber: "",
+    accType: "guest",
     city: "",
     state: "",
     zipCode: "",

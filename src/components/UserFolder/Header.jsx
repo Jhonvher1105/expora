@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Bell, User, Menu, X, Copy, MessageCircleMore } from "lucide-react";
+import { Bell, User, Menu, Copy, MessageCircleMore } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import logo from "../pic/logo.png";
+import AddProperty from "../ui/AddProperty.jsx";
 import "../cssFile/temp.css";
+
+import X from "../pic/icon/x.svg";
 
 
 function Header() {
@@ -16,6 +19,7 @@ function Header() {
     const [currentUser, setCurrentUser] = useState(null);
     const [showCoupon, setCoupon] = useState(false);
     const [showChat, setShowChat] = useState(false);
+    const [showHostForm, setShowForm] = useState(false);
 
     // coupon/voucher state
     const [voucher, setVoucher] = useState(null);
@@ -103,7 +107,7 @@ function Header() {
                 {/* ✅ Left Section (Logo + Brand) */}
                 <Link className="header-left" to={'/Home'}>
                     <img src={logo} width={40} height={40} alt="Expora logo" />
-                    <span className="logo-text">Expora</span>
+                    <span className="logo-text">Explora</span>
                 </Link>
 
                 {/* ✅ Right Section */}
@@ -146,9 +150,9 @@ function Header() {
                                 <Link to="/Profile" className="user-menu-item" role="menuitem">
                                     My Profile
                                 </Link>
-                                <Link to="/Profile" className="user-menu-item" role="menuitem">
+                                <button type="button" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)}>
                                     Become a host
-                                </Link>
+                                </button>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
                                     Settings
                                 </Link>
@@ -157,6 +161,12 @@ function Header() {
                                 </Link>
                                 <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
                                     Coupons
+                                </button>
+                                <button className="user-menu-item" type="button" role="menuitem">
+                                    E-Wallet
+                                </button>
+                                <button className="user-menu-item" type="button" role="menuitem">
+                                    Suggestion and Recommendation
                                 </button>
                                 <div className="user-menu-divider" />
                                 <Link to="/help" className="user-menu-item" role="menuitem">
@@ -243,6 +253,16 @@ function Header() {
                                 Cancel
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Become Host Form */}
+            {showHostForm && (
+                <div className="modal-overlay" onClick={() => setShowForm(false)}>
+                    <div className="modal" onClick={e => e.stopPropagation()}>
+                        <AddProperty onPropertyCreated={() => setShowForm(false)} />
+                        <button className="cancel-btn" onClick={() => setShowForm(false)} style={{marginTop:8}}>Close</button>
                     </div>
                 </div>
             )}
