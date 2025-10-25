@@ -160,11 +160,6 @@ label,
     color: var(--text);
 }
 
-/* Modal overlays */
-.coupon_modal-overlay {
-    background: rgba(0, 0, 0, 0.5);
-}
-
 
 .coupon-modal {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
@@ -198,9 +193,139 @@ textarea {
 .coupon-code {
     font-family: monospace;
     background: rgba(255, 255, 255, 0.03);
-    padding: 6px 10px;
-    border-radius: 6px;
 }
+
+/* Host Modal Styles */
+.host-modal {
+    width: 100%;
+    max-width: 1024px;
+    margin: 20px;
+    padding: 0;
+    background: transparent;
+    overflow-y: auto;
+    max-height: calc(100vh - 40px);
+}
+
+.host-modal .modal {
+    /* background: var(--bg-800);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 20px; */
+
+    background: rgba(26, 26, 46, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 2rem;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: scaleIn 0.3s ease;
+}
+
+/* Make form inputs and grid responsive */
+.host-modal form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.host-modal .grid-cols-2,
+.host-modal .grid-cols-3 {
+    display: grid;
+    gap: 1rem;
+}
+
+.host-modal .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.host-modal .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.host-modal input,
+.host-modal select,
+.host-modal textarea {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.host-modal input:focus,
+.host-modal select:focus,
+.host-modal textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+}
+
+.host-modal label {
+    color: var(--text);
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.host-modal button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .host-modal {
+        margin: 0;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .host-modal .grid-cols-2,
+    .host-modal .grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+
+    .host-modal .modal {
+        padding: 16px;
+        border-radius: 0;
+    }
+
+    .host-modal form {
+        gap: 1rem;
+    }
+
+    .host-modal button {
+        width: 100%;
+    }
+}
+
+/* Image upload area responsive styles */
+.host-modal .flex.flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: flex-start;
+}
+
+.host-modal .image-preview {
+    width: 100px;
+    height: 100px;
+    position: relative;
+}
+
+@media (max-width: 480px) {
+    .host-modal .image-preview {
+        width: 80px;
+        height: 80px;
+    }
+}
+    /* padding: 6px 10px;
+    border-radius: 6px;
+} */
 
 /* Profile area tweaks */
 .ProfilePic {
@@ -286,8 +411,6 @@ a,
     align-items: center;
     gap: 1rem;
 }
-
-.modal-overlay > 
 
 .favorite-btn, .icon-btn{
     position: relative;
@@ -429,8 +552,8 @@ a,
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 24px;
     padding: 2rem;
-    max-width: 450px;
-    width: 90%;
+    /* max-width: 450px;
+    width: 90%; */
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: scaleIn 0.3s ease;
 }
@@ -804,14 +927,17 @@ header.scrolled {
 /* Coupon modal */
 .coupon_modal-overlay {
     position: fixed;
-    inset: 0;
+    top: 2px;
+    left: -5px;
     background: rgba(0, 0, 0, 0.45);
     display: flex;
-    align-items: center;
     justify-content: center;
-    z-index: 120;
+    align-items: center;
+    z-index: 100;
     padding: 16px;
-    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    /* box-sizing: border-box; */
 }
 
 .coupon-modal {

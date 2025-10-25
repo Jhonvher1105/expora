@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Bell, User, Menu, Copy, MessageCircleMore } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { auth } from "../../firebase";
+import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import logo from "../pic/logo.png";
-import AddProperty from "../ui/AddProperty.jsx";
 import "../cssFile/temp.css";
 
-import X from "../pic/icon/x.svg";
+import XIcon from "../pic/icon/x.svg";
+import AddProperty from "../ui/AddProperty";
 
 
 function Header() {
@@ -101,6 +101,12 @@ function Header() {
         setShowChat(true)
     }
 
+    useEffect(() => {
+        if (currentUser) {
+            console.log('Current user UID:', currentUser.uid);
+        }
+    }, [currentUser]);
+    
     return (
         <header className="header" role="banner">
             <div className="header-container">
@@ -150,7 +156,7 @@ function Header() {
                                 <Link to="/Profile" className="user-menu-item" role="menuitem">
                                     My Profile
                                 </Link>
-                                <button type="button" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)}>
+                                <button type="button" id="becomeHostBtn" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)}>
                                     Become a host
                                 </button>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
@@ -204,7 +210,7 @@ function Header() {
                         <section className="coupon_modal_header">
                             <h3>Your Voucher</h3>
                             <button className="coupon_X_Btn" onClick={() => setCoupon(false)} aria-label="Close coupon">
-                                <X size={20} />
+                                <img src={XIcon} alt="X"/>
                             </button>
                         </section>
 
@@ -259,10 +265,16 @@ function Header() {
 
             {/* Become Host Form */}
             {showHostForm && (
-                <div className="modal-overlay" onClick={() => setShowForm(false)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
-                        <AddProperty onPropertyCreated={() => setShowForm(false)} />
-                        <button className="cancel-btn" onClick={() => setShowForm(false)} style={{marginTop:8}}>Close</button>
+                <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add property form">
+                    <div className="modal host-modal" onClick={e => e.stopPropagation()}>
+                        <AddProperty 
+                            onClose={() => setShowForm(false)}
+                            onPropertyCreated={(data) => {
+                                console.log('Property created:', data);
+                                setShowForm(false);
+                                // You can add a success notification here
+                            }}
+                        />
                     </div>
                 </div>
             )}
