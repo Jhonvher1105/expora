@@ -2,10 +2,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import "./index.css";
 
-import Home from '../components/UserFolder/HomeBody'
 import logo from "../components/pic/logo.png";
 
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+} from "firebase/auth";
 import { auth } from "../firebase";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -15,29 +19,40 @@ function LogIn2() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setErrorMessage("");
+
         console.log("Sign in:", { email, password, rememberMe });
 
         if (!email || !password) {
-            alert("Please fill in both email and password!");
+            setErrorMessage("Please fill in both email and password.");
             return;
         }
 
-        // Firebase login
-        signInWithEmailAndPassword(auth, email, password)
-            .then((userCredential) => {
-                // Logged in successfully
-                alert("Login successful!");
-                console.log("User:", userCredential.user);
-                navigate("/Home");
-            })
-            .catch((error) => {
-                console.error(error);
-                alert("Login failed: " + error.message);
-            });
+        try {
+            // Set persistence based on rememberMe
+            await setPersistence(
+                auth,
+                rememberMe ? browserLocalPersistence : browserSessionPersistence
+            );
+
+            const userCredential = await signInWithEmailAndPassword(
+                auth,
+                email,
+                password
+            );
+
+            console.log("User:", userCredential.user);
+            // navigate after successful login
+            navigate("/Home");
+        } catch (error) {
+            console.error("Login failed:", error);
+            setErrorMessage(error?.message || "Login failed. Please try again.");
+        }
     };
 
     return (
@@ -57,35 +72,58 @@ function LogIn2() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Email address</label>
+                        <label htmlFor="login-email">Email address</label>
                         <input
+                            id="login-email"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="Enter your email"
+                            autoComplete="email"
                         />
                     </div>
 
                     <div className="form-group">
-                        <label>Password</label>
+                        <label htmlFor="login-password">Password</label>
                         <div className="password-container">
                             <input
+                                id="login-password"
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="Enter your password"
+                                autoComplete="current-password"
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="eye-btn"
+                                aria-label={showPassword ? "Hide password" : "Show password"}
                             >
                                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                             </button>
                         </div>
                     </div>
 
-                    <button type="submit" className="signin-btn">
+                    <div className="form-row" style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}>
+                        <label style={{display:'flex',alignItems:'center',gap:8}}>
+                            <input
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                            />
+                            Remember me
+                        </label>
+                        <div style={{marginLeft:'auto'}}>
+                            <Link to="/forgot-password">Forgot password?</Link>
+                        </div>
+                    </div>
+
+                    {errorMessage && (
+                        <div className="error-message" style={{color:'crimson',marginTop:8}}>{errorMessage}</div>
+                    )}
+
+                    <button type="submit" className="signin-btn" disabled={!email || !password}>
                         Sign in
                     </button>
 

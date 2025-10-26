@@ -1,15 +1,19 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { Plus, X } from "lucide-react";
 import { auth, db } from "../../firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
 const REQUIRED_IMAGE_COUNT = 5;
+const MAX_IMAGE_COUNT = 10;
 const PROPERTY_TYPES = ["Home", "Apartment", "Hotel", "Resort", "Tour"];
+
+// 🔹 Replace these with your Cloudinary details
+const CLOUD_NAME = "dv42rw8m7";
+const UPLOAD_PRESET = "unsigned_preset"; // <-- create in Cloudinary dashboard
 
 export default function AddProperty({ onPropertyCreated, onClose }) {
     const [images, setImages] = useState([]);
-    const [imageUrls, setImageUrls] = useState([]);
     const [uploadError, setUploadError] = useState("");
     const [currentUser, setCurrentUser] = useState(null);
     const [accType, setAccType] = useState("");
@@ -26,21 +30,25 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         bedrooms: "",
         bathrooms: "",
         amenities: "",
-        images: [],
     });
 
-    // 🔹 Handle image upload and convert to Base64
+    // 🔹 Handle image upload and preview
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
 
+        if (images.length + files.length > MAX_IMAGE_COUNT) {
+            setUploadError(`Maximum ${MAX_IMAGE_COUNT} images allowed.`);
+            return;
+        }
+
         const validFiles = files.filter((file) => {
             const isValid = file.type.startsWith("image/");
-            const isUnderLimit = file.size <= 2 * 1024 * 1024; // 2MB limit (optional)
+            const isUnderLimit = file.size <= 3 * 1024 * 1024; // 3MB limit
             return isValid && isUnderLimit;
         });
 
         if (validFiles.length !== files.length) {
-            setUploadError("Some files were skipped. Must be valid images under 2MB.");
+            setUploadError("Some files were skipped. Must be valid images under 3MB.");
         }
 
         const newImages = validFiles.map((file) => ({
@@ -64,46 +72,29 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
             newImages.splice(index, 1);
             return newImages;
         });
-
-        setUploadError(
-            images.length - 1 < REQUIRED_IMAGE_COUNT
-                ? `Please add at least ${REQUIRED_IMAGE_COUNT} images (${REQUIRED_IMAGE_COUNT - (images.length - 1)} more needed)`
-                : ""
-        );
     };
 
-    // 🔹 Convert image files to Base64
-    const convertToBase64 = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = (error) => reject(error);
-        });
-    };
+    // 🔹 Upload each image to Cloudinary
+    const uploadImagesToCloudinary = async () => {
+        const uploadedUrls = [];
+        for (const image of images) {
+            const formData = new FormData();
+            formData.append("file", image.file);
+            formData.append("upload_preset", UPLOAD_PRESET);
 
-    // 🔹 "Upload" images (convert to Base64)
-    const uploadImages = async () => {
-        setIsUploading(true);
-        const urls = [];
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+                method: "POST",
+                body: formData,
+            });
 
-        try {
-            for (const image of images) {
-                const base64 = await convertToBase64(image.file);
-                urls.push(base64);
-            }
-            setImageUrls(urls);
-            return urls;
-        } catch (error) {
-            console.error("Error converting images:", error);
-            setUploadError("Failed to process images. Please try again.");
-            throw error;
-        } finally {
-            setIsUploading(false);
+            if (!res.ok) throw new Error("Failed to upload to Cloudinary");
+            const data = await res.json();
+            uploadedUrls.push(data.secure_url);
         }
+        return uploadedUrls;
     };
 
-    // 🔹 Listen to Auth State
+    // 🔹 Listen to auth changes
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
@@ -111,64 +102,18 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         return unsubscribe;
     }, []);
 
-    // revoke object URLs on unmount to avoid memory leaks
+    // 🔹 Cleanup previews
     useEffect(() => {
         return () => {
             images.forEach((img) => {
                 try {
                     URL.revokeObjectURL(img.preview);
-                } catch (e) {
-                    // ignore
-                }
+                } catch { }
             });
         };
     }, [images]);
 
-    // 🔹 Submit form
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!validateForm()) return;
-
-        // ensure user is logged in
-        if (!currentUser) {
-            setUploadError("You must be signed in to create a property.");
-            return;
-        }
-
-        try {
-            setIsUploading(true);
-            const urls = await uploadImages();
-            const finalData = { ...formData, images: urls };
-            console.log("Creating property:", finalData);
-
-            const uid = currentUser?.uid;
-            if (uid) {
-                try {
-                    // only update accType if provided
-                    if (accType) {
-                        await updateDoc(doc(db, "users", uid), {
-                            accType: accType,
-                        });
-                        console.log("Account type updated:", accType);
-                    }
-                } catch (uErr) {
-                    console.warn("Failed to update user account type:", uErr);
-                }
-            }
-
-            if (onPropertyCreated) onPropertyCreated(finalData);
-            // close the form after successful creation
-            if (onClose) onClose();
-        } catch (error) {
-            console.error("Error creating property:", error);
-            setUploadError("Failed to create property. Please try again.");
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    // 🔹 Form validation
+    // 🔹 Form Validation
     const validateForm = useCallback(() => {
         const errors = {};
         if (!formData.title) errors.title = "Title is required";
@@ -191,7 +136,51 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         return Object.keys(errors).length === 0;
     }, [formData, images]);
 
-    // 🔹 UI
+    // 🔹 Submit Form
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        if (!currentUser) {
+            setUploadError("You must be signed in to create a property.");
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            const cloudinaryUrls = await uploadImagesToCloudinary();
+
+            const finalData = {
+                ...formData,
+                price: Number(formData.price),
+                maxGuests: Number(formData.maxGuests),
+                bedrooms: Number(formData.bedrooms),
+                bathrooms: Number(formData.bathrooms),
+                amenities: formData.amenities.split(",").map((a) => a.trim()),
+                images: cloudinaryUrls,
+                ownerId: currentUser.uid,
+                createdAt: new Date(),
+            };
+
+            await addDoc(collection(db, "properties"), finalData);
+            console.log("✅ Property saved:", finalData);
+
+            if (accType) {
+                await updateDoc(doc(db, "users", currentUser.uid), { accType });
+                console.log("Account type updated:", accType);
+            }
+
+            if (onPropertyCreated) onPropertyCreated(finalData);
+            if (onClose) onClose();
+        } catch (error) {
+            console.error("❌ Error creating property:", error);
+            setUploadError("Failed to create property. Please try again.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8">
@@ -206,170 +195,144 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Property Title */}
-                    <div className="space-y-2">
-                        <label htmlFor="title" className="block text-sm font-medium">
-                            Property Title
-                        </label>
+                    <div>
+                        <label className="block text-sm font-medium">Title</label>
                         <input
-                            id="title"
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                            placeholder="e.g., Luxury Beachfront Villa"
+                            className="w-full p-2 border rounded"
                             value={formData.title}
-                            onChange={(e) =>
-                                setFormData({ ...formData, title: e.target.value })
-                            }
-                            required
+                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         />
-                        {formErrors.title && (
-                            <p className="text-red-500 text-sm mt-1">{formErrors.title}</p>
-                        )}
+                        {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
                     </div>
 
                     {/* Description */}
-                    <div className="space-y-2">
-                        <label htmlFor="description" className="block text-sm font-medium">
-                            Description
-                        </label>
+                    <div>
+                        <label className="block text-sm font-medium">Description</label>
                         <textarea
-                            id="description"
-                            className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                            placeholder="Describe your property..."
+                            className="w-full p-2 border rounded"
+                            rows={4}
                             value={formData.description}
                             onChange={(e) =>
                                 setFormData({ ...formData, description: e.target.value })
                             }
-                            rows={4}
-                            required
                         />
                         {formErrors.description && (
-                            <p className="text-red-500 text-sm mt-1">
-                                {formErrors.description}
-                            </p>
+                            <p className="text-red-500 text-sm">{formErrors.description}</p>
                         )}
                     </div>
 
-                    {/* Property Type & Category */}
+                    {/* Type & Category */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label htmlFor="type">Property Type</label>
+                        <div>
+                            <label>Type</label>
                             <select
-                                id="type"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                                className="w-full p-2 border rounded"
                                 value={formData.type}
                                 onChange={(e) =>
                                     setFormData({ ...formData, type: e.target.value })
                                 }
-                                required
                             >
                                 <option value="">Select type...</option>
-                                {PROPERTY_TYPES.map((type) => (
-                                    <option key={type.toLowerCase()} value={type.toLowerCase()}>
-                                        {type}
+                                {PROPERTY_TYPES.map((t) => (
+                                    <option key={t} value={t.toLowerCase()}>
+                                        {t}
                                     </option>
                                 ))}
                             </select>
-                            {formErrors.type && (
-                                <p className="text-red-500 text-sm mt-1">{formErrors.type}</p>
-                            )}
                         </div>
 
-                        <div className="space-y-2">
-                            <label htmlFor="category" className="block text-sm font-medium">
-                                Category
-                            </label>
+                        <div>
+                            <label>Category</label>
                             <input
-                                id="category"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                                placeholder="e.g., Villa, Cabin, Tour"
+                                className="w-full p-2 border rounded"
                                 value={formData.category}
                                 onChange={(e) =>
                                     setFormData({ ...formData, category: e.target.value })
                                 }
-                                required
                             />
-                            {formErrors.category && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {formErrors.category}
-                                </p>
-                            )}
                         </div>
                     </div>
 
-                    {/* Price & Location */}
+                    {/* Other Inputs */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <label htmlFor="price" className="block text-sm font-medium">
-                                Price per Night ($)
-                            </label>
-                            <input
-                                id="price"
-                                type="number"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                                placeholder="150"
-                                value={formData.price}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, price: Number(e.target.value) })
-                                }
-                                min="0"
-                                required
-                            />
-                            {formErrors.price && (
-                                <p className="text-red-500 text-sm mt-1">{formErrors.price}</p>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <label htmlFor="location" className="block text-sm font-medium">
-                                Location
-                            </label>
-                            <input
-                                id="location"
-                                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                                placeholder="City, State/Country"
-                                value={formData.location}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, location: e.target.value })
-                                }
-                                required
-                            />
-                            {formErrors.location && (
-                                <p className="text-red-500 text-sm mt-1">
-                                    {formErrors.location}
-                                </p>
-                            )}
-                        </div>
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Price"
+                            type="number"
+                            value={formData.price}
+                            onChange={(e) =>
+                                setFormData({ ...formData, price: e.target.value })
+                            }
+                        />
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Location"
+                            value={formData.location}
+                            onChange={(e) =>
+                                setFormData({ ...formData, location: e.target.value })
+                            }
+                        />
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Max Guests"
+                            type="number"
+                            value={formData.maxGuests}
+                            onChange={(e) =>
+                                setFormData({ ...formData, maxGuests: e.target.value })
+                            }
+                        />
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Bedrooms"
+                            type="number"
+                            value={formData.bedrooms}
+                            onChange={(e) =>
+                                setFormData({ ...formData, bedrooms: e.target.value })
+                            }
+                        />
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Bathrooms"
+                            type="number"
+                            value={formData.bathrooms}
+                            onChange={(e) =>
+                                setFormData({ ...formData, bathrooms: e.target.value })
+                            }
+                        />
+                        <input
+                            className="p-2 border rounded"
+                            placeholder="Amenities (comma separated)"
+                            value={formData.amenities}
+                            onChange={(e) =>
+                                setFormData({ ...formData, amenities: e.target.value })
+                            }
+                        />
                     </div>
 
-                    {/* Image Upload Section */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <label className="block text-sm font-medium">
-                                Property Images (Minimum {REQUIRED_IMAGE_COUNT})
-                            </label>
-                            <span className="text-sm text-gray-500">
-                                {images.length} / {REQUIRED_IMAGE_COUNT} minimum
-                            </span>
-                        </div>
-
-                        <div className="flex flex-wrap gap-4 mb-4">
-                            {images.map((image, index) => (
-                                <div key={index} className="relative">
+                    {/* Images */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">
+                            Property Images (5–10 images)
+                        </label>
+                        <div className="flex flex-wrap gap-3 mb-3">
+                            {images.map((img, idx) => (
+                                <div key={idx} className="relative">
                                     <img
-                                        src={image.preview}
-                                        alt={`Preview ${index + 1}`}
+                                        src={img.preview}
+                                        alt=""
                                         className="w-24 h-24 object-cover rounded"
                                     />
                                     <button
                                         type="button"
-                                        onClick={() => removeImage(index)}
                                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                                        onClick={() => removeImage(idx)}
                                     >
                                         <X size={16} />
                                     </button>
                                 </div>
                             ))}
 
-                            <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed rounded cursor-pointer hover:bg-gray-50">
+                            <label className="w-24 h-24 border-2 border-dashed flex flex-col items-center justify-center rounded cursor-pointer hover:bg-gray-50">
                                 <input
                                     type="file"
                                     accept="image/*"
@@ -381,25 +344,22 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                                 <span className="text-sm text-gray-500">Add</span>
                             </label>
                         </div>
-
-                        {uploadError && (
-                            <p className="text-red-500 text-sm">{uploadError}</p>
-                        )}
+                        {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
                     </div>
 
                     {/* Buttons */}
-                    <div className="flex gap-4 pt-6">
+                    <div className="flex gap-4 pt-4">
                         <button
                             type="submit"
+                            disabled={isUploading}
                             className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
-                            disabled={isUploading || images.length < REQUIRED_IMAGE_COUNT}
                         >
-                            {isUploading ? "Processing..." : "Create Listing"}
+                            {isUploading ? "Uploading..." : "Create Listing"}
                         </button>
                         <button
                             type="button"
-                            className="px-4 py-2 border rounded hover:bg-gray-50"
                             onClick={onClose}
+                            className="px-4 py-2 border rounded hover:bg-gray-50"
                         >
                             Cancel
                         </button>
