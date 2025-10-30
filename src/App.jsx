@@ -5,6 +5,7 @@ import LogIn2 from "./login2/LogIn2";
 import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
+import HostBody from './components/hostFolder/HBody';
 
 function App() {
     return (
@@ -16,6 +17,7 @@ function App() {
                 <Route path="/Home" element={<UserHomePage />} />
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>
+                <Route path="/HostPage" element={<HostBody/>}/>
             </Routes>
         </BrowserRouter>
     );

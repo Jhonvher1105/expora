@@ -1,12 +1,15 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, } from "react";
 import { Plus, X } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 
+import { Link, Navigate, useNavigate } from "react-router-dom";
+
 const REQUIRED_IMAGE_COUNT = 5;
 const MAX_IMAGE_COUNT = 10;
-const PROPERTY_TYPES = ["Home", "Apartment", "Hotel", "Resort", "Tour"];
+const PROPERTY_TYPES = ["Home", "Apartment", "Hotel", "Resort"];
+const DAY_NIGHT = ["Day", "Night"];
 
 // 🔹 Replace these with your Cloudinary details
 const CLOUD_NAME = "dv42rw8m7";
@@ -25,6 +28,7 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         type: "",
         category: "",
         price: "",
+        day_night: "",
         location: "",
         maxGuests: "",
         bedrooms: "",
@@ -177,7 +181,9 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
             console.error("❌ Error creating property:", error);
             setUploadError("Failed to create property. Please try again.");
         } finally {
+            Navigate("/HostPage");
             setIsUploading(false);
+
         }
     };
 
@@ -255,15 +261,31 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
 
                     {/* Other Inputs */}
                     <div className="grid grid-cols-2 gap-4">
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Price"
-                            type="number"
-                            value={formData.price}
-                            onChange={(e) =>
-                                setFormData({ ...formData, price: e.target.value })
-                            }
-                        />
+                        <div className="price-day_night  grid grid-cols-2 gap4">
+                            <input
+                                className="p-2 border rounded"
+                                placeholder="Price"
+                                type="number"
+                                value={formData.price}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, price: e.target.value })
+                                }
+                            />
+                            <select
+                                className="w-full p-2 border rounded"
+                                value={formData.day_night}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, day_night: e.target.value })
+                                }
+                            >
+                                <option value="">Day or Night</option>
+                                {DAY_NIGHT.map((t) => (
+                                    <option key={t} value={t.toLowerCase()}>
+                                        {t}  
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                         <input
                             className="p-2 border rounded"
                             placeholder="Location"
@@ -272,6 +294,7 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                                 setFormData({ ...formData, location: e.target.value })
                             }
                         />
+
                         <input
                             className="p-2 border rounded"
                             placeholder="Max Guests"

@@ -18,9 +18,6 @@ body {
     align-items: center;
     width: 100vw;
     height: 100vh;
-    background-image: url('../pic/background/bg2.gif');
-    background-repeat: no-repeat;
-    background-size: 100%;
 }
 
 .landing-page main {
@@ -61,7 +58,8 @@ body {
 /* Page background & base text */
 body,
 .landing-main,
-.homepage {
+.homepage,
+.host_Body {
     background: var(--bg-900);
     color: var(--text);
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
@@ -110,7 +108,6 @@ header.scrolled,
     border: 0;
 }
 
-.btn-primary:hover,
 .btn-signup:hover {
     transform: translateY(-3px);
 }
@@ -323,7 +320,8 @@ textarea {
         height: 80px;
     }
 }
-    /* padding: 6px 10px;
+
+/* padding: 6px 10px;
     border-radius: 6px;
 } */
 
@@ -412,7 +410,8 @@ a,
     gap: 1rem;
 }
 
-.favorite-btn, .icon-btn{
+.favorite-btn,
+.icon-btn {
     position: relative;
     padding: 0.75rem;
     background: rgba(255, 255, 255, 0.05);
@@ -426,7 +425,8 @@ a,
     justify-content: center;
 }
 
-.icon-btn:hover, .favorite-btn:hover{
+.icon-btn:hover,
+.favorite-btn:hover {
     background: rgba(255, 107, 53, 0.1);
     border-color: #ff6b35;
     transform: translateY(-2px);
@@ -1085,6 +1085,7 @@ header.scrolled {
 .tabs {
     display: flex;
     gap: 8px;
+    width: fit-content;
     margin-bottom: 32px;
     border-bottom: 2px solid #e5e5e5;
 }
@@ -1113,6 +1114,7 @@ header.scrolled {
 
 /* Section */
 .section {
+    /* displ */
     margin-bottom: 48px;
     width: 90vw;
 }
@@ -1153,29 +1155,24 @@ header.scrolled {
 /* destination Grid */
 .destinations-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    /* six columns */
-    grid-auto-rows: 1fr;
-    /* one row height */
+    grid-template-columns: repeat(3, 1fr);
+    /* 3 columns on desktop */
     gap: 1rem;
     width: 100%;
-    /* allow horizontal scroll if needed */
-    justify-content: center;
-    align-items: center;
     box-sizing: border-box;
-    grid-auto-flow: column;
-    /* keep items in a single row */
+    justify-content: center;
+    align-items: start;
+    margin-top: 3rem;
 }
 
 /* Individual card styling (no longer makes the card itself a grid) */
 
 .destination-card {
-    min-width: 200px;
-    /* ensure visible card width inside the 6-column row */
+    min-width: 360px;
+    height: fit-content;
     background: rgba(255, 255, 255, 0.05);
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 24px;
     text-align: center;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: transform 0.3s, box-shadow 0.3s;
@@ -1185,26 +1182,24 @@ header.scrolled {
     gap: 12px;
 }
 
-/* Destinations Grid */
-
-
-
 .destination-image {
-    height: 200px;
+    height: 250px;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
 }
 
-.destination-emoji {
-    font-size: 80px;
+.property-img {
+    height: 100%;
+    border-radius: 20px 20px 0 0;
 }
+
 
 .favorite-btn {
     position: absolute;
-    top: -10px;
-    right: -10px;
+    top: 5px;
+    right: 10px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -1213,11 +1208,12 @@ header.scrolled {
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
+    background-color: var(--bg-800);
 }
 
 .destination-content {
     padding: 16px;
-    padding-bottom: 0;
+    padding-bottom: 10px;
 }
 
 .destination-header {
@@ -1253,6 +1249,19 @@ header.scrolled {
     display: block;
     justify-content: space-between;
     align-items: center;
+    row-gap: 1rem;
+
+    .edit_del_Btn_container {
+        display: grid;
+        place-items: center;
+
+        .edit_del_Btn_grp {
+            display: grid;
+            gap: 1rem;
+            place-items: center;
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
 }
 
 .rating {
@@ -1284,6 +1293,26 @@ header.scrolled {
 
 .explore-btn:hover {
     background-color: #e55a2b;
+}
+
+.del-property-btn {
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    align-items: start;
+}
+
+.del-property-btn:hover {
+    border-color: #667eea;
+    color: #667eea;
+    transform: translateY(-3px);
 }
 
 /* Trips List */
@@ -1920,4 +1949,100 @@ img {
     max-width: 100%;
     height: auto;
     display: block;
+}
+
+/* Host */
+
+.host_Body {
+    height: 100%;
+    width: 100%;
+    padding: 2rem;
+
+    h1 {
+        margin-top: 75px;
+    }
+
+    .floater-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        padding: 10px;
+        gap: 10px;
+        /* background-color: #4444442d; */
+
+        .icon-btn {
+            background-color: #2d2d2d;
+        }
+    }
+
+    main {
+        display: flex;
+        justify-content: center;
+        flex-direction: column;
+        padding-top: 20px;
+
+        article {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            width: 100%;
+
+            .tabs {
+                width: fit-content;
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                align-items: center;
+            }
+
+            .filter-day {
+                height: fit-content;
+                width: auto;
+                display: grid;
+                grid-template-columns: 150px 150px;
+
+                .today {
+                    width: fit-content;
+                    padding: 1rem 3rem;
+                    font-size: 1.1rem;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: #fff;
+                    border: none;
+                    border-radius: 55px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+                }
+
+                .today:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+                }
+
+                .upcoming {
+                    width: fit-content;
+                    padding: 1rem 2rem;
+                    font-size: medium;
+                    background: transparent;
+                    color: #fff;
+                    border: 2px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 50px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: center;
+                    align-items: start;
+                }
+
+                .upcoming:hover {
+                    border-color: #667eea;
+                    color: #667eea;
+                    transform: translateY(-3px);
+                }
+            }
+        }
+    }
 }

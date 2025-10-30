@@ -1,14 +1,25 @@
 import React, { useState, useEffect } from "react";
-import { Bell, User, Menu, Copy, MessageCircleMore } from "lucide-react";
+import { Bell, User, Menu, Copy, MessageCircleMore, X } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
+import {
+    collection,
+    query,
+    where,
+    addDoc,
+    getDocs,
+    orderBy,
+    onSnapshot,
+    doc,
+    setDoc,
+    serverTimestamp,
+} from "firebase/firestore";
+
 import logo from "../pic/logo.png";
 import "../cssFile/temp.css";
-
 import XIcon from "../pic/icon/x.svg";
 import AddProperty from "../ui/AddProperty";
-
 
 function Header() {
     const navigate = useNavigate();
@@ -17,264 +28,307 @@ function Header() {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
-    const [showCoupon, setCoupon] = useState(false);
-    const [showChat, setShowChat] = useState(false);
-    const [showHostForm, setShowForm] = useState(false);
 
-    // coupon/voucher state
+    // Coupons
+    const [showCoupon, setCoupon] = useState(false);
     const [voucher, setVoucher] = useState(null);
     const [copied, setCopied] = useState(false);
 
+    // Chat
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [chatList, setChatList] = useState([]);
+    const [activeChat, setActiveChat] = useState(null);
+    const [messages, setMessages] = useState([]);
+    const [newMessage, setNewMessage] = useState("");
+
+    const [showHostForm, setShowForm] = useState(false);
+
+    // Listen to user
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-        });
-        return unsubscribe;
+        const unsub = onAuthStateChanged(auth, (user) => setCurrentUser(user));
+        return unsub;
     }, []);
 
-    // generate a voucher when coupon modal opens
+    // Generate voucher
     useEffect(() => {
         if (showCoupon) {
-            // generate simple voucher if none or expired
             setCopied(false);
-            setVoucher((prev) => {
-                if (prev && new Date(prev.expiresAt) > new Date()) return prev;
-                const code = generateVoucherCode();
-                const expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + 7); // 7 days validity
-                return {
-                    code,
-                    discount: "20% OFF",
-                    description: "Use this code on your next booking",
-                    expiresAt: expiresAt.toISOString(),
-                };
+            const code = `EXPORA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 7);
+            setVoucher({
+                code,
+                discount: "20% OFF",
+                description: "Use this code on your next booking",
+                expiresAt: expiresAt.toISOString(),
             });
         }
     }, [showCoupon]);
 
-    const generateVoucherCode = () => {
-        const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-        return `EXPORA-${rand}`;
-    };
-
+    // Copy voucher
     const copyVoucher = async () => {
         if (!voucher) return;
-        try {
-            await navigator.clipboard.writeText(voucher.code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error("Copy failed", err);
-            alert("Couldn't copy to clipboard. Please copy manually: " + voucher.code);
-        }
+        await navigator.clipboard.writeText(voucher.code);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
     };
 
+    // Apply voucher
     const applyVoucher = () => {
-        if (!voucher) return;
-        // Store applied voucher locally — your booking flow can read this
-        try {
-            localStorage.setItem("appliedVoucher", JSON.stringify(voucher));
-            alert(`Voucher ${voucher.code} applied.`);
-            setCoupon(false);
-            // optionally navigate to bookings or cart
-            navigate("/bookings");
-        } catch (err) {
-            console.error(err);
-            alert("Failed to apply voucher.");
-        }
+        localStorage.setItem("appliedVoucher", JSON.stringify(voucher));
+        alert(`Voucher ${voucher.code} applied!`);
+        setCoupon(false);
+        navigate("/bookings");
     };
 
+    // Logout
     const handleLogout = async () => {
         try {
             await signOut(auth);
             setUserMenuOpen(false);
-            setMenuOpen(false);
             setShowLogoutConfirm(false);
             navigate("/LogIn");
         } catch (err) {
-            console.error("Logout failed:", err);
-            alert("Failed to logout. Please try again.");
+            alert("Logout failed.");
         }
     };
 
-    const chatBtn = () =>{
-        setShowChat(true)
-    }
+    // ✅ Open Favorites Tab
+    const openFavorites = () => {
+        localStorage.setItem("openTab", "favorites");
+        navigate("/Home");
+        setUserMenuOpen(false);
+    };
 
-    useEffect(() => {
-        if (currentUser) {
-            console.log('Current user UID:', currentUser.uid);
+    // =====================================================
+    // 💬 PRIVATE CHAT SYSTEM
+    // =====================================================
+    const openChat = async () => {
+        if (!currentUser) return alert("Please log in to use chat.");
+        setShowChatModal(true);
+        loadUserChats();
+    };
+
+    // Load chats where current user is a member
+    const loadUserChats = async () => {
+        const q = query(collection(db, "chats"), where("members", "array-contains", currentUser.uid));
+        const snap = await getDocs(q);
+        const chats = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setChatList(chats);
+    };
+
+    // Load messages for selected chat
+    const openChatRoom = (chat) => {
+        setActiveChat(chat);
+        const q = query(
+            collection(db, "chats", chat.id, "messages"),
+            orderBy("createdAt", "asc")
+        );
+        const unsub = onSnapshot(q, (snapshot) => {
+            setMessages(snapshot.docs.map((d) => d.data()));
+        });
+        return unsub;
+    };
+
+    // Send message
+    const sendMessage = async () => {
+        if (!newMessage.trim() || !activeChat) return;
+        await addDoc(collection(db, "chats", activeChat.id, "messages"), {
+            from: currentUser.uid,
+            text: newMessage,
+            createdAt: serverTimestamp(),
+        });
+
+        // update last message
+        await setDoc(
+            doc(db, "chats", activeChat.id),
+            { lastMessage: newMessage, updatedAt: serverTimestamp() },
+            { merge: true }
+        );
+
+        setNewMessage("");
+    };
+
+    // Start new chat manually (for testing)
+    const startNewChat = async (otherUserId) => {
+        const chatsRef = collection(db, "chats");
+        const q = query(chatsRef, where("members", "array-contains", currentUser.uid));
+        const snap = await getDocs(q);
+
+        let existing = snap.docs.find((d) => d.data().members.includes(otherUserId));
+        if (existing) {
+            openChatRoom({ id: existing.id, ...existing.data() });
+        } else {
+            const newChatRef = await addDoc(chatsRef, {
+                members: [currentUser.uid, otherUserId],
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+            loadUserChats();
         }
-    }, [currentUser]);
-    
+    };
+
     return (
-        <header className="header" role="banner">
+        <header className="header">
             <div className="header-container">
-                {/* ✅ Left Section (Logo + Brand) */}
-                <Link className="header-left" to={'/Home'}>
+                <Link className="header-left" to={"/Home"}>
                     <img src={logo} width={40} height={40} alt="Expora logo" />
                     <span className="logo-text">Explora</span>
                 </Link>
 
-                {/* ✅ Right Section */}
                 <div className="header-right">
-                    <button className="icon-btn" 
-                    aria-label="Chat"
-                    >
+                    {/* 💬 Chat Button */}
+                    <button className="icon-btn" onClick={openChat}>
                         <MessageCircleMore size={20} />
-                        <span className="notification-badge" aria-hidden="true">
-                            {currentUser ? 3 : 0}
-                        </span>
                     </button>
 
-                    {/* Chat */}
-                    <div style={{ position: "relative" }}>
-                        <header>
-                            
-                        </header>
-                    </div>
-                    {/* User Menu */}
+                    {/* 👤 User Menu */}
                     <div style={{ position: "relative" }}>
                         <button
                             className="icon-btn"
                             onClick={() => setUserMenuOpen((s) => !s)}
                             aria-haspopup="menu"
                             aria-expanded={userMenuOpen}
-                            aria-label="User menu"
-                            type="button"
                         >
                             <User size={20} />
                         </button>
 
                         {userMenuOpen && (
-                            <div className="user-menu" role="menu" aria-label="User menu">
-                                {currentUser ? (
-                                    <p className="user-menu-item" aria-hidden>{currentUser.email}</p>
-                                ) : (
-                                    <p className="user-email">Not signed in</p>
-                                )}
-                                <Link to="/Profile" className="user-menu-item" role="menuitem">
+                            <div className="user-menu">
+                                {currentUser && <p>{currentUser.email}</p>}
+
+                                <Link to="/Profile" className="user-menu-item">
                                     My Profile
                                 </Link>
-                                <button type="button" id="becomeHostBtn" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)}>
+                                <button className="user-menu-item" onClick={() => setShowForm(true)}>
                                     Become a host
                                 </button>
-                                <Link to="/Settings" className="user-menu-item" role="menuitem">
-                                    Settings
-                                </Link>
-                                <Link to="/Settings" className="user-menu-item" role="menuitem">
-                                    My booking
-                                </Link>
-                                <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
+                                <button className="user-menu-item" onClick={openFavorites}>
+                                    Favorites
+                                </button>
+                                <button className="user-menu-item" onClick={() => setCoupon(true)}>
                                     Coupons
                                 </button>
-                                <button className="user-menu-item" type="button" role="menuitem">
+                                <button className="user-menu-item" onClick={() => alert("Coming soon")}>
                                     E-Wallet
                                 </button>
-                                <button className="user-menu-item" type="button" role="menuitem">
-                                    Suggestion and Recommendation
+                                <button className="user-menu-item" onClick={() => alert("Coming soon")}>
+                                    Suggestions
                                 </button>
                                 <div className="user-menu-divider" />
-                                <Link to="/help" className="user-menu-item" role="menuitem">
-                                    Help & Support
-                                </Link>
-                                <div className="user-menu-divider" />
-                                <button
-                                    className="user-menu-item logout"
-                                    onClick={() => setShowLogoutConfirm(true)}
-                                    role="menuitem"
-                                    type="button"
-                                >
+                                <button className="user-menu-item logout" onClick={() => setShowLogoutConfirm(true)}>
                                     Logout
                                 </button>
                             </div>
                         )}
                     </div>
 
-                    {/* ✅ Hamburger Menu (Mobile) */}
-                    <button
-                        className="menu-btn"
-                        onClick={() => setMenuOpen((s) => !s)}
-                        aria-label={menuOpen ? "Close menu" : "Open menu"}
-                        type="button"
-                    >
+                    <button className="menu-btn" onClick={() => setMenuOpen((s) => !s)}>
                         {menuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
                 </div>
             </div>
 
-            {/* coupon modal */}
-            {showCoupon && voucher && (
-                <div className="coupon_modal-overlay" role="dialog" aria-modal="true" aria-label="Coupon modal">
-                    <div className="modal coupon-modal">
-                        <section className="coupon_modal_header">
-                            <h3>Your Voucher</h3>
-                            <button className="coupon_X_Btn" onClick={() => setCoupon(false)} aria-label="Close coupon">
-                                <img src={XIcon} alt="X"/>
+            {/* ================= Chat Modal ================= */}
+            {showChatModal && (
+                <div className="modal-overlay">
+                    <div className="modal chat-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="chat-header">
+                            <h3>Messages</h3>
+                            <button onClick={() => setShowChatModal(false)}>
+                                <X size={18} />
                             </button>
-                        </section>
+                        </div>
 
-                        <main className="coupon-modal-main">
-                            <div className="coupon-card">
-                                <div className="coupon-discount">{voucher.discount}</div>
-                                <div className="coupon-description">{voucher.description}</div>
-
-                                <div className="coupon-code-container">
-                                    <div className="coupon-code">{voucher.code}</div>
-                                    <button className="icon-btn" onClick={copyVoucher} aria-label="Copy voucher">
-                                        <Copy size={16} />
-                                    </button>
-                                </div>
-
-                                <div className="coupon-expiry">
-                                    Expires: {new Date(voucher.expiresAt).toLocaleDateString()}
-                                </div>
-
-                                <div className="coupon-actions">
-                                    <button onClick={applyVoucher} className="editBtn">Apply Voucher</button>
-                                    <button onClick={() => setCoupon(false)} className="cancel-btn">Close</button>
-                                </div>
-
-                                {copied && <div className="copy-success">Copied!</div>}
+                        {/* Chat List */}
+                        {!activeChat && (
+                            <div className="chat-list">
+                                {chatList.length > 0 ? (
+                                    chatList.map((chat) => (
+                                        <div
+                                            key={chat.id}
+                                            className="chat-item"
+                                            onClick={() => openChatRoom(chat)}
+                                        >
+                                            <strong>Chat with: </strong>
+                                            {chat.members.filter((m) => m !== currentUser.uid).join(", ")}
+                                            <p className="last-message">{chat.lastMessage || "No messages yet"}</p>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p>No chats yet</p>
+                                )}
                             </div>
-                        </main>
+                        )}
+
+                        {/* Active Chat */}
+                        {activeChat && (
+                            <div className="chat-room">
+                                <button
+                                    className="back-btn"
+                                    onClick={() => setActiveChat(null)}
+                                >
+                                    ← Back
+                                </button>
+
+                                <div className="messages">
+                                    {messages.map((msg, i) => (
+                                        <div
+                                            key={i}
+                                            className={`message ${msg.from === currentUser.uid ? "own" : "other"
+                                                }`}
+                                        >
+                                            {msg.text}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="chat-input-area">
+                                    <input
+                                        type="text"
+                                        value={newMessage}
+                                        onChange={(e) => setNewMessage(e.target.value)}
+                                        placeholder="Type a message..."
+                                    />
+                                    <button onClick={sendMessage}>Send</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* logout confirmation modal */}
+            {/* Coupon Modal */}
+            {showCoupon && voucher && (
+                <div className="coupon_modal-overlay">
+                    <div className="modal coupon-modal">
+                        <h3>Your Voucher</h3>
+                        <p>{voucher.discount} — {voucher.description}</p>
+                        <p>Code: {voucher.code}</p>
+                        <button onClick={copyVoucher}>Copy</button>
+                        <button onClick={applyVoucher}>Apply</button>
+                        <button onClick={() => setCoupon(false)}>Close</button>
+                        {copied && <div>Copied!</div>}
+                    </div>
+                </div>
+            )}
+
+            {/* Logout Confirm */}
             {showLogoutConfirm && (
                 <div className="modal-overlay">
                     <div className="modal">
                         <h3>Confirm Logout</h3>
-                        <p>Are you sure you want to log out?</p>
-                        <div className="modal-buttons">
-                            <button className="confirm-btn" onClick={handleLogout}>
-                                Yes, Log Out
-                            </button>
-                            <button
-                                className="cancel-btn"
-                                onClick={() => setShowLogoutConfirm(false)}
-                            >
-                                Cancel
-                            </button>
-                        </div>
+                        <button onClick={handleLogout}>Yes</button>
+                        <button onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
                     </div>
                 </div>
             )}
 
-            {/* Become Host Form */}
+            {/* Add Property Form */}
             {showHostForm && (
-                <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add property form">
-                    <div className="modal host-modal" onClick={e => e.stopPropagation()}>
-                        <AddProperty 
-                            onClose={() => setShowForm(false)}
-                            onPropertyCreated={(data) => {
-                                console.log('Property created:', data);
-                                setShowForm(false);
-                                // You can add a success notification here
-                            }}
-                        />
+                <div className="modal-overlay">
+                    <div className="modal host-modal" onClick={(e) => e.stopPropagation()}>
+                        <AddProperty onClose={() => setShowForm(false)} />
                     </div>
                 </div>
             )}

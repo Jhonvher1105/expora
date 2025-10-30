@@ -86,7 +86,7 @@ function Body() {
 
         try {
             const favDocRef = doc(db, "favorites", `${currentUser.uid}_${property.id}`);
-            const favDoc = await getDoc(favDocRef);
+            const favDoc = await getDocs(favDocRef);
 
             if (favDoc.exists()) {
                 await deleteDoc(favDocRef);
@@ -104,14 +104,6 @@ function Body() {
             console.error("Error toggling favorite:", error);
         }
     };
-
-    useEffect(() => {
-        const tab = localStorage.getItem("openTab");
-        if (tab) {
-            setActiveTab(tab);
-            localStorage.removeItem("openTab");
-        }
-    }, []);
 
     // ✅ Filter Search
     const handleSearch = () => {

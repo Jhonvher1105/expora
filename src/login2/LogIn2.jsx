@@ -1,6 +1,7 @@
 import { Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import "./index.css";
+// import "./index.css";
+import "../components/cssFile/temp.css"
 
 import logo from "../components/pic/logo.png";
 
@@ -56,12 +57,12 @@ function LogIn2() {
     };
 
     return (
-        <div className="container">
-            <div className="card">
+        <div className="landing-page">
+            <div className="landing-card">
 
-                <div className="div-logIn-logo">
+                <div className="div-logIn-logo landing-logo">
                     <img src={logo} alt="expora logo" className="img-login-logo" />
-                    <h2>Expora</h2>
+                    <h2 className="logo-text">Expora</h2>
                 </div>
 
 
@@ -70,7 +71,7 @@ function LogIn2() {
                     <p>Sign in to your Expora account</p>
                 </div>
 
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} className="landing-form">
                     <div className="form-group">
                         <label htmlFor="login-email">Email address</label>
                         <input
@@ -123,7 +124,7 @@ function LogIn2() {
                         <div className="error-message" style={{color:'crimson',marginTop:8}}>{errorMessage}</div>
                     )}
 
-                    <button type="submit" className="signin-btn" disabled={!email || !password}>
+                    <button type="submit" className="signin-btn landing-signin" disabled={!email || !password || false}>
                         Sign in
                     </button>
 
