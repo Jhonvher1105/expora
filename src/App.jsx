@@ -6,6 +6,7 @@ import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
+import FavPage from './components/UserFolder/FavPage';
 
 function App() {
     return (
@@ -18,6 +19,7 @@ function App() {
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
+                <Route path="/FavPage" element={<FavPage/>}/>
             </Routes>
         </BrowserRouter>
     );

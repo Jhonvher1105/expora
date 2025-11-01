@@ -190,14 +190,6 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8">
-                <div className="text-center mb-8">
-                    <h2 className="text-3xl font-bold text-gray-900">
-                        Create New Property Listing
-                    </h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Fill in the details below to list your property
-                    </p>
-                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {/* Property Title */}

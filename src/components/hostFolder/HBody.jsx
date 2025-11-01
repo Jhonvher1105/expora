@@ -1,31 +1,32 @@
-import Header from "./Hheader"
+import Header from "./Hheader";
 import Footer from "../generalFile/Footer";
 import { useState, useEffect } from "react";
 import { MessageCircleMore, Heart, MapPin, Star, Plus, X } from "lucide-react";
+import "../../components/cssFile/temp.css";
 
-import plus from "../pic/icon/plus.svg"
-
-import '../../components/cssFile/temp.css';
-
-import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+    collection,
+    query,
+    where,
+    getDocs,
+    doc,
+    updateDoc,
+    deleteDoc,
+} from "firebase/firestore";
 import { auth, db } from "../../firebase";
-import { signOut, onAuthStateChanged } from "firebase/auth";
-
+import { onAuthStateChanged } from "firebase/auth";
 import AddProperty from "../ui/AddProperty";
 
-export default function HostBoy() {
-
+export default function HostBody() {
     const [activeTab, setActiveTab] = useState("discover");
     const [selectedDest, setSelectedDest] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
-    const [activeFIlter, setActiveFilter] = useState();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showHostForm, setShowForm] = useState(false);
-    const [showDetail, setShowDetail] = useState(false);
+    const [showEditForm, setShowEditForm] = useState(false);
 
-
-
+    // Load current user
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
@@ -33,21 +34,17 @@ export default function HostBoy() {
         return unsubscribe;
     }, []);
 
+    // Fetch user properties
     useEffect(() => {
         const fetchProperties = async () => {
-            if (!currentUser) return; // wait until user is loaded
+            if (!currentUser) return;
             try {
-                const q = query(
-                    collection(db, "properties"),
-                    where("ownerId", "==", currentUser.uid)
-                );
-
+                const q = query(collection(db, "properties"), where("ownerId", "==", currentUser.uid));
                 const querySnapshot = await getDocs(q);
                 const data = querySnapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
                 }));
-
                 setProperties(data);
             } catch (error) {
                 console.error("Error fetching properties:", error);
@@ -55,217 +52,251 @@ export default function HostBoy() {
                 setLoading(false);
             }
         };
-
         fetchProperties();
-    }, [currentUser]); // depend on currentUser
+    }, [currentUser]);
 
+    // ✅ Safe delete: Firestore only (no Cloudinary deletion)
+    const handleDelete = async (property) => {
+        if (!window.confirm("Are you sure you want to delete this property?")) return;
 
-    return <>
-        <Header />
-        <div role="body" className="host_Body">
-            <h1>Dashboard</h1>
-            <main>
-                <article>
-                    <div className="tabs">
-                        <button
-                            className={`tab ${activeTab === "discover" ? "tab-active" : ""}`}
-                            onClick={() => setActiveTab("discover")}
-                        >
-                            Home
-                        </button>
-                        <button
-                            className={`tab ${activeTab === "Services" ? "tab-active" : ""}`}
-                            onClick={() => setActiveTab("Service")}
-                        >
-                            Services
-                        </button>
-                        <button
-                            className={`tab ${activeTab === "Experiences" ? "tab-active" : ""}`}
-                            onClick={() => setActiveTab("Experiences")}
-                        >
-                            Experiences
-                        </button>
-                    </div>
-                    <div className="filter-day">
-                        <button className="today">
-                            Today
-                        </button>
-                        <button className="upcoming">
-                            UpComings
-                        </button>
-                    </div>
-                </article>
-                <article>
-                    {activeTab === "discover" && (
-                        <section className="section">
-                            <div className="section-header">
-                                <h2 className="section-title">
-                                    Home
-                                </h2>
-                                <a href="#" className="see-all">
-                                    See all
-                                </a>
-                            </div>
+        try {
+            // 1. Delete Firestore document
+            await deleteDoc(doc(db, "properties", property.id));
 
-                            <div className="destinations-grid">
-                                {properties.length > 0 ? (
-                                    properties.map((property) => (
-                                        <div
-                                            key={property.id}
-                                            className="destination-card"
-                                            
-                                            role="button"
-                                            tabIndex={0}>
-                                            <div className="destination-image">
-                                                {property.images && property.images.length > 0 ? (
-                                                    <img
-                                                        src={property.images[0]}
-                                                        alt={property.title}
-                                                        className="property-img"
-                                                    // style={{
-                                                    //     width: "100%",
-                                                    //     height: "180px",
-                                                    //     objectFit: "cover",
-                                                    //     borderRadius: "8px",
-                                                    // }}
-                                                    />
-                                                ) : (
-                                                    <div className="no-image">No Image</div>
-                                                )}
-                                                <button
-                                                    className="favorite-btn"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <Heart size={20} />
-                                                </button>
-                                            </div>
+            // 2. Update UI instantly
+            setProperties((prev) => prev.filter((p) => p.id !== property.id));
 
-                                            <div className="destination-content">
-                                                <div className="destination-header">
-                                                    <h3 className="destination-name">{property.title}</h3>
-                                                    <span className="destination-price">
-                                                        ₱{property.price?.toLocaleString()} / night
-                                                    </span>
-                                                </div>
-                                                <p className="destination-location">
-                                                    <MapPin size={14} /> {property.location}
-                                                </p>
-                                                <div className="destination-footer">
-                                                    <div className="rating">
-                                                        <Star size={16} fill="#fbbf24" color="#fbbf24" />
-                                                        <span>4.8</span>
-                                                    </div>
-                                                    <div className="edit_del_Btn_container">
+            alert("Property deleted successfully! (Images remain in Cloudinary for safety)");
+        } catch (error) {
+            console.error("Error deleting property:", error);
+            alert("Failed to delete property. Please try again.");
+        }
+    };
 
-                                                    <div className="edit_del_Btn_grp">
-                                                    <button
-                                                        className="explore-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedDest(property);
-                                                            setShowDetail(true);
-                                                        }}
-                                                        >
-                                                        Edit
-                                                    </button>
-                                                    <button
-                                                        className="del-property-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setSelectedDest(property);
-                                                            setShowDetail(true);
-                                                        }}
-                                                        >
-                                                        Delete
-                                                    </button>
-                                                        </div>
-                                                        </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center mt-5 text-gray-500">No properties found.</p>
-                                )}
-                            </div>
-                        </section>
-                    )}
+    // ✅ Handle editing and saving changes
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const propertyRef = doc(db, "properties", selectedDest.id);
+            await updateDoc(propertyRef, {
+                title: selectedDest.title,
+                location: selectedDest.location,
+                price: selectedDest.price,
+                description: selectedDest.description,
+            });
 
-                    {/* add property */}
-                    {showHostForm && (
-                        <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add property form">
-                            <div className="modal host-modal" onClick={e => e.stopPropagation()}>
-                                <AddProperty
-                                    onClose={() => setShowForm(false)}
-                                    onPropertyCreated={(data) => {
-                                        console.log('Property created:', data);
-                                        setShowForm(false);
-                                        // You can add a success notification here
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </article>
+            setProperties((prev) =>
+                prev.map((p) => (p.id === selectedDest.id ? { ...p, ...selectedDest } : p))
+            );
 
-            </main>
-            <div className="floater-container">
-                <button className="icon-btn"
-                    aria-label="Add" onClick={() => setShowForm(true)}>
-                    <Plus size={20} />
-                </button>
-                <button className="icon-btn"
-                    aria-label="Chat"
-                >
-                    <MessageCircleMore size={20} />
-                    <span className="notification-badge" aria-hidden="true">
-                    </span>
-                </button>
-            </div>
-        </div>
-        {showDetail && selectedDest && (
-                    <div className="modal-overlay" onClick={() => setShowDetail(false)}>
-                        <div className="modal" onClick={(e) => e.stopPropagation()}>
+            setShowEditForm(false);
+            alert("Property updated successfully!");
+        } catch (error) {
+            console.error("Error updating property:", error);
+            alert("Failed to update property.");
+        }
+    };
+
+    return (
+        <>
+            <Header />
+            <div role="body" className="host_Body">
+                <h1>Dashboard</h1>
+
+                <main>
+                    <article>
+                        <div className="tabs">
                             <button
-                                className="modal-close"
-                                onClick={() => setShowDetail(false)}
-                                aria-label="Close detail"
+                                className={`tab ${activeTab === "discover" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("discover")}
                             >
-                                <X />
+                                Home
                             </button>
+                            <button
+                                className={`tab ${activeTab === "Service" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("Service")}
+                            >
+                                Services
+                            </button>
+                            <button
+                                className={`tab ${activeTab === "Experiences" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("Experiences")}
+                            >
+                                Experiences
+                            </button>
+                        </div>
+                    </article>
 
-                            <div className="modal-content">
-                                {selectedDest.images && selectedDest.images.length > 0 && (
-                                    <img
-                                        src={selectedDest.images[0]}
-                                        alt={selectedDest.title}
-                                        className="w-60 h-60 object-cover rounded-xl"
+                    <article>
+                        {activeTab === "discover" && (
+                            <section className="section">
+                                <div className="section-header">
+                                    <h2 className="section-title">Home</h2>
+                                </div>
+
+                                <div className="destinations-grid">
+                                    {properties.length > 0 ? (
+                                        properties.map((property) => (
+                                            <div key={property.id} className="destination-card">
+                                                <div className="destination-image">
+                                                    {property.images && property.images.length > 0 ? (
+                                                        <img
+                                                            src={property.images[0]}
+                                                            alt={property.title}
+                                                            className="property-img"
+                                                        />
+                                                    ) : (
+                                                        <div className="no-image">No Image</div>
+                                                    )}
+                                                </div>
+
+                                                <div className="destination-content">
+                                                    <div className="destination-header">
+                                                        <h3 className="destination-name">{property.title}</h3>
+                                                        <span className="destination-price">
+                                                            ₱{property.price?.toLocaleString()} / night
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="destination-location">
+                                                        <MapPin size={14} /> {property.location}
+                                                    </p>
+
+                                                    <div className="destination-footer">
+                                                        <div className="rating">
+                                                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                                                            <span>4.8</span>
+                                                        </div>
+
+                                                        <div className="edit_del_Btn_grp">
+                                                            <button
+                                                                className="explore-btn"
+                                                                onClick={() => {
+                                                                    setSelectedDest(property);
+                                                                    setShowEditForm(true);
+                                                                }}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                className="del-property-btn"
+                                                                onClick={() => handleDelete(property)}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-center mt-5 text-gray-500">No properties found.</p>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* Add Property Modal */}
+                        {showHostForm && (
+                            <div className="modal-overlay">
+                                <div className="modal host-modal" onClick={(e) => e.stopPropagation()}>
+                                    <AddProperty
+                                        onClose={() => setShowForm(false)}
+                                        onPropertyCreated={(data) => {
+                                            setShowForm(false);
+                                            setProperties((prev) => [...prev, data]);
+                                        }}
                                     />
-                                )}
-
-                                <div className="modal-body">
-                                    <h2 className="modal-title">
-                                        {selectedDest.title}{" "}
-                                        <span className="modal-price">
-                                            ₱{selectedDest.price?.toLocaleString()} / night
-                                        </span>
-                                    </h2>
-                                    <p className="modal-location">
-                                        <MapPin size={14} /> {selectedDest.location}
-                                    </p>
-                                    <p className="modal-description">{selectedDest.description}</p>
-
-                                    <div className="modal-actions">
-                                        <button className="book-btn">Book Now</button>
-                                        <button className="close-btn" onClick={() => setShowDetail(false)}>
-                                            Close
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                )}
-        <Footer role="footer" />
-    </>
+                        )}
+
+                        {/* Edit Modal */}
+                        {showEditForm && selectedDest && (
+                            <div className="modal-overlay" onClick={() => setShowEditForm(false)}>
+                                <div className="modal" onClick={(e) => e.stopPropagation()}>
+                                    <button className="modal-close" onClick={() => setShowEditForm(false)}>
+                                        <X />
+                                    </button>
+                                    <h2>Edit Property</h2>
+
+                                    <form onSubmit={handleEditSubmit} className="edit-form">
+                                        <label>
+                                            Title:
+                                            <input
+                                                type="text"
+                                                value={selectedDest.title}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, title: e.target.value })
+                                                }
+                                                required
+                                            />
+                                        </label>
+
+                                        <label>
+                                            Location:
+                                            <input
+                                                type="text"
+                                                value={selectedDest.location}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, location: e.target.value })
+                                                }
+                                                required
+                                            />
+                                        </label>
+
+                                        <label>
+                                            Price:
+                                            <input
+                                                type="number"
+                                                value={selectedDest.price}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, price: parseFloat(e.target.value) })
+                                                }
+                                                required
+                                            />
+                                        </label>
+
+                                        <label>
+                                            Description:
+                                            <textarea
+                                                value={selectedDest.description}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, description: e.target.value })
+                                                }
+                                                required
+                                            />
+                                        </label>
+
+                                        <div className="modal-actions">
+                                            <button type="submit" className="book-btn">
+                                                Save Changes
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="close-btn"
+                                                onClick={() => setShowEditForm(false)}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+                    </article>
+                </main>
+
+                <div className="floater-container">
+                    <button className="icon-btn" onClick={() => setShowForm(true)}>
+                        <Plus size={20} />
+                    </button>
+                    <button className="icon-btn">
+                        <MessageCircleMore size={20} />
+                    </button>
+                </div>
+            </div>
+            <Footer />
+        </>
+    );
 }
