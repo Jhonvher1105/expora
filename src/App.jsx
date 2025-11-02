@@ -8,6 +8,9 @@ import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
 import FavPage from './components/UserFolder/FavPage';
 
+import HostingType from './components/ui/HostingType';
+import Service from './components/ui/AddService';
+
 function App() {
     return (
         <BrowserRouter>
@@ -20,6 +23,10 @@ function App() {
                 <Route path="/Settings" element={<Settings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
+                
+                <Route path="/HostingType" element={<HostingType/>}/>
+
+                <Route path="/Service" element={<Service/>}/>
             </Routes>
         </BrowserRouter>
     );

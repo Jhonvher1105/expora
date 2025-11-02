@@ -268,11 +268,7 @@ function Header() {
                                 // You can add a success notification here
                             }}
                         />
-                        <div className="modal-overlay">
-                            <div className="modal host-modal" onClick={(e) => e.stopPropagation()}>
-                                <AddProperty onClose={() => setShowForm(false)} />
-                            </div>
-                        </div>
+                        
                     </div>
                 </div>
             )}

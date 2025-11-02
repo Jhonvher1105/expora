@@ -26,7 +26,7 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         title: "",
         description: "",
         type: "",
-        category: "",
+        category: "home",
         price: "",
         day_night: "",
         location: "",
@@ -123,7 +123,6 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         if (!formData.title) errors.title = "Title is required";
         if (!formData.description) errors.description = "Description is required";
         if (!formData.type) errors.type = "Property type is required";
-        if (!formData.category) errors.category = "Category is required";
         if (!formData.price || formData.price <= 0)
             errors.price = "Valid price is required";
         if (!formData.location) errors.location = "Location is required";
@@ -239,7 +238,7 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                             </select>
                         </div>
 
-                        <div>
+                        {/* <div>
                             <label>Category</label>
                             <input
                                 className="w-full p-2 border rounded"
@@ -248,7 +247,7 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                                     setFormData({ ...formData, category: e.target.value })
                                 }
                             />
-                        </div>
+                        </div> */}
                     </div>
 
                     {/* Other Inputs */}

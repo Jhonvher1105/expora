@@ -2046,3 +2046,48 @@ img {
         }
     }
 }
+
+/* hosting type */
+
+.hosting-type-main{
+    height: 75%;
+    width: 75%;
+    display: flex;
+    flex-direction: column;
+    /* align-items: center; */
+    padding: 2rem;
+
+    .hosting-header{
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .hosting-type-buttons{
+        margin-top: 2rem;
+        width: 100%;
+        height: 50%;
+        display: grid;
+        place-items: center;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        padding: 1rem;
+
+        .hosting-btn{
+            height: 100%;
+            width: 100%;
+            display:flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            border: none;
+            border-radius: 10px;
+            padding: 2rem;
+
+            img{
+                height: 150px;
+                width: 150px;
+            }
+        }
+    }
+}
