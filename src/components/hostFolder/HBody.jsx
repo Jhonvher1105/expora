@@ -16,9 +16,10 @@ import {
 import { auth, db } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import AddProperty from "../ui/AddProperty";
+import HostingType from "../ui/HostingType";
 
 export default function HostBody() {
-    const [activeTab, setActiveTab] = useState("discover");
+    const [activeTab, setActiveTab] = useState("properties");
     const [selectedDest, setSelectedDest] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [properties, setProperties] = useState([]);
@@ -37,9 +38,11 @@ export default function HostBody() {
     // Fetch user properties
     useEffect(() => {
         const fetchProperties = async () => {
+            console.log(activeTab + " running fetchProperties")
             if (!currentUser) return;
+            setLoading(true);
             try {
-                const q = query(collection(db, "properties"), where("ownerId", "==", currentUser.uid));
+                const q = query(collection(db, activeTab), where("ownerId", "==", currentUser.uid));
                 const querySnapshot = await getDocs(q);
                 const data = querySnapshot.docs.map((doc) => ({
                     id: doc.id,
@@ -53,7 +56,8 @@ export default function HostBody() {
             }
         };
         fetchProperties();
-    }, [currentUser]);
+    }, [currentUser, activeTab]);
+
 
     // ✅ Safe delete: Firestore only (no Cloudinary deletion)
     const handleDelete = async (property) => {
@@ -107,20 +111,29 @@ export default function HostBody() {
                     <article>
                         <div className="tabs">
                             <button
-                                className={`tab ${activeTab === "discover" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("discover")}
+                                className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("properties");
+                                    console.log("Properties tab clicked");
+                                }}
                             >
                                 Home
                             </button>
                             <button
-                                className={`tab ${activeTab === "Service" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("Service")}
+                                className={`tab ${activeTab === "services" ? "tab-active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("services")
+                                    console.log("Service tab clicked");
+                                }}
                             >
                                 Services
                             </button>
                             <button
-                                className={`tab ${activeTab === "Experiences" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("Experiences")}
+                                className={`tab ${activeTab === "experiences" ? "tab-active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("experiences")
+                                    console.log("Experiences tab clicked");
+                                }}
                             >
                                 Experiences
                             </button>
@@ -128,12 +141,8 @@ export default function HostBody() {
                     </article>
 
                     <article>
-                        {activeTab === "discover" && (
+                        {activeTab && (
                             <section className="section">
-                                <div className="section-header">
-                                    <h2 className="section-title">Home</h2>
-                                </div>
-
                                 <div className="destinations-grid">
                                     {properties.length > 0 ? (
                                         properties.map((property) => (
@@ -200,13 +209,10 @@ export default function HostBody() {
                         {showHostForm && (
                             <div className="modal-overlay">
                                 <div className="modal host-modal" onClick={(e) => e.stopPropagation()}>
-                                    <AddProperty
+                                    <HostingType
                                         onClose={() => setShowForm(false)}
-                                        onPropertyCreated={(data) => {
-                                            setShowForm(false);
-                                            setProperties((prev) => [...prev, data]);
-                                        }}
                                     />
+
                                 </div>
                             </div>
                         )}

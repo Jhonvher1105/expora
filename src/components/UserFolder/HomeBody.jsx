@@ -15,7 +15,7 @@ import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
 function Body() {
-    const [activeTab, setActiveTab] = useState("discover");
+    const [activeTab, setActiveTab] = useState("properties");
     const [selectedDest, setSelectedDest] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [properties, setProperties] = useState([]);
@@ -43,7 +43,7 @@ function Body() {
     useEffect(() => {
         const fetchProperties = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "properties"));
+                const querySnapshot = await getDocs(collection(db, activeTab));
                 const data = querySnapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
@@ -172,27 +172,167 @@ function Body() {
                         {/* TABS */}
                         <div className="tabs">
                             <button
-                                className={`tab ${activeTab === "discover" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("discover")}
+                                className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("properties")}
                             >
                                 Destination
                             </button>
                             <button
-                                className={`tab ${activeTab === "trips" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("trips")}
+                                className={`tab ${activeTab === "services" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("services")}
                             >
                                 Services
                             </button>
                             <button
-                                className={`tab ${activeTab === "favorites" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("favorites")}
+                                className={`tab ${activeTab === "experiences" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("experiences")}
                             >
                                 Experiences
                             </button>
                         </div>
 
                         {/* DISCOVER TAB */}
-                        {activeTab === "discover" && (
+                        {activeTab === "properties" && (
+                            <section className="section">
+                                <div className="section-header">
+                                    <h2 className="section-title">
+                                        <Star size={24} />
+                                        Popular Destinations
+                                    </h2>
+                                </div>
+
+                                <div className="destinations-grid">
+                                    {properties.length > 0 ? (
+                                        properties.map((property) => (
+                                            <div key={property.id} className="destination-card">
+                                                <div className="destination-image">
+                                                    {property.images && property.images.length > 0 ? (
+                                                        <img
+                                                            src={property.images[0]}
+                                                            alt={property.title}
+                                                            className="property-img"
+                                                        />
+                                                    ) : (
+                                                        <div className="no-image">No Image</div>
+                                                    )}
+                                                    <button
+                                                        className="favorite-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleFavBtn(property);
+                                                        }}
+                                                    >
+                                                        <Heart size={20} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="destination-content">
+                                                    <div className="destination-header">
+                                                        <h3 className="destination-name">{property.title}</h3>
+                                                        <span className="destination-price">
+                                                            ₱{property.price?.toLocaleString()} / night
+                                                        </span>
+                                                    </div>
+                                                    <p className="destination-location">
+                                                        <MapPin size={14} /> {property.location}
+                                                    </p>
+                                                    <div className="destination-footer">
+                                                        <div className="rating">
+                                                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                                                            <span>4.8</span>
+                                                        </div>
+                                                        <button
+                                                            className="explore-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedDest(property);
+                                                                setShowDetail(true);
+                                                            }}
+                                                        >
+                                                            Explore
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-center mt-5 text-gray-500">No properties found.</p>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+
+                        {/* service */}
+                        {activeTab === "experiences" && (
+                            <section className="section">
+                                <div className="section-header">
+                                    <h2 className="section-title">
+                                        <Star size={24} />
+                                        Popular Destinations
+                                    </h2>
+                                </div>
+
+                                <div className="destinations-grid">
+                                    {properties.length > 0 ? (
+                                        properties.map((property) => (
+                                            <div key={property.id} className="destination-card">
+                                                <div className="destination-image">
+                                                    {property.images && property.images.length > 0 ? (
+                                                        <img
+                                                            src={property.images[0]}
+                                                            alt={property.title}
+                                                            className="property-img"
+                                                        />
+                                                    ) : (
+                                                        <div className="no-image">No Image</div>
+                                                    )}
+                                                    <button
+                                                        className="favorite-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleFavBtn(property);
+                                                        }}
+                                                    >
+                                                        <Heart size={20} />
+                                                    </button>
+                                                </div>
+
+                                                <div className="destination-content">
+                                                    <div className="destination-header">
+                                                        <h3 className="destination-name">{property.title}</h3>
+                                                        <span className="destination-price">
+                                                            ₱{property.price?.toLocaleString()} / night
+                                                        </span>
+                                                    </div>
+                                                    <p className="destination-location">
+                                                        <MapPin size={14} /> {property.location}
+                                                    </p>
+                                                    <div className="destination-footer">
+                                                        <div className="rating">
+                                                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                                                            <span>4.8</span>
+                                                        </div>
+                                                        <button
+                                                            className="explore-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedDest(property);
+                                                                setShowDetail(true);
+                                                            }}
+                                                        >
+                                                            Explore
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-center mt-5 text-gray-500">No properties found.</p>
+                                    )}
+                                </div>
+                            </section>
+                        )}
+                        {activeTab === "services" && (
                             <section className="section">
                                 <div className="section-header">
                                     <h2 className="section-title">

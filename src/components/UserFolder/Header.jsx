@@ -20,6 +20,7 @@ import logo from "../pic/logo.png";
 import "../cssFile/temp.css";
 import XIcon from "../pic/icon/x.svg";
 import AddProperty from "../ui/AddProperty";
+import HostingType from "../ui/HostingType";
 
 function Header() {
     const navigate = useNavigate();
@@ -222,9 +223,9 @@ function Header() {
                                 <Link to="/Profile" className="user-menu-item" role="menuitem">
                                     My Profile
                                 </Link>
-                                <button type="button" id="becomeHostBtn" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)} >
+                                <Link to="/HostPage" id="becomeHostBtn" className="user-menu-item" role="menuitem">
                                     Become a host
-                                </button>
+                                </Link>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
                                     Settings
                                 </Link>
@@ -260,14 +261,15 @@ function Header() {
             {showHostForm && (
                 <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add property form">
                     <div className="modal host-modal" onClick={e => e.stopPropagation()}>
-                        <AddProperty
+                        {/* <AddProperty
                             onClose={() => setShowForm(false)}
                             onPropertyCreated={(data) => {
                                 console.log('Property created:', data);
                                 setShowForm(false);
                                 // You can add a success notification here
                             }}
-                        />
+                        /> */}
+                        <HostingType onClose={() => setShowForm(false)} />
                         
                     </div>
                 </div>

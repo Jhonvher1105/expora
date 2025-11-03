@@ -141,9 +141,9 @@ function Header() {
                                 <Link to="/Profile" className="user-menu-item" role="menuitem">
                                     My Profile
                                 </Link>
-                                <button type="button" id="becomeHostBtn" className="user-menu-item" role="menuitem" onClick={() => setShowForm(true)} >
+                                <Link to="/Home" id="becomeHostBtn" className="user-menu-item" role="menuitem">
                                     Switch Account
-                                </button>
+                                </Link>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
                                     Settings
                                 </Link>
