@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { User, Calendar, Users } from 'lucide-react';
+import { User, Calendar, Users, Gift, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import Header from './Header';
 import Footer from '../generalFile/Footer';
+import { usePoints } from '../../context/PointsContext';
 
 export default function ProfileForm() {
+    const { points, loading: pointsLoading } = usePoints();
     const [formData, setFormData] = useState({
         email: "",
         firstName: "",
@@ -73,6 +76,92 @@ export default function ProfileForm() {
                             <button type="button" className="edit-profile-btn">
                                 <span>✏️</span> Edit Profile
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Points Display Section */}
+                    <div style={{
+                        padding: "1.5rem",
+                        background: "rgba(255,255,255,0.05)",
+                        borderBottom: "1px solid rgba(255,255,255,0.1)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "1rem"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                            <div style={{
+                                width: "50px",
+                                height: "50px",
+                                borderRadius: "50%",
+                                background: "var(--primary-gradient)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center"
+                            }}>
+                                <Sparkles size={24} color="#fff" />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", marginBottom: "0.3rem" }}>
+                                    Points Balance
+                                </div>
+                                {pointsLoading ? (
+                                    <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Loading...</div>
+                                ) : (
+                                    <div style={{ fontSize: "1.8rem", fontWeight: "bold" }}>
+                                        {points.toLocaleString()} points
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                            <Link to="/Rewards" style={{
+                                padding: "0.75rem 1.5rem",
+                                background: "rgba(255,255,255,0.1)",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                borderRadius: "12px",
+                                color: "var(--text)",
+                                textDecoration: "none",
+                                fontSize: "0.9rem",
+                                fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                transition: "all 0.2s ease"
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                            }}
+                            >
+                                <Gift size={18} />
+                                Rewards
+                            </Link>
+                            <Link to="/PointsHistory" style={{
+                                padding: "0.75rem 1.5rem",
+                                background: "rgba(255,255,255,0.1)",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                borderRadius: "12px",
+                                color: "var(--text)",
+                                textDecoration: "none",
+                                fontSize: "0.9rem",
+                                fontWeight: "600",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "0.5rem",
+                                transition: "all 0.2s ease"
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                            }}
+                            >
+                                History
+                            </Link>
                         </div>
                     </div>
 

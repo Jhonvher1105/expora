@@ -53,6 +53,7 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
+        category: "experience",
         type: "",
         title: "",
         tagline: "",

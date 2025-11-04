@@ -106,8 +106,8 @@ function LogIn2() {
                         </div>
                     </div>
 
-                    <div className="form-row" style={{display:'flex',alignItems:'center',gap:8,marginTop:6}}>
-                        <label style={{display:'flex',alignItems:'center',gap:8}}>
+                    <div className="form-row remember-forgot-row">
+                        <label className="remember-me-label">
                             <input
                                 type="checkbox"
                                 checked={rememberMe}
@@ -115,7 +115,7 @@ function LogIn2() {
                             />
                             Remember me
                         </label>
-                        <div style={{marginLeft:'auto'}}>
+                        <div className="forgot-password-link">
                             <Link to="/forgot-password">Forgot password?</Link>
                         </div>
                     </div>

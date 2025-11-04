@@ -17,6 +17,7 @@ import { auth, db } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import AddProperty from "../ui/AddProperty";
 import HostingType from "../ui/HostingType";
+import { collection as fbCollection, getDocs as fbGetDocs, query as fbQuery, where as fbWhere } from "firebase/firestore";
 
 export default function HostBody() {
     const [activeTab, setActiveTab] = useState("properties");
@@ -26,6 +27,8 @@ export default function HostBody() {
     const [loading, setLoading] = useState(true);
     const [showHostForm, setShowForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
+    const [todayBookings, setTodayBookings] = useState([]);
+    const [upcomingBookings, setUpcomingBookings] = useState([]);
 
     // Load current user
     useEffect(() => {
@@ -57,6 +60,33 @@ export default function HostBody() {
         };
         fetchProperties();
     }, [currentUser, activeTab]);
+
+    // Fetch bookings for this host (today and upcoming)
+    useEffect(() => {
+        const loadBookings = async () => {
+            if (!currentUser) return;
+            try {
+                const q = fbQuery(fbCollection(db, "bookings"), fbWhere("hostId", "==", currentUser.uid));
+                const snap = await fbGetDocs(q);
+                const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+                const today = [];
+                const upcoming = [];
+                const todayDate = new Date();
+                const startOfToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
+                const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
+                all.forEach((b) => {
+                    const start = new Date(b.startDate).getTime();
+                    if (start >= startOfToday && start <= endOfToday) today.push(b);
+                    else if (start > endOfToday) upcoming.push(b);
+                });
+                setTodayBookings(today.sort((a,b)=> new Date(a.startDate)-new Date(b.startDate)));
+                setUpcomingBookings(upcoming.sort((a,b)=> new Date(a.startDate)-new Date(b.startDate)));
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        loadBookings();
+    }, [currentUser]);
 
 
     // ✅ Safe delete: Firestore only (no Cloudinary deletion)

@@ -11,7 +11,7 @@ import {
     deleteDoc,
     setDoc,
     query,
-    Query,
+    where,
 } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -68,13 +68,11 @@ function Body() {
         if (!currentUser) return;
         const fetchFavorites = async () => {
             try {
-                const q = query(collection(db, "favorites"), where());
+                const q = query(collection(db, "favorites"), where("userId", "==", currentUser.uid));
 
 
-                const favSnap = await getDocs(collection(db, "favorites"));
-                const userFavs = favSnap.docs
-                    .map((doc) => doc.data())
-                    .filter((fav) => fav.userId === currentUser.uid);
+                const favSnap = await getDocs(q);
+                const userFavs = favSnap.docs.map((doc) => doc.data());
                 setFavoriteHouse(userFavs);
             } catch (error) {
                 console.error("Error loading favorites:", error);

@@ -34,6 +34,11 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         bedrooms: "",
         bathrooms: "",
         amenities: "",
+        discountPercentage: "",
+        promoCode: "",
+        promoStartDate: "",
+        promoEndDate: "",
+        isDraft: false,
     });
 
     // 🔹 Handle image upload and preview
@@ -102,9 +107,30 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+            // Load draft if exists
+            if (user) {
+                const draftKey = `property_draft_${user.uid}`;
+                const saved = localStorage.getItem(draftKey);
+                if (saved) {
+                    try {
+                        const draft = JSON.parse(saved);
+                        // Note: Images can't be restored from localStorage (File objects)
+                        if (draft.hasDraft) {
+                            const restore = window.confirm("Restore saved draft?");
+                            if (restore) {
+                                setFormData(draft.formData);
+                            } else {
+                                localStorage.removeItem(draftKey);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to load draft:", e);
+                    }
+                }
+            }
         });
         return unsubscribe;
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // 🔹 Cleanup previews
     useEffect(() => {
@@ -161,13 +187,24 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                 bedrooms: Number(formData.bedrooms),
                 bathrooms: Number(formData.bathrooms),
                 amenities: formData.amenities.split(",").map((a) => a.trim()),
+                discountPercentage: formData.discountPercentage ? Number(formData.discountPercentage) : null,
+                promoCode: formData.promoCode || null,
+                promoStartDate: formData.promoStartDate || null,
+                promoEndDate: formData.promoEndDate || null,
                 images: cloudinaryUrls,
                 ownerId: currentUser.uid,
                 createdAt: new Date(),
+                isDraft: false,
             };
 
             await addDoc(collection(db, "properties"), finalData);
             console.log("✅ Property saved:", finalData);
+
+            // Clear draft after successful submission
+            if (currentUser) {
+                const draftKey = `property_draft_${currentUser.uid}`;
+                localStorage.removeItem(draftKey);
+            }
 
             if (accType) {
                 await updateDoc(doc(db, "users", currentUser.uid), { accType });
@@ -187,193 +224,314 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl w-full bg-white rounded-xl shadow-lg p-8">
+        <div className="host-modal-form-container">
+            <div className="host-modal-form-wrapper">
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Property Title */}
-                    <div>
-                        <label className="block text-sm font-medium">Title</label>
-                        <input
-                            className="w-full p-2 border rounded"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        />
-                        {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
-                    </div>
+                <form onSubmit={handleSubmit} className="host-modal-form">
+                    <h2 className="host-modal-title">Create New Property Listing</h2>
 
-                    {/* Description */}
-                    <div>
-                        <label className="block text-sm font-medium">Description</label>
-                        <textarea
-                            className="w-full p-2 border rounded"
-                            rows={4}
-                            value={formData.description}
-                            onChange={(e) =>
-                                setFormData({ ...formData, description: e.target.value })
-                            }
-                        />
-                        {formErrors.description && (
-                            <p className="text-red-500 text-sm">{formErrors.description}</p>
-                        )}
-                    </div>
-
-                    {/* Type & Category */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label>Type</label>
-                            <select
-                                className="w-full p-2 border rounded"
-                                value={formData.type}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, type: e.target.value })
-                                }
-                            >
-                                <option value="">Select type...</option>
-                                {PROPERTY_TYPES.map((t) => (
-                                    <option key={t} value={t.toLowerCase()}>
-                                        {t}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* <div>
-                            <label>Category</label>
-                            <input
-                                className="w-full p-2 border rounded"
-                                value={formData.category}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, category: e.target.value })
-                                }
-                            />
-                        </div> */}
-                    </div>
-
-                    {/* Other Inputs */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="price-day_night  grid grid-cols-2 gap4">
-                            <input
-                                className="p-2 border rounded"
-                                placeholder="Price"
-                                type="number"
-                                value={formData.price}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, price: e.target.value })
-                                }
-                            />
-                            <select
-                                className="w-full p-2 border rounded"
-                                value={formData.day_night}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, day_night: e.target.value })
-                                }
-                            >
-                                <option value="">Day or Night</option>
-                                {DAY_NIGHT.map((t) => (
-                                    <option key={t} value={t.toLowerCase()}>
-                                        {t}  
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Location"
-                            value={formData.location}
-                            onChange={(e) =>
-                                setFormData({ ...formData, location: e.target.value })
-                            }
-                        />
-
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Max Guests"
-                            type="number"
-                            value={formData.maxGuests}
-                            onChange={(e) =>
-                                setFormData({ ...formData, maxGuests: e.target.value })
-                            }
-                        />
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Bedrooms"
-                            type="number"
-                            value={formData.bedrooms}
-                            onChange={(e) =>
-                                setFormData({ ...formData, bedrooms: e.target.value })
-                            }
-                        />
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Bathrooms"
-                            type="number"
-                            value={formData.bathrooms}
-                            onChange={(e) =>
-                                setFormData({ ...formData, bathrooms: e.target.value })
-                            }
-                        />
-                        <input
-                            className="p-2 border rounded"
-                            placeholder="Amenities (comma separated)"
-                            value={formData.amenities}
-                            onChange={(e) =>
-                                setFormData({ ...formData, amenities: e.target.value })
-                            }
-                        />
-                    </div>
-
-                    {/* Images */}
-                    <div>
-                        <label className="block text-sm font-medium mb-2">
-                            Property Images (5–10 images)
-                        </label>
-                        <div className="flex flex-wrap gap-3 mb-3">
-                            {images.map((img, idx) => (
-                                <div key={idx} className="relative">
-                                    <img
-                                        src={img.preview}
-                                        alt=""
-                                        className="w-24 h-24 object-cover rounded"
-                                    />
-                                    <button
-                                        type="button"
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                                        onClick={() => removeImage(idx)}
-                                    >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            ))}
-
-                            <label className="w-24 h-24 border-2 border-dashed flex flex-col items-center justify-center rounded cursor-pointer hover:bg-gray-50">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    onChange={handleImageChange}
-                                    className="hidden"
-                                />
-                                <Plus size={24} className="text-gray-400" />
-                                <span className="text-sm text-gray-500">Add</span>
+                    {/* Basic Information Section */}
+                    <section className="host-form-section">
+                        <h3 className="host-form-section-title">Basic Information</h3>
+                        
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Title <span className="required">*</span>
                             </label>
+                            <input
+                                className="host-form-input"
+                                type="text"
+                                placeholder="Enter property title"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                            />
+                            {formErrors.title && <p className="host-form-error">{formErrors.title}</p>}
                         </div>
-                        {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
-                    </div>
 
-                    {/* Buttons */}
-                    <div className="flex gap-4 pt-4">
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Description <span className="required">*</span>
+                            </label>
+                            <textarea
+                                className="host-form-textarea"
+                                rows={4}
+                                placeholder="Describe your property..."
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            />
+                            {formErrors.description && (
+                                <p className="host-form-error">{formErrors.description}</p>
+                            )}
+                        </div>
+
+                        <div className="host-form-grid host-form-grid-2">
+                            <div className="host-form-group">
+                                <label className="host-form-label">
+                                    Type <span className="required">*</span>
+                                </label>
+                                <select
+                                    className="host-form-select"
+                                    value={formData.type}
+                                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                >
+                                    <option value="">Select type...</option>
+                                    {PROPERTY_TYPES.map((t) => (
+                                        <option key={t} value={t.toLowerCase()}>
+                                            {t}
+                                        </option>
+                                    ))}
+                                </select>
+                                {formErrors.type && <p className="host-form-error">{formErrors.type}</p>}
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">
+                                    Day or Night <span className="required">*</span>
+                                </label>
+                                <select
+                                    className="host-form-select"
+                                    value={formData.day_night}
+                                    onChange={(e) => setFormData({ ...formData, day_night: e.target.value })}
+                                >
+                                    <option value="">Select...</option>
+                                    {DAY_NIGHT.map((t) => (
+                                        <option key={t} value={t.toLowerCase()}>
+                                            {t}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Location & Pricing Section */}
+                    <section className="host-form-section">
+                        <h3 className="host-form-section-title">Location & Pricing</h3>
+                        
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Location <span className="required">*</span>
+                            </label>
+                            <input
+                                className="host-form-input"
+                                type="text"
+                                placeholder="Enter property location"
+                                value={formData.location}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                            />
+                            {formErrors.location && <p className="host-form-error">{formErrors.location}</p>}
+                        </div>
+
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Price per Night <span className="required">*</span>
+                            </label>
+                            <input
+                                className="host-form-input"
+                                type="number"
+                                placeholder="0.00"
+                                min="0"
+                                step="0.01"
+                                value={formData.price}
+                                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                            />
+                            {formErrors.price && <p className="host-form-error">{formErrors.price}</p>}
+                        </div>
+                    </section>
+
+                    {/* Property Details Section */}
+                    <section className="host-form-section">
+                        <h3 className="host-form-section-title">Property Details</h3>
+                        
+                        <div className="host-form-grid host-form-grid-3">
+                            <div className="host-form-group">
+                                <label className="host-form-label">
+                                    Max Guests <span className="required">*</span>
+                                </label>
+                                <input
+                                    className="host-form-input"
+                                    type="number"
+                                    placeholder="0"
+                                    min="1"
+                                    value={formData.maxGuests}
+                                    onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
+                                />
+                                {formErrors.maxGuests && <p className="host-form-error">{formErrors.maxGuests}</p>}
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">
+                                    Bedrooms <span className="required">*</span>
+                                </label>
+                                <input
+                                    className="host-form-input"
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    value={formData.bedrooms}
+                                    onChange={(e) => setFormData({ ...formData, bedrooms: e.target.value })}
+                                />
+                                {formErrors.bedrooms && <p className="host-form-error">{formErrors.bedrooms}</p>}
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">
+                                    Bathrooms <span className="required">*</span>
+                                </label>
+                                <input
+                                    className="host-form-input"
+                                    type="number"
+                                    placeholder="0"
+                                    min="0"
+                                    value={formData.bathrooms}
+                                    onChange={(e) => setFormData({ ...formData, bathrooms: e.target.value })}
+                                />
+                                {formErrors.bathrooms && <p className="host-form-error">{formErrors.bathrooms}</p>}
+                            </div>
+                        </div>
+
+                        <div className="host-form-group">
+                            <label className="host-form-label">Amenities</label>
+                            <input
+                                className="host-form-input"
+                                type="text"
+                                placeholder="WiFi, Pool, Parking, etc. (comma separated)"
+                                value={formData.amenities}
+                                onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
+                            />
+                        </div>
+                    </section>
+
+                    {/* Images Section */}
+                    <section className="host-form-section">
+                        <h3 className="host-form-section-title">
+                            Property Images <span className="host-form-subtitle">(5–10 images required)</span>
+                        </h3>
+                        
+                        <div className="host-image-upload-area">
+                            <div className="host-image-preview-grid">
+                                {images.map((img, idx) => (
+                                    <div key={idx} className="host-image-preview-item">
+                                        <img
+                                            src={img.preview}
+                                            alt={`Preview ${idx + 1}`}
+                                            className="host-image-preview"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="host-image-remove-btn"
+                                            onClick={() => removeImage(idx)}
+                                            aria-label="Remove image"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <label className="host-image-upload-btn">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        onChange={handleImageChange}
+                                        className="host-image-input-hidden"
+                                    />
+                                    <Plus size={24} className="host-image-upload-icon" />
+                                    <span className="host-image-upload-text">Add Images</span>
+                                </label>
+                            </div>
+                            
+                            {uploadError && <p className="host-form-error">{uploadError}</p>}
+                            {formErrors.images && <p className="host-form-error">{formErrors.images}</p>}
+                            <p className="host-image-count">
+                                {images.length} / {MAX_IMAGE_COUNT} images ({images.length < REQUIRED_IMAGE_COUNT ? `${REQUIRED_IMAGE_COUNT - images.length} more needed` : 'Minimum reached'})
+                            </p>
+                        </div>
+                    </section>
+
+                    {/* Discounts & Promotions Section */}
+                    <section className="host-form-section">
+                        <h3 className="host-form-section-title">Discounts & Promotions <span className="host-form-subtitle">(Optional)</span></h3>
+                        
+                        <div className="host-form-grid host-form-grid-2">
+                            <div className="host-form-group">
+                                <label className="host-form-label">Discount Percentage</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    className="host-form-input"
+                                    placeholder="e.g., 20"
+                                    value={formData.discountPercentage}
+                                    onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">Promo Code</label>
+                                <input
+                                    type="text"
+                                    className="host-form-input"
+                                    placeholder="e.g., SUMMER2024"
+                                    value={formData.promoCode}
+                                    onChange={(e) => setFormData({ ...formData, promoCode: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">Promo Start Date</label>
+                                <input
+                                    type="date"
+                                    className="host-form-input"
+                                    value={formData.promoStartDate}
+                                    onChange={(e) => setFormData({ ...formData, promoStartDate: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="host-form-group">
+                                <label className="host-form-label">Promo End Date</label>
+                                <input
+                                    type="date"
+                                    className="host-form-input"
+                                    value={formData.promoEndDate}
+                                    onChange={(e) => setFormData({ ...formData, promoEndDate: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Form Actions */}
+                    <div className="host-form-actions">
                         <button
                             type="submit"
                             disabled={isUploading}
-                            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
+                            className="host-form-submit-btn"
                         >
                             {isUploading ? "Uploading..." : "Create Listing"}
                         </button>
                         <button
                             type="button"
+                            onClick={() => {
+                                if (!currentUser) {
+                                    alert("Please sign in to save draft.");
+                                    return;
+                                }
+                                const draftKey = `property_draft_${currentUser.uid}`;
+                                localStorage.setItem(draftKey, JSON.stringify({
+                                    formData,
+                                    hasDraft: true,
+                                    savedAt: new Date().toISOString(),
+                                }));
+                                alert("Draft saved! You can continue later.");
+                            }}
+                            className="host-form-draft-btn"
+                        >
+                            Save Draft
+                        </button>
+                        <button
+                            type="button"
                             onClick={onClose}
-                            className="px-4 py-2 border rounded hover:bg-gray-50"
+                            className="host-form-cancel-btn"
                         >
                             Cancel
                         </button>

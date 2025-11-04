@@ -7,6 +7,11 @@ import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
 import FavPage from './components/UserFolder/FavPage';
+import Rewards from './components/UserFolder/Rewards';
+import PointsHistory from './components/UserFolder/PointsHistory';
+import MyBooking from './components/UserFolder/MyBooking';
+import AdminDashboard from './components/admin/AdminDashboard';
+import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 
 import HostingType from './components/ui/HostingType';
 import Service from './components/ui/AddService';
@@ -23,10 +28,19 @@ function App() {
                 <Route path="/Settings" element={<Settings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
+                <Route path="/Rewards" element={<Rewards/>}/>
+                <Route path="/PointsHistory" element={<PointsHistory/>}/>
+                <Route path="/MyBooking" element={<MyBooking/>}/>
                 
                 <Route path="/HostingType" element={<HostingType/>}/>
-
                 <Route path="/Service" element={<Service/>}/>
+
+                {/* Admin Routes */}
+                <Route path="/Admin" element={
+                    <ProtectedAdminRoute>
+                        <AdminDashboard />
+                    </ProtectedAdminRoute>
+                } />
             </Routes>
         </BrowserRouter>
     );

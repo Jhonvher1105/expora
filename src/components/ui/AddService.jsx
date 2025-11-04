@@ -51,6 +51,7 @@ export default function AddServiceForm({onClose}) {
     const [success, setSuccess] = useState(false);
 
     const [formData, setFormData] = useState({
+        category: "service",
         type: "",
         title: "",
         description: "",

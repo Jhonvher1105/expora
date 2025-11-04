@@ -148,7 +148,7 @@ function Header() {
                                     Settings
                                 </Link>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
-                                    My booking
+                                    Bookings
                                 </Link>
                                 <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
                                     Coupons
