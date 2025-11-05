@@ -441,7 +441,7 @@ function Body() {
                                 className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
                                 onClick={() => setActiveTab("properties")}
                             >
-                                Destination
+                                Properties
                             </button>
                             <button
                                 className={`tab ${activeTab === "services" ? "tab-active" : ""}`}

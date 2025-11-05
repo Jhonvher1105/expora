@@ -51,7 +51,7 @@ function Header() {
             // Generate or load coupon from Firestore
             const loadOrCreateCoupon = async () => {
                 if (!currentUser) return;
-                
+
                 try {
                     // Check if user already has an active coupon
                     const q = query(
@@ -60,7 +60,7 @@ function Header() {
                         where("status", "==", "active")
                     );
                     const snap = await getDocs(q);
-                    
+
                     if (!snap.empty) {
                         // Use existing coupon
                         const existing = snap.docs[0].data();
@@ -75,7 +75,7 @@ function Header() {
                         const code = `EXPORA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
                         const expiresAt = new Date();
                         expiresAt.setDate(expiresAt.getDate() + 7);
-                        
+
                         const couponData = {
                             code,
                             userId: currentUser.uid,
@@ -88,9 +88,9 @@ function Header() {
                             status: "active",
                             createdAt: serverTimestamp(),
                         };
-                        
+
                         await addDoc(collection(db, "coupons"), couponData);
-                        
+
                         setVoucher({
                             code,
                             discount: "20% OFF",
@@ -112,7 +112,7 @@ function Header() {
                     });
                 }
             };
-            
+
             loadOrCreateCoupon();
         }
     }, [showCoupon, currentUser]);
@@ -236,6 +236,16 @@ function Header() {
                 <div className="modal-overlay" role="dialog" aria-modal="true" aria-label="Add property form">
                     <div className="modal host-modal" onClick={e => e.stopPropagation()}>
                         <HostingType onClose={() => setShowForm(false)} />
+                    </div>
+                </div>
+            )}
+
+            {showLogoutConfirm && (
+                <div className="modal-overlay">
+                    <div className="modal">
+                        <h3>Confirm Logout</h3>
+                        <button onClick={handleLogout}>Yes</button>
+                        <button onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
                     </div>
                 </div>
             )}

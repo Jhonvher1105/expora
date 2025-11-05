@@ -17,7 +17,7 @@ import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
 function Body() {
-    const [activeTab, setActiveTab] = useState("favHouse");
+    const [activeTab, setActiveTab] = useState("properties");
     const [selectedDest, setSelectedDest] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [properties, setProperties] = useState([]);
@@ -47,7 +47,8 @@ function Body() {
     useEffect(() => {
         const fetchProperties = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "properties"));
+                setLoading(true);
+                const querySnapshot = await getDocs(collection(db, activeTab));
                 const data = querySnapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
@@ -61,19 +62,21 @@ function Body() {
             }
         };
         fetchProperties();
-    }, []);
+    }, [activeTab]);
 
-    // ✅ Fetch favorites
+    // ✅ Fetch favorites for all categories
     useEffect(() => {
         if (!currentUser) return;
         const fetchFavorites = async () => {
             try {
                 const q = query(collection(db, "favorites"), where("userId", "==", currentUser.uid));
-
-
                 const favSnap = await getDocs(q);
-                const userFavs = favSnap.docs.map((doc) => doc.data());
-                setFavoriteHouse(userFavs);
+                const allFavs = favSnap.docs.map((doc) => doc.data());
+                
+                // Filter favorites by category and set each state
+                setFavoriteHouse(allFavs.filter((fav) => fav.category === "properties"));
+                setfavoriteService(allFavs.filter((fav) => fav.category === "services"));
+                setFavoriteExp(allFavs.filter((fav) => fav.category === "experiences"));
             } catch (error) {
                 console.error("Error loading favorites:", error);
             }
@@ -82,28 +85,57 @@ function Body() {
     }, [currentUser]);
 
     // ✅ Handle Favorite Add/Remove
-    const handleFavBtn = async (property) => {
+    const handleFavBtn = async (property, category = null) => {
         if (!currentUser) {
             alert("Please log in to save favorites.");
             return;
         }
         if (!property) return;
 
+        // Use provided category or fallback to activeTab
+        const favoriteCategory = category || activeTab;
+
         try {
             const favDocRef = doc(db, "favorites", `${currentUser.uid}_${property.id}`);
-            const favDoc = await getDocs(favDocRef);
+            const favDoc = await getDoc(favDocRef);
 
             if (favDoc.exists()) {
                 await deleteDoc(favDocRef);
                 alert("Removed from favorites 💔");
+                
+                // Update local state after deletion
+                if (favoriteCategory === "properties") {
+                    setFavoriteHouse((prev) => prev.filter((fav) => fav.propertyId !== property.id));
+                } else if (favoriteCategory === "services") {
+                    setfavoriteService((prev) => prev.filter((fav) => fav.propertyId !== property.id));
+                } else if (favoriteCategory === "experiences") {
+                    setFavoriteExp((prev) => prev.filter((fav) => fav.propertyId !== property.id));
+                }
             } else {
                 await setDoc(favDocRef, {
                     userId: currentUser.uid,
                     propertyId: property.id,
                     propertyData: property,
+                    category: favoriteCategory,
                     createdAt: new Date(),
                 });
                 alert("Added to favorites ❤️");
+                
+                // Update local state after addition
+                const newFavorite = {
+                    userId: currentUser.uid,
+                    propertyId: property.id,
+                    propertyData: property,
+                    category: favoriteCategory,
+                    createdAt: new Date(),
+                };
+                if (favoriteCategory === "properties") {
+                    setFavoriteHouse((prev) => [...prev, newFavorite]);
+                } else if (favoriteCategory === "services") {
+                    setfavoriteService((prev) => [...prev, newFavorite]);
+                } else if (favoriteCategory === "experiences") {
+                    setFavoriteExp((prev) => [...prev, newFavorite]);
+                }
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
@@ -175,27 +207,27 @@ function Body() {
                         {/* TABS */}
                         <div className="tabs">
                             <button
-                                className={`tab ${activeTab === "favoriteHouse" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("favoriteHouse")}
+                                className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("properties")}
                             >
-                                Destination
+                                Properties
                             </button>
                             <button
-                                className={`tab ${activeTab === "favoriteService" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("favoriteService")}
+                                className={`tab ${activeTab === "services" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("services")}
                             >
                                 Services
                             </button>
                             <button
-                                className={`tab ${activeTab === "favoriteExp" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("favoriteExp")}
+                                className={`tab ${activeTab === "experiences" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("experiences")}
                             >
                                 Experiences
                             </button>
                         </div>
 
-                        {/* DISCOVER TAB */}
-                        {activeTab === "favoriteHouse" && (
+                        {/* PROPERTIES TAB */}
+                        {activeTab === "properties" && (
                             <section className="section">
                                 
 
@@ -236,14 +268,14 @@ function Body() {
                             </section>
                         )}
 
-                        {/* TRIPS TAB */}
-                        {activeTab === "favoriteService" && (
+                        {/* SERVICES TAB */}
+                        {activeTab === "services" && (
                             <section className="section">
                                 
 
-                                {favoriteHouse.length > 0 ? (
+                                {favoriteService.length > 0 ? (
                                     <div className="destinations-grid">
-                                        {favoriteHouse.map((fav) => (
+                                        {favoriteService.map((fav) => (
                                             <div key={fav.propertyId} className="destination-card">
                                                 <img
                                                     src={fav.propertyData.images?.[0]}
@@ -278,14 +310,14 @@ function Body() {
                             </section>
                         )}
 
-                        {/* FAVORITES TAB */}
-                        {activeTab === "favoriteExp" && (
+                        {/* EXPERIENCES TAB */}
+                        {activeTab === "experiences" && (
                             <section className="section">
                                 
 
-                                {favoriteHouse.length > 0 ? (
+                                {favoriteExp.length > 0 ? (
                                     <div className="destinations-grid">
-                                        {favoriteHouse.map((fav) => (
+                                        {favoriteExp.map((fav) => (
                                             <div key={fav.propertyId} className="destination-card">
                                                 <img
                                                     src={fav.propertyData.images?.[0]}

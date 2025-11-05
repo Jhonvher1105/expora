@@ -1,7 +1,6 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
-// import "./index.css";
-import "../components/cssFile/temp.css"
+import { useState, useEffect } from "react";
+import "../components/cssFile/temp.css";
 
 import logo from "../components/pic/logo.png";
 
@@ -10,10 +9,12 @@ import {
     setPersistence,
     browserLocalPersistence,
     browserSessionPersistence,
+    onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "../firebase";
+import { setDoc, doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import { Link, useNavigate } from "react-router-dom";
-
 
 function LogIn2() {
     const [showPassword, setShowPassword] = useState(false);
@@ -23,11 +24,30 @@ function LogIn2() {
     const [errorMessage, setErrorMessage] = useState("");
     const navigate = useNavigate();
 
+    // 🔁 Check if already signed in
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    const userData = userDoc.data();
+                    if (userData?.role === "admin") {
+                        navigate("/Admin");
+                    } else {
+                        navigate("/Home");
+                    }
+                } catch (err) {
+                    console.error("Error fetching user data:", err);
+                }
+            }
+        });
+
+        return () => unsubscribe();
+    }, [navigate]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrorMessage("");
-
-        console.log("Sign in:", { email, password, rememberMe });
 
         if (!email || !password) {
             setErrorMessage("Please fill in both email and password.");
@@ -35,7 +55,7 @@ function LogIn2() {
         }
 
         try {
-            // Set persistence based on rememberMe
+            // Set persistence based on Remember Me
             await setPersistence(
                 auth,
                 rememberMe ? browserLocalPersistence : browserSessionPersistence
@@ -46,10 +66,17 @@ function LogIn2() {
                 email,
                 password
             );
+            const user = userCredential.user;
 
-            console.log("User:", userCredential.user);
-            // navigate after successful login
-            navigate("/Home");
+            // Get user role from Firestore
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            const userData = userDoc.data();
+
+            if (userData?.role === "admin") {
+                navigate("/Admin");
+            } else {
+                navigate("/Home");
+            }
         } catch (error) {
             console.error("Login failed:", error);
             setErrorMessage(error?.message || "Login failed. Please try again.");
@@ -59,12 +86,10 @@ function LogIn2() {
     return (
         <div className="landing-page">
             <div className="landing-card">
-
                 <div className="div-logIn-logo landing-logo">
                     <img src={logo} alt="expora logo" className="img-login-logo" />
                     <h2 className="logo-text">Expora</h2>
                 </div>
-
 
                 <div className="welcome-text">
                     <h1>Welcome back</h1>
@@ -121,10 +146,16 @@ function LogIn2() {
                     </div>
 
                     {errorMessage && (
-                        <div className="error-message" style={{color:'crimson',marginTop:8}}>{errorMessage}</div>
+                        <div className="error-message" style={{ color: "crimson", marginTop: 8 }}>
+                            {errorMessage}
+                        </div>
                     )}
 
-                    <button type="submit" className="signin-btn landing-signin" disabled={!email || !password || false}>
+                    <button
+                        type="submit"
+                        className="signin-btn landing-signin"
+                        disabled={!email || !password}
+                    >
                         Sign in
                     </button>
 

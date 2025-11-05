@@ -6,6 +6,7 @@ import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
+import HostBooking from './components/hostFolder/HostBooking';
 import FavPage from './components/UserFolder/FavPage';
 import Rewards from './components/UserFolder/Rewards';
 import PointsHistory from './components/UserFolder/PointsHistory';
@@ -27,6 +28,7 @@ function App() {
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
+                <Route path="/HostBooking" element={<HostBooking/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
                 <Route path="/Rewards" element={<Rewards/>}/>
                 <Route path="/PointsHistory" element={<PointsHistory/>}/>
