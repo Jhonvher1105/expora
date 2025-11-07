@@ -1,24 +1,48 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
-import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { useWallet } from '../../context/WalletContext';
 
-// PayPal Sandbox Client ID - Replace with your actual PayPal Sandbox Client ID
-// Get your Client ID from: https://developer.paypal.com/dashboard/
-const PAYPAL_CLIENT_ID = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'YOUR_PAYPAL_CLIENT_ID_HERE';
+// PayPal Sandbox Client IDs - Separate for guests and hosts
+const PAYPAL_CLIENT_ID_GUEST = import.meta.env.VITE_PAYPAL_CLIENT_ID_GUEST || import.meta.env.VITE_PAYPAL_CLIENT_ID || 'YOUR_PAYPAL_CLIENT_ID_HERE';
+const PAYPAL_CLIENT_ID_HOST = import.meta.env.VITE_PAYPAL_CLIENT_ID_HOST || import.meta.env.VITE_PAYPAL_CLIENT_ID || 'YOUR_PAYPAL_CLIENT_ID_HERE';
 
 export default function PayPalPayment({ 
   amount, 
   bookingId, 
   couponCode, 
+  hostId,
   onSuccess, 
   onError,
   currency = 'PHP' 
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const { applyCoupon } = useWallet();
+  const [paypalClientId, setPaypalClientId] = useState(PAYPAL_CLIENT_ID_GUEST);
+  const { applyCoupon, addHostEarnings } = useWallet();
   const currentUser = auth.currentUser;
+
+  // Get hostId from booking if not provided
+  useEffect(() => {
+    const fetchHostId = async () => {
+      if (bookingId && !hostId) {
+        try {
+          const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+          if (bookingDoc.exists()) {
+            const bookingData = bookingDoc.data();
+            if (bookingData.hostId) {
+              // Use the hostId from booking
+              // Note: PayPal Client ID should be based on current user (guest), not host
+              // Guests use guest PayPal account, hosts receive earnings
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching booking:', error);
+        }
+      }
+    };
+    fetchHostId();
+  }, [bookingId, hostId]);
 
   // Convert PHP to USD for PayPal (PayPal uses USD as base currency)
   // Note: You'll need to implement real-time currency conversion or use USD prices
@@ -47,7 +71,20 @@ export default function PayPalPayment({
         }
       }
 
-      // Record PayPal transaction in Firestore
+      // Get hostId from booking if not provided
+      let bookingHostId = hostId;
+      if (bookingId && !bookingHostId) {
+        try {
+          const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+          if (bookingDoc.exists()) {
+            bookingHostId = bookingDoc.data().hostId;
+          }
+        } catch (error) {
+          console.error('Error fetching booking for hostId:', error);
+        }
+      }
+
+      // Record PayPal transaction in Firestore (guest payment)
       if (currentUser) {
         await addDoc(collection(db, 'transactions'), {
           userId: currentUser.uid,
@@ -65,13 +102,16 @@ export default function PayPalPayment({
         });
       }
 
-      // Update booking status
+      // Note: Host earnings will be added when host manually confirms the booking
+      // This prevents earnings from being added if host rejects the booking
+
+      // Update booking status - keep as "pending" until host confirms
       if (bookingId) {
         await updateDoc(doc(db, 'bookings', bookingId), {
           paymentStatus: 'paid',
           paymentMethod: 'paypal',
           paypalOrderId: order.id,
-          status: 'confirmed',
+          status: 'pending', // Keep pending until host manually confirms
           updatedAt: serverTimestamp(),
         });
       }
@@ -116,7 +156,7 @@ export default function PayPalPayment({
   return (
     <div style={{ maxWidth: '500px', margin: '20px auto' }}>
       <PayPalScriptProvider options={{ 
-        clientId: PAYPAL_CLIENT_ID,
+        clientId: paypalClientId,
         currency: 'USD',
       }}>
         <PayPalButtons

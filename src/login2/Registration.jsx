@@ -245,7 +245,7 @@ function Registration() {
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group full-width">
                   <fieldset className="radioGender">
                     <legend>Gender identity:</legend>
                     <div>
@@ -338,7 +338,7 @@ function Registration() {
                   <label className="form-label" htmlFor="zipcode">Zipcode</label>
                   <input
                     type="number"
-                    name="sipcode"
+                    name="zipCode"
                     value={formData.zipCode}
                     onChange={handleInputChange}
                     className="form-input"

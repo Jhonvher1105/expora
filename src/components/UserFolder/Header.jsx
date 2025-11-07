@@ -148,6 +148,11 @@ function Header() {
         setUserMenuOpen(false);
     };
 
+    const openSuggestions = () => {
+        navigate("/SuggestionsPage");
+        setUserMenuOpen(false);
+    };
+
     // Chat system - use context
     const { openChat } = useChat();
 
@@ -212,10 +217,10 @@ function Header() {
                                 <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
                                     Coupons
                                 </button>
-                                <button className="user-menu-item" type="button" role="menuitem">
+                                <Link to="/WalletPage" className="user-menu-item" role="menuitem">
                                     E-Wallet
-                                </button>
-                                <button className="user-menu-item" onClick={() => alert("Coming soon")}>
+                                </Link>
+                                <button className="user-menu-item" onClick={openSuggestions}>
                                     Suggestions
                                 </button>
                                 <div className="user-menu-divider" />

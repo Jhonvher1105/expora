@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, Copy, Facebook, Twitter, Instagram } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, Copy, Facebook, Twitter, Instagram, MessageCircle } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
 
@@ -12,12 +12,14 @@ import {
     setDoc,
     query,
     where,
+    serverTimestamp,
 } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useBooking } from "../../context/BookingContext.jsx";
 import { useWallet } from "../../context/WalletContext.jsx";
 import { usePoints } from "../../context/PointsContext.jsx";
+import { useChat } from "../../context/ChatContext.jsx";
 import PayPalPayment from "../ui/PayPalPayment";
 import ReviewList from "../ui/ReviewList";
 import ReviewForm from "../ui/ReviewForm";
@@ -35,6 +37,12 @@ function Body() {
     const [checkInDate, setCheckInDate] = useState("");
     const [checkOutDate, setCheckOutDate] = useState("");
     const [filterGuests, setFilterGuests] = useState("");
+    // Airbnb-like search bar state
+    const [activeSearchModal, setActiveSearchModal] = useState(null); // 'location', 'dates', 'guests', null
+    const [locationInput, setLocationInput] = useState("");
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
+    const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
+    const [showGuestDropdown, setShowGuestDropdown] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -49,8 +57,10 @@ function Body() {
     const [validationErrors, setValidationErrors] = useState({});
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
+    const [allBookings, setAllBookings] = useState([]);
     const { checkAvailability, createBooking, creating } = useBooking();
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
+    const { openChat } = useChat();
 
     // Auto-check availability when dates change
     useEffect(() => {
@@ -220,6 +230,23 @@ function Body() {
         return unsubscribe;
     }, []);
 
+    // ✅ Fetch bookings for date filtering
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const bookingsSnapshot = await getDocs(collection(db, "bookings"));
+                const bookingsData = bookingsSnapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
+                setAllBookings(bookingsData);
+            } catch (error) {
+                console.error("Error fetching bookings:", error);
+            }
+        };
+        fetchBookings();
+    }, []);
+
     // ✅ Fetch properties
     useEffect(() => {
         const fetchProperties = async () => {
@@ -231,6 +258,10 @@ function Body() {
                 }));
                 setProperties(data);
                 setAllProperties(data);
+                
+                // Extract unique locations for autocomplete
+                const uniqueLocations = [...new Set(data.map(p => p.location).filter(Boolean))];
+                setLocationSuggestions(uniqueLocations);
             } catch (error) {
                 console.error("Error fetching properties:", error);
             } finally {
@@ -239,6 +270,23 @@ function Body() {
         };
         fetchProperties();
     }, [activeTab]);
+
+    // Location autocomplete filter
+    useEffect(() => {
+        if (locationInput.trim() && allProperties.length > 0) {
+            const filtered = allProperties
+                .map(p => p.location)
+                .filter(Boolean)
+                .filter(loc => 
+                    loc.toLowerCase().includes(locationInput.toLowerCase())
+                );
+            const uniqueLocations = [...new Set(filtered)];
+            setLocationSuggestions(uniqueLocations.slice(0, 5)); // Limit to 5 suggestions
+        } else if (allProperties.length > 0) {
+            const uniqueLocations = [...new Set(allProperties.map(p => p.location).filter(Boolean))];
+            setLocationSuggestions(uniqueLocations.slice(0, 5));
+        }
+    }, [locationInput, allProperties]);
 
     // ✅ Fetch favorites
     useEffect(() => {
@@ -257,7 +305,27 @@ function Body() {
         fetchFavorites();
     }, [currentUser]);
 
-    // ✅ Handle Favorite Add/Remove
+    // ✅ Track property view in browsing history
+    const trackPropertyView = async (property) => {
+        if (!currentUser || !property) return;
+
+        try {
+            const historyDocRef = doc(db, "userBrowsingHistory", `${currentUser.uid}_${property.id}`);
+            await setDoc(
+                historyDocRef,
+                {
+                    userId: currentUser.uid,
+                    propertyId: property.id,
+                    propertyData: property,
+                    category: activeTab,
+                    viewedAt: serverTimestamp(),
+                },
+                { merge: true }
+            );
+        } catch (error) {
+            console.error("Error tracking property view:", error);
+        }
+    };
     const handleFavBtn = async (property) => {
         if (!currentUser) {
             alert("Please log in to save favorites.");
@@ -294,37 +362,134 @@ function Body() {
         }
     }, []);
 
-    // ✅ Filter Search
-    const handleSearch = () => {
+    // Helper function to normalize dates (handles strings, Date objects, and Firestore Timestamps)
+    const normalizeDate = (date) => {
+        if (!date) return null;
+        // If it's a Firestore Timestamp, convert to Date then to ISO string
+        if (date && typeof date.toDate === 'function') {
+            return date.toDate().toISOString().split('T')[0];
+        }
+        // If it's already a Date object, convert to ISO string
+        if (date instanceof Date) {
+            return date.toISOString().split('T')[0];
+        }
+        // If it's a string, return as-is (assuming it's in YYYY-MM-DD format)
+        return date;
+    };
+
+    // Helper function to check date overlap (same logic as BookingContext)
+    const isOverlapping = (startA, endA, startB, endB) => {
+        // Normalize dates to ensure consistent comparison
+        const aStart = normalizeDate(startA);
+        const bStart = normalizeDate(startB);
+        const aEnd = normalizeDate(endA);
+        const bEnd = normalizeDate(endB);
+        
+        if (!aStart || !aEnd || !bStart || !bEnd) return false;
+        
+        const aStartTime = new Date(aStart).getTime();
+        const aEndTime = new Date(aEnd).getTime();
+        const bStartTime = new Date(bStart).getTime();
+        const bEndTime = new Date(bEnd).getTime();
+        
+        if (Number.isNaN(aStartTime) || Number.isNaN(aEndTime) || Number.isNaN(bStartTime) || Number.isNaN(bEndTime)) return false;
+        // Overlap when ranges intersect: aStart <= bEnd && bStart <= aEnd
+        return aStartTime <= bEndTime && bStartTime <= aEndTime;
+    };
+
+    // Calculate total guests
+    const totalGuests = guests.adults + guests.children + guests.infants;
+    
+    // Update filterGuests when guests state changes
+    useEffect(() => {
+        if (totalGuests > 0) {
+            setFilterGuests(totalGuests.toString());
+        }
+    }, [totalGuests]);
+
+    // Update searchQuery when locationInput changes
+    useEffect(() => {
+        if (locationInput && !searchQuery) {
+            setSearchQuery(locationInput);
+        }
+    }, [locationInput]);
+
+    // ✅ Filter Search with improved date filtering
+    const handleSearch = useCallback(() => {
         let filtered = [...allProperties];
+        const query = searchQuery || locationInput;
 
         // Filter by location/title
-        if (searchQuery.trim()) {
+        if (query.trim()) {
             filtered = filtered.filter(
                 (p) =>
-                    p.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    p.title?.toLowerCase().includes(searchQuery.toLowerCase())
+                    p.location?.toLowerCase().includes(query.toLowerCase()) ||
+                    p.title?.toLowerCase().includes(query.toLowerCase())
             );
         }
 
         // Filter by guest count
-        if (filterGuests && Number(filterGuests) > 0) {
+        const guestCount = totalGuests || (filterGuests ? Number(filterGuests) : 0);
+        if (guestCount > 0) {
             filtered = filtered.filter(
-                (p) => p.maxGuests && Number(p.maxGuests) >= Number(filterGuests)
+                (p) => p.maxGuests && Number(p.maxGuests) >= guestCount
             );
         }
 
-        // Filter by date availability (basic check - can be enhanced with booking overlap)
+        // Filter by date availability - check for booking conflicts
         if (checkInDate && checkOutDate) {
-            // For now, just show all properties (you can add booking overlap check here)
-            // filtered = filtered.filter((p) => {
-            //     // Check if dates overlap with existing bookings
-            //     return true; // Placeholder
-            // });
+            // Validate dates
+            const start = new Date(checkInDate);
+            const end = new Date(checkOutDate);
+            
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+                filtered = filtered.filter((p) => {
+                    // Get bookings for this property
+                    const propertyBookings = allBookings.filter(
+                        (b) => b.listingId === p.id && b.status !== "cancelled"
+                    );
+                    
+                    // Check if search dates overlap with any existing booking
+                    const hasConflict = propertyBookings.some((booking) =>
+                        isOverlapping(checkInDate, checkOutDate, booking.startDate, booking.endDate)
+                    );
+                    
+                    // Only show properties that don't have conflicts
+                    return !hasConflict;
+                });
+            }
         }
 
         setProperties(filtered);
+    }, [searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties, allBookings]);
+
+    // Format date for display
+    const formatDateDisplay = (dateString) => {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        const month = date.toLocaleString('default', { month: 'short' });
+        const day = date.getDate();
+        return `${month} ${day}`;
     };
+
+    // Format guests display
+    const formatGuestsDisplay = () => {
+        const parts = [];
+        if (guests.adults > 0) parts.push(`${guests.adults} ${guests.adults === 1 ? 'guest' : 'guests'}`);
+        if (guests.children > 0) parts.push(`${guests.children} ${guests.children === 1 ? 'child' : 'children'}`);
+        if (guests.infants > 0) parts.push(`${guests.infants} ${guests.infants === 1 ? 'infant' : 'infants'}`);
+        return parts.length > 0 ? parts.join(', ') : 'Add guests';
+    };
+
+    // Auto-search with debouncing when inputs change
+    useEffect(() => {
+        // Debounce search execution
+        const timeoutId = setTimeout(() => {
+            handleSearch();
+        }, 500); // Wait 500ms after user stops typing/changing inputs
+
+        return () => clearTimeout(timeoutId);
+    }, [handleSearch]);
 
     // ✅ Share functionality
     const getListingUrl = (listingId) => {
@@ -381,54 +546,268 @@ function Body() {
                             Explore breathtaking destinations and create unforgettable memories
                         </p>
 
-                        <div className="search-bar">
-                            <div className="search-input-group">
-                                <MapPin size={20} className="search-icon" />
-                                <input
-                                    type="text"
-                                    placeholder="Where do you want to go?"
-                                    className="search-input"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
+                        {/* Airbnb-like Search Bar */}
+                        <div className="airbnb-search-bar">
+                            {/* Location Section */}
+                            <div 
+                                className={`search-section ${activeSearchModal === 'location' ? 'active' : ''}`}
+                                onClick={() => setActiveSearchModal('location')}
+                            >
+                                <div className="search-section-label">Where</div>
+                                <div className={`search-section-value ${!locationInput && !searchQuery ? 'placeholder' : ''}`}>
+                                    {locationInput || searchQuery || "Search destinations"}
+                                </div>
                             </div>
-                            <div className="search-input-group">
-                                <Calendar size={20} className="search-icon" />
-                                <input
-                                    type="date"
-                                    placeholder="Check-in"
-                                    className="search-input"
-                                    value={checkInDate}
-                                    onChange={(e) => setCheckInDate(e.target.value)}
-                                />
+
+                            {/* Dates Section */}
+                            <div 
+                                className={`search-section ${activeSearchModal === 'dates' ? 'active' : ''}`}
+                                onClick={() => setActiveSearchModal('dates')}
+                            >
+                                <div className="search-section-label">Check in</div>
+                                <div className={`search-section-value ${!checkInDate ? 'placeholder' : ''}`}>
+                                    {checkInDate ? formatDateDisplay(checkInDate) : "Add dates"}
+                                </div>
                             </div>
-                            <div className="search-input-group">
-                                <Calendar size={20} className="search-icon" />
-                                <input
-                                    type="date"
-                                    placeholder="Check-out"
-                                    className="search-input"
-                                    value={checkOutDate}
-                                    onChange={(e) => setCheckOutDate(e.target.value)}
-                                    min={checkInDate || undefined}
-                                />
+
+                            {/* Check-out Section */}
+                            <div 
+                                className={`search-section ${activeSearchModal === 'dates' ? 'active' : ''}`}
+                                onClick={() => setActiveSearchModal('dates')}
+                            >
+                                <div className="search-section-label">Check out</div>
+                                <div className={`search-section-value ${!checkOutDate ? 'placeholder' : ''}`}>
+                                    {checkOutDate ? formatDateDisplay(checkOutDate) : "Add dates"}
+                                </div>
                             </div>
-                            <div className="search-input-group">
-                                <Users size={20} className="search-icon" />
-                                <input
-                                    type="number"
-                                    placeholder="Guests"
-                                    className="search-input"
-                                    value={filterGuests}
-                                    onChange={(e) => setFilterGuests(e.target.value)}
-                                    min="1"
-                                />
+
+                            {/* Guests Section */}
+                            <div 
+                                className={`search-section search-section-guests ${activeSearchModal === 'guests' ? 'active' : ''}`}
+                                onClick={() => setActiveSearchModal('guests')}
+                            >
+                                <div className="search-section-label">Who</div>
+                                <div className={`search-section-value ${totalGuests === 0 ? 'placeholder' : ''}`}>
+                                    {formatGuestsDisplay()}
+                                </div>
                             </div>
-                            <button className="search-btn" onClick={handleSearch}>
+
+                            {/* Search Button */}
+                            <button 
+                                className="airbnb-search-btn" 
+                                onClick={() => {
+                                    handleSearch();
+                                    setActiveSearchModal(null);
+                                }}
+                            >
                                 <Search size={20} />
                                 <span>Search</span>
                             </button>
                         </div>
+
+                        {/* Location Modal */}
+                        {activeSearchModal === 'location' && (
+                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
+                                <div className="search-modal" onClick={(e) => e.stopPropagation()}>
+                                    <div className="search-modal-header">
+                                        <h3>Where to?</h3>
+                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <div className="search-modal-content">
+                                        <div className="location-input-container">
+                                            <MapPin size={20} className="search-icon" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search destinations"
+                                                className="location-search-input"
+                                                value={locationInput}
+                                                onChange={(e) => {
+                                                    setLocationInput(e.target.value);
+                                                    setSearchQuery(e.target.value);
+                                                }}
+                                                autoFocus
+                                            />
+                                        </div>
+                                        {locationSuggestions.length > 0 && (
+                                            <div className="location-suggestions">
+                                                {locationSuggestions.map((location, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="location-suggestion-item"
+                                                        onClick={() => {
+                                                            setLocationInput(location);
+                                                            setSearchQuery(location);
+                                                            setActiveSearchModal(null);
+                                                        }}
+                                                    >
+                                                        <MapPin size={18} />
+                                                        <span>{location}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Dates Modal */}
+                        {activeSearchModal === 'dates' && (
+                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
+                                <div className="search-modal search-modal-dates" onClick={(e) => e.stopPropagation()}>
+                                    <div className="search-modal-header">
+                                        <h3>Select dates</h3>
+                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <div className="search-modal-content">
+                                        <div className="date-inputs-container">
+                                            <div className="date-input-group">
+                                                <label>Check-in</label>
+                                                <input
+                                                    type="date"
+                                                    value={checkInDate}
+                                                    onChange={(e) => {
+                                                        setCheckInDate(e.target.value);
+                                                        if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
+                                                            setCheckOutDate("");
+                                                        }
+                                                    }}
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                />
+                                            </div>
+                                            <div className="date-input-group">
+                                                <label>Check-out</label>
+                                                <input
+                                                    type="date"
+                                                    value={checkOutDate}
+                                                    onChange={(e) => setCheckOutDate(e.target.value)}
+                                                    min={checkInDate || new Date().toISOString().split('T')[0]}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="modal-actions">
+                                            <button 
+                                                className="clear-btn"
+                                                onClick={() => {
+                                                    setCheckInDate("");
+                                                    setCheckOutDate("");
+                                                }}
+                                            >
+                                                Clear
+                                            </button>
+                                            <button 
+                                                className="done-btn"
+                                                onClick={() => setActiveSearchModal(null)}
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Guests Modal */}
+                        {activeSearchModal === 'guests' && (
+                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
+                                <div className="search-modal search-modal-guests" onClick={(e) => e.stopPropagation()}>
+                                    <div className="search-modal-header">
+                                        <h3>Who's coming?</h3>
+                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
+                                            <X size={20} />
+                                        </button>
+                                    </div>
+                                    <div className="search-modal-content">
+                                        <div className="guest-selector">
+                                            <div className="guest-row">
+                                                <div className="guest-row-info">
+                                                    <div className="guest-row-label">Adults</div>
+                                                    <div className="guest-row-desc">Ages 13 or above</div>
+                                                </div>
+                                                <div className="guest-counter">
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, adults: Math.max(1, prev.adults - 1) }))}
+                                                        disabled={guests.adults <= 1}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="counter-value">{guests.adults}</span>
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="guest-row">
+                                                <div className="guest-row-info">
+                                                    <div className="guest-row-label">Children</div>
+                                                    <div className="guest-row-desc">Ages 2-12</div>
+                                                </div>
+                                                <div className="guest-counter">
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, children: Math.max(0, prev.children - 1) }))}
+                                                        disabled={guests.children <= 0}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="counter-value">{guests.children}</span>
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="guest-row">
+                                                <div className="guest-row-info">
+                                                    <div className="guest-row-label">Infants</div>
+                                                    <div className="guest-row-desc">Under 2</div>
+                                                </div>
+                                                <div className="guest-counter">
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, infants: Math.max(0, prev.infants - 1) }))}
+                                                        disabled={guests.infants <= 0}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="counter-value">{guests.infants}</span>
+                                                    <button
+                                                        className="counter-btn"
+                                                        onClick={() => setGuests(prev => ({ ...prev, infants: prev.infants + 1 }))}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="modal-actions">
+                                            <button 
+                                                className="clear-btn"
+                                                onClick={() => setGuests({ adults: 1, children: 0, infants: 0 })}
+                                            >
+                                                Clear
+                                            </button>
+                                            <button 
+                                                className="done-btn"
+                                                onClick={() => setActiveSearchModal(null)}
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </section>
 
@@ -506,6 +885,7 @@ function Body() {
                                                             className="explore-btn"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                trackPropertyView(property);
                                                                 setSelectedDest(property);
                                                                 setShowDetail(true);
                                                             }}
@@ -577,6 +957,7 @@ function Body() {
                                                             className="explore-btn"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                trackPropertyView(property);
                                                                 setSelectedDest(property);
                                                                 setShowDetail(true);
                                                             }}
@@ -646,6 +1027,7 @@ function Body() {
                                                             className="explore-btn"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
+                                                                trackPropertyView(property);
                                                                 setSelectedDest(property);
                                                                 setShowDetail(true);
                                                             }}
@@ -760,11 +1142,24 @@ function Body() {
                                                 ₱{selectedDest.price?.toLocaleString()} / night
                                             </span>
                                         </h2>
-                                        <div style={{ position: "relative" }}>
+                                        <div style={{ display: "flex", gap: "8px", position: "relative" }}>
+                                            {selectedDest.ownerId && currentUser && currentUser.uid !== selectedDest.ownerId && (
+                                                <button
+                                                    onClick={() => {
+                                                        openChat(selectedDest.ownerId);
+                                                    }}
+                                                    className="icon-btn"
+                                                    style={{ padding: 8 }}
+                                                    title="Message host"
+                                                >
+                                                    <MessageCircle size={20} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => setShowShareMenu(!showShareMenu)}
                                                 className="icon-btn"
                                                 style={{ padding: 8 }}
+                                                title="Share"
                                             >
                                                 <Share2 size={20} />
                                             </button>
@@ -1070,7 +1465,7 @@ function Body() {
                                                     if (bookingCreated) {
                                                         await awardBookingPoints(bookingCreated, bookingCreated.totalPrice);
                                                     }
-                                                    setAvailabilityMsg(`Booking confirmed! PayPal payment successful (Order ID: ${result.orderId})`);
+                                                    setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. (Order ID: ${result.orderId})`);
                                                     setCouponCode("");
                                                     setCouponDiscount(0);
                                                     setBookingCreated(null);
@@ -1106,7 +1501,7 @@ function Body() {
                                                 </button>
                                             )}
                                         </div>
-                                        <ReviewList listingId={selectedDest.id} showAll={false} />
+                                        <ReviewList listingId={selectedDest.id} showAll={false} propertyImages={selectedDest.images || []} />
                                     </div>
 
                                     {showReviewForm && (
@@ -1171,10 +1566,10 @@ function Body() {
 
                                                         // Process payment
                                                         try {
-                                                            await pay(booking.totalPrice, booking.id, couponCode || null);
+                                                            await pay(booking.totalPrice, booking.id, couponCode || null, booking.hostId || null);
                                                             // Award points after successful payment
                                                             await awardBookingPoints(booking, booking.totalPrice);
-                                                            setAvailabilityMsg(`Booking confirmed! Payment of ₱${booking.totalPrice.toFixed(2)} processed.`);
+                                                            setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. Amount: ₱${booking.totalPrice.toFixed(2)}`);
                                                             setCouponCode("");
                                                             setCouponDiscount(0);
                                                             setValidationErrors({});

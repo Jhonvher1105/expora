@@ -3,7 +3,7 @@ import { MapPin, Calendar, Users, DollarSign, X, CheckCircle, Clock, XCircle, Us
 import "../cssFile/temp.css";
 import Header from "./Hheader";
 import Footer from "../generalFile/Footer";
-import { collection, query, where, getDocs, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -139,18 +139,62 @@ function HostBooking() {
         if (!window.confirm("Are you sure you want to confirm this booking?")) return;
 
         try {
+            // Get booking data to get the amount
+            const booking = bookings.find(b => b.id === bookingId);
+            if (!booking) {
+                alert("Booking not found");
+                return;
+            }
+
             const bookingRef = doc(db, "bookings", bookingId);
+            
+            // Update booking status
             await updateDoc(bookingRef, {
                 status: "confirmed",
-                updatedAt: new Date(),
-                confirmedAt: new Date()
+                updatedAt: serverTimestamp(),
+                confirmedAt: serverTimestamp()
             });
+
+            // Add host earnings only when booking is confirmed
+            if (booking.paymentStatus === "paid" && booking.totalPrice) {
+                try {
+                    // Get host wallet
+                    const hostWalletRef = doc(db, "wallets", currentUser.uid);
+                    const hostWalletSnap = await getDoc(hostWalletRef);
+                    
+                    let currentEarnings = 0;
+                    if (hostWalletSnap.exists()) {
+                        currentEarnings = hostWalletSnap.data().earnings || 0;
+                    }
+
+                    const newEarnings = currentEarnings + Number(booking.totalPrice);
+                    await updateDoc(hostWalletRef, {
+                        earnings: newEarnings,
+                        currency: "PHP",
+                        updatedAt: serverTimestamp(),
+                    });
+
+                    // Record host earnings transaction
+                    await addDoc(collection(db, "transactions"), {
+                        hostId: currentUser.uid,
+                        type: "earnings",
+                        amount: Number(booking.totalPrice),
+                        bookingId,
+                        currency: "PHP",
+                        status: "completed",
+                        createdAt: serverTimestamp(),
+                    });
+                } catch (earningsError) {
+                    console.error("Error adding host earnings:", earningsError);
+                    // Don't fail the confirmation if earnings fail
+                }
+            }
 
             // Update local state
             setBookings(bookings.map(b => 
                 b.id === bookingId ? { ...b, status: "confirmed", confirmedAt: new Date() } : b
             ));
-            alert("Booking confirmed successfully");
+            alert("Booking confirmed successfully! Earnings have been added to your wallet.");
         } catch (error) {
             console.error("Error confirming booking:", error);
             alert("Failed to confirm booking. Please try again.");
@@ -159,21 +203,21 @@ function HostBooking() {
 
     // Reject/Cancel booking
     const handleRejectBooking = async (bookingId) => {
-        if (!window.confirm("Are you sure you want to reject this booking?")) return;
+        if (!window.confirm("Are you sure you want to reject this booking? If payment was made, a refund may be required.")) return;
 
         try {
             const bookingRef = doc(db, "bookings", bookingId);
             await updateDoc(bookingRef, {
                 status: "cancelled",
-                updatedAt: new Date(),
-                cancelledAt: new Date()
+                updatedAt: serverTimestamp(),
+                cancelledAt: serverTimestamp()
             });
 
             // Update local state
             setBookings(bookings.map(b => 
                 b.id === bookingId ? { ...b, status: "cancelled", cancelledAt: new Date() } : b
             ));
-            alert("Booking rejected successfully");
+            alert("Booking rejected successfully. Note: If payment was made, refund processing may be required.");
         } catch (error) {
             console.error("Error rejecting booking:", error);
             alert("Failed to reject booking. Please try again.");

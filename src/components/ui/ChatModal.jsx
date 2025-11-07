@@ -18,7 +18,7 @@ import {
 import { useChat } from "../../context/ChatContext";
 
 export default function ChatModal() {
-    const { showChatModal, closeChat } = useChat();
+    const { showChatModal, closeChat, targetUserId } = useChat();
     const [currentUser, setCurrentUser] = useState(null);
     const [chatList, setChatList] = useState([]);
     const [activeChat, setActiveChat] = useState(null);
@@ -28,6 +28,7 @@ export default function ChatModal() {
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [messageUnsub, setMessageUnsub] = useState(null);
+    const [chatUserNames, setChatUserNames] = useState({}); // Store usernames for chat list
 
     useEffect(() => {
         const unsub = auth.onAuthStateChanged((user) => {
@@ -38,6 +39,71 @@ export default function ChatModal() {
         });
         return unsub;
     }, [showChatModal]);
+
+    // Auto-start chat with target user if provided
+    useEffect(() => {
+        if (showChatModal && targetUserId && currentUser && currentUser.uid !== targetUserId) {
+            const startChatWithTarget = async () => {
+                try {
+                    // Check if chat already exists
+                    const chatsRef = collection(db, "chats");
+                    const q = query(chatsRef, where("members", "array-contains", currentUser.uid));
+                    const snap = await getDocs(q);
+
+                    let existing = snap.docs.find((d) => {
+                        const data = d.data();
+                        return data.members.includes(targetUserId) && data.members.length === 2;
+                    });
+
+                    if (existing) {
+                        const chatData = { id: existing.id, ...existing.data() };
+                        const otherMemberId = chatData.members.find((m) => m !== currentUser.uid);
+                        if (otherMemberId) {
+                            try {
+                                const userDoc = await getDoc(doc(db, "users", otherMemberId));
+                                if (userDoc.exists()) {
+                                    const userData = userDoc.data();
+                                    setActiveChat({
+                                        ...chatData,
+                                        otherUserName: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || userData.email || "Unknown User",
+                                    });
+                                }
+                            } catch (error) {
+                                console.error("Error loading user name:", error);
+                            }
+                        }
+                    } else {
+                        // Create new chat
+                        const targetUserDoc = await getDoc(doc(db, "users", targetUserId));
+                        if (targetUserDoc.exists()) {
+                            const targetUserData = targetUserDoc.data();
+                            const newChatRef = await addDoc(chatsRef, {
+                                members: [currentUser.uid, targetUserId],
+                                createdAt: serverTimestamp(),
+                                updatedAt: serverTimestamp(),
+                            });
+
+                            const chatData = {
+                                id: newChatRef.id,
+                                members: [currentUser.uid, targetUserId],
+                                otherUserName: `${targetUserData.firstName || ""} ${targetUserData.lastName || ""}`.trim() || targetUserData.email || "Unknown User",
+                            };
+                            setActiveChat(chatData);
+                            // Update chatUserNames immediately for new chat
+                            setChatUserNames(prev => ({
+                                ...prev,
+                                [chatData.id]: chatData.otherUserName
+                            }));
+                            await loadUserChats();
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error starting chat with target user:", error);
+                }
+            };
+            startChatWithTarget();
+        }
+    }, [showChatModal, targetUserId, currentUser]);
 
     useEffect(() => {
         if (activeChat && currentUser) {
@@ -74,6 +140,31 @@ export default function ChatModal() {
             const snap = await getDocs(q);
             const chats = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
             setChatList(chats);
+
+            // Fetch usernames for all chats
+            const userNamePromises = chats.map(async (chat) => {
+                const otherMemberId = chat.members.find((m) => m !== currentUser.uid);
+                if (otherMemberId) {
+                    try {
+                        const userDoc = await getDoc(doc(db, "users", otherMemberId));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            const userName = `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || userData.email || "Unknown User";
+                            return { chatId: chat.id, userName };
+                        }
+                    } catch (error) {
+                        console.error(`Error loading user name for chat ${chat.id}:`, error);
+                    }
+                }
+                return { chatId: chat.id, userName: "Unknown User" };
+            });
+
+            const userNameResults = await Promise.all(userNamePromises);
+            const userNameMap = {};
+            userNameResults.forEach(({ chatId, userName }) => {
+                userNameMap[chatId] = userName;
+            });
+            setChatUserNames(userNameMap);
         } catch (error) {
             console.error("Error loading chats:", error);
         } finally {
@@ -184,6 +275,11 @@ export default function ChatModal() {
                     otherUserName: `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || userData.email || "Unknown User",
                 };
                 setActiveChat(chatData);
+                // Update chatUserNames immediately for new chat
+                setChatUserNames(prev => ({
+                    ...prev,
+                    [chatData.id]: chatData.otherUserName
+                }));
                 await loadUserChats();
             }
 
@@ -453,7 +549,7 @@ export default function ChatModal() {
                                                 }}
                                             >
                                                 <div style={{ fontWeight: "600", color: "var(--text)", marginBottom: "4px" }}>
-                                                    Chat with User
+                                                    {chatUserNames[chat.id] || "Loading..."}
                                                 </div>
                                                 <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)" }}>
                                                     {chat.lastMessage || "No messages yet"}

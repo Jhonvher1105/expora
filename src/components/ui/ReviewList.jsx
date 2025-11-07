@@ -2,14 +2,20 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, query, where, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import StarRating from "./StarRating";
-import { ThumbsUp, Flag } from "lucide-react";
+import { ThumbsUp, Flag, X } from "lucide-react";
 
-export default function ReviewList({ listingId, showAll = false }) {
+export default function ReviewList({ listingId, showAll = false, propertyImages = [] }) {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, 5, 4, 3, 2, 1
   const [sortBy, setSortBy] = useState("newest"); // newest, oldest, highest, lowest
   const [userNames, setUserNames] = useState({});
+  const [selectedImageIndex, setSelectedImageIndex] = useState(null);
+  
+  // Get first 5 images (or all if less than 5)
+  const displayImages = propertyImages && propertyImages.length > 0 
+    ? propertyImages.slice(0, Math.min(5, propertyImages.length))
+    : [];
 
   useEffect(() => {
     loadReviews();
@@ -156,21 +162,119 @@ export default function ReviewList({ listingId, showAll = false }) {
 
   return (
     <div>
+      {/* Property Image Gallery */}
+      {displayImages.length > 0 && (
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ marginBottom: "12px", fontSize: "18px", fontWeight: "600", color: "var(--text)" }}>Property Images</h3>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+            gap: "8px"
+          }}>
+            {displayImages.map((image, index) => (
+              <div
+                key={index}
+                onClick={() => setSelectedImageIndex(index)}
+                style={{
+                  aspectRatio: "1",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  border: "2px solid rgba(255, 255, 255, 0.1)",
+                  transition: "transform 0.2s, border-color 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.borderColor = "var(--primary)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                }}
+              >
+                <img
+                  src={image}
+                  alt={`Property image ${index + 1}`}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover"
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {selectedImageIndex !== null && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.9)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px"
+          }}
+          onClick={() => setSelectedImageIndex(null)}
+        >
+          <button
+            onClick={() => setSelectedImageIndex(null)}
+            style={{
+              position: "absolute",
+              top: "20px",
+              right: "20px",
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "none",
+              borderRadius: "50%",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "white"
+            }}
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={displayImages[selectedImageIndex]}
+            alt={`Property image ${selectedImageIndex + 1}`}
+            style={{
+              maxWidth: "90%",
+              maxHeight: "90%",
+              objectFit: "contain",
+              borderRadius: "8px"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
       {/* Rating Summary */}
       <div style={{
         display: "flex",
         gap: "32px",
         marginBottom: "24px",
         padding: "20px",
-        background: "#f8f9fa",
+        background: "rgba(255, 255, 255, 0.02)",
+        border: "1px solid rgba(255, 255, 255, 0.06)",
         borderRadius: "8px"
       }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "48px", fontWeight: "bold", color: "#333" }}>
+          <div style={{ fontSize: "48px", fontWeight: "bold", color: "var(--text)" }}>
             {avgRating.toFixed(1)}
           </div>
           <StarRating rating={Math.round(avgRating)} setRating={() => {}} readonly={true} size={20} />
-          <div style={{ fontSize: "14px", color: "#666", marginTop: "8px" }}>
+          <div style={{ fontSize: "14px", color: "rgba(255, 255, 255, 0.7)", marginTop: "8px" }}>
             {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
           </div>
         </div>
@@ -182,8 +286,8 @@ export default function ReviewList({ listingId, showAll = false }) {
             const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
             return (
               <div key={star} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-                <div style={{ width: "60px", textAlign: "right", fontSize: "14px" }}>{star} ⭐</div>
-                <div style={{ flex: 1, height: "8px", background: "#e0e0e0", borderRadius: "4px", overflow: "hidden" }}>
+                <div style={{ width: "60px", textAlign: "right", fontSize: "14px", color: "var(--text)" }}>{star} ⭐</div>
+                <div style={{ flex: 1, height: "8px", background: "rgba(255, 255, 255, 0.1)", borderRadius: "4px", overflow: "hidden" }}>
                   <div style={{
                     height: "100%",
                     background: "#fbbf24",
@@ -191,7 +295,7 @@ export default function ReviewList({ listingId, showAll = false }) {
                     transition: "width 0.3s"
                   }} />
                 </div>
-                <div style={{ width: "40px", textAlign: "left", fontSize: "14px", color: "#666" }}>
+                <div style={{ width: "40px", textAlign: "left", fontSize: "14px", color: "rgba(255, 255, 255, 0.7)" }}>
                   {count}
                 </div>
               </div>
@@ -209,14 +313,28 @@ export default function ReviewList({ listingId, showAll = false }) {
         alignItems: "center"
       }}>
         <div>
-          <label style={{ marginRight: "8px", fontSize: "14px" }}>Filter by Rating:</label>
+          <label style={{ marginRight: "8px", fontSize: "14px", color: "var(--text)" }}>Filter by Rating:</label>
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             style={{
-              padding: "6px 12px",
-              border: "1px solid #ddd",
-              borderRadius: "4px"
+              padding: "8px 12px",
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              borderRadius: "8px",
+              color: "var(--text)",
+              fontSize: "14px",
+              cursor: "pointer",
+              outline: "none",
+              transition: "all 0.2s ease"
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "var(--primary)";
+              e.target.style.background = "rgba(255, 255, 255, 0.05)";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "rgba(255, 255, 255, 0.06)";
+              e.target.style.background = "rgba(255, 255, 255, 0.02)";
             }}
           >
             <option value="all">All Ratings</option>
@@ -228,14 +346,28 @@ export default function ReviewList({ listingId, showAll = false }) {
           </select>
         </div>
         <div>
-          <label style={{ marginRight: "8px", fontSize: "14px" }}>Sort by:</label>
+          <label style={{ marginRight: "8px", fontSize: "14px", color: "var(--text)" }}>Sort by:</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             style={{
-              padding: "6px 12px",
-              border: "1px solid #ddd",
-              borderRadius: "4px"
+              padding: "8px 12px",
+              background: "rgba(255, 255, 255, 0.02)",
+              border: "1px solid rgba(255, 255, 255, 0.06)",
+              borderRadius: "8px",
+              color: "var(--text)",
+              fontSize: "14px",
+              cursor: "pointer",
+              outline: "none",
+              transition: "all 0.2s ease"
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = "var(--primary)";
+              e.target.style.background = "rgba(255, 255, 255, 0.05)";
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = "rgba(255, 255, 255, 0.06)";
+              e.target.style.background = "rgba(255, 255, 255, 0.02)";
             }}
           >
             <option value="newest">Newest First</option>
@@ -252,8 +384,9 @@ export default function ReviewList({ listingId, showAll = false }) {
           <div style={{
             padding: "40px",
             textAlign: "center",
-            color: "#666",
-            background: "#f8f9fa",
+            color: "rgba(255, 255, 255, 0.7)",
+            background: "rgba(255, 255, 255, 0.02)",
+            border: "1px solid rgba(255, 255, 255, 0.06)",
             borderRadius: "8px"
           }}>
             No reviews yet. Be the first to review!
@@ -266,27 +399,27 @@ export default function ReviewList({ listingId, showAll = false }) {
                 key={review.id}
                 style={{
                   padding: "20px",
-                  background: "#fff",
+                  background: "rgba(255, 255, 255, 0.02)",
                   borderRadius: "8px",
-                  border: "1px solid #e0e0e0",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
                   boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "12px" }}>
                   <div>
-                    <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
+                    <div style={{ fontWeight: "bold", marginBottom: "4px", color: "var(--text)" }}>
                       {userNames[review.userId] || "Anonymous"}
                     </div>
                     <StarRating rating={review.rating} setRating={() => {}} readonly={true} size={16} />
                   </div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>
+                  <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.7)" }}>
                     {date.toLocaleDateString()}
                   </div>
                 </div>
-                <div style={{ color: "#333", lineHeight: "1.6", marginBottom: "12px" }}>
+                <div style={{ color: "rgba(255, 255, 255, 0.9)", lineHeight: "1.6", marginBottom: "12px" }}>
                   {review.comment}
                 </div>
-                <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "#666" }}>
+                <div style={{ display: "flex", gap: "16px", fontSize: "12px", color: "rgba(255, 255, 255, 0.7)" }}>
                   <button
                     style={{
                       display: "flex",
@@ -294,10 +427,17 @@ export default function ReviewList({ listingId, showAll = false }) {
                       gap: "4px",
                       background: "none",
                       border: "none",
-                      color: "#666",
+                      color: "rgba(255, 255, 255, 0.7)",
                       cursor: "pointer",
                       padding: "4px 8px",
-                      borderRadius: "4px"
+                      borderRadius: "4px",
+                      transition: "color 0.2s"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.color = "var(--primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.7)";
                     }}
                     onClick={() => {
                       // TODO: Implement helpful functionality
@@ -314,14 +454,17 @@ export default function ReviewList({ listingId, showAll = false }) {
                       gap: "4px",
                       background: "none",
                       border: "none",
-                      color: "#666",
+                      color: "rgba(255, 255, 255, 0.7)",
                       cursor: "pointer",
                       padding: "4px 8px",
-                      borderRadius: "4px"
+                      borderRadius: "4px",
+                      transition: "color 0.2s"
                     }}
-                    onClick={() => {
-                      // TODO: Implement report functionality
-                      alert("Report feature coming soon!");
+                    onMouseEnter={(e) => {
+                      e.target.style.color = "var(--primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.7)";
                     }}
                   >
                     <Flag size={14} />

@@ -101,7 +101,45 @@ export function WalletProvider({ children }) {
     }
   }, [currentUser]);
 
-  const pay = useCallback(async (amount, bookingId, couponCode = null) => {
+  // Add host earnings
+  const addHostEarnings = useCallback(async (hostId, amount, bookingId) => {
+    try {
+      const hostWalletRef = doc(db, "wallets", hostId);
+      const hostWalletSnap = await getDoc(hostWalletRef);
+      
+      let currentEarnings = 0;
+      if (hostWalletSnap.exists()) {
+        currentEarnings = hostWalletSnap.data().earnings || 0;
+      }
+
+      const newEarnings = currentEarnings + Number(amount);
+      await setDoc(
+        hostWalletRef,
+        {
+          earnings: newEarnings,
+          currency: "PHP",
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      // Record host earnings transaction
+      await addDoc(collection(db, "transactions"), {
+        hostId,
+        type: "earnings",
+        amount: Number(amount),
+        bookingId,
+        currency: "PHP",
+        status: "completed",
+        createdAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error adding host earnings:", error);
+      throw error;
+    }
+  }, []);
+
+  const pay = useCallback(async (amount, bookingId, couponCode = null, hostId = null) => {
     if (!currentUser || amount <= 0) throw new Error("Invalid amount");
     
     let finalAmount = amount;
@@ -125,7 +163,7 @@ export function WalletProvider({ children }) {
       const newBalance = balance - finalAmount;
       await setDoc(walletRef, { balance: newBalance, currency: "PHP", updatedAt: serverTimestamp() }, { merge: true });
 
-      // Record transaction
+      // Record guest payment transaction
       await addDoc(collection(db, "transactions"), {
         userId: currentUser.uid,
         type: "payment",
@@ -140,13 +178,16 @@ export function WalletProvider({ children }) {
         createdAt: serverTimestamp(),
       });
 
+      // Note: Host earnings will be added when host manually confirms the booking
+      // This prevents earnings from being added if host rejects the booking
+
       setBalance(newBalance);
       return { success: true, newBalance, finalAmount, discountAmount };
     } catch (error) {
       console.error("Error processing payment:", error);
       throw error;
     }
-  }, [currentUser, balance, applyCoupon]);
+  }, [currentUser, balance, applyCoupon, addHostEarnings]);
 
   const value = useMemo(() => ({
     balance,
@@ -154,7 +195,8 @@ export function WalletProvider({ children }) {
     topUp,
     pay,
     applyCoupon,
-  }), [balance, loading, topUp, pay, applyCoupon]);
+    addHostEarnings,
+  }), [balance, loading, topUp, pay, applyCoupon, addHostEarnings]);
 
   return (
     <WalletContext.Provider value={value}>

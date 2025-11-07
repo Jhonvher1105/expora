@@ -8,9 +8,11 @@ import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
 import HostBooking from './components/hostFolder/HostBooking';
 import FavPage from './components/UserFolder/FavPage';
+import SuggestionsPage from './components/UserFolder/SuggestionsPage';
 import Rewards from './components/UserFolder/Rewards';
 import PointsHistory from './components/UserFolder/PointsHistory';
 import MyBooking from './components/UserFolder/MyBooking';
+import WalletPage from './components/UserFolder/WalletPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 
@@ -30,9 +32,11 @@ function App() {
                 <Route path="/HostPage" element={<HostBody/>}/>
                 <Route path="/HostBooking" element={<HostBooking/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
+                <Route path="/SuggestionsPage" element={<SuggestionsPage/>}/>
                 <Route path="/Rewards" element={<Rewards/>}/>
                 <Route path="/PointsHistory" element={<PointsHistory/>}/>
                 <Route path="/MyBooking" element={<MyBooking/>}/>
+                <Route path="/WalletPage" element={<WalletPage/>}/>
                 
                 <Route path="/HostingType" element={<HostingType/>}/>
                 <Route path="/Service" element={<Service/>}/>

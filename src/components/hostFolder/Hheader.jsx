@@ -111,7 +111,7 @@ function Header() {
         <header className="header" role="banner">
             <div className="header-container">
                 {/* ✅ Left Section (Logo + Brand) */}
-                <Link className="header-left" to={'/Home'}>
+                <Link className="header-left" to={'/HostPage'}>
                     <img src={logo} width={40} height={40} alt="Expora logo" />
                     <span className="logo-text">Explora</span>
                 </Link>
@@ -153,9 +153,9 @@ function Header() {
                                 <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
                                     Coupons
                                 </button>
-                                <button className="user-menu-item" type="button" role="menuitem">
+                                <Link to="/WalletPage" className="user-menu-item" role="menuitem">
                                     E-Wallet
-                                </button>
+                                </Link>
                                 <button className="user-menu-item" type="button" role="menuitem">
                                     Suggestion and Recommendation
                                 </button>

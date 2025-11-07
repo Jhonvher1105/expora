@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Calendar, Users, Gift, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import Header from './Header';
 import Footer from '../generalFile/Footer';
 import { usePoints } from '../../context/PointsContext';
+import { auth, db } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+// Cloudinary configuration
+const CLOUD_NAME = "dv42rw8m7";
+const UPLOAD_PRESET = "unsigned_preset";
 
 export default function ProfileForm() {
     const { points, loading: pointsLoading } = usePoints();
+    const [currentUser, setCurrentUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [profileImage, setProfileImage] = useState(null);
+    const [profileImageUrl, setProfileImageUrl] = useState(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [showImageUpload, setShowImageUpload] = useState(false);
     const [formData, setFormData] = useState({
         email: "",
         firstName: "",
@@ -30,30 +43,204 @@ export default function ProfileForm() {
         }));
     };
 
-    const handleSubmit = (e) => {
-        e?.preventDefault();
-        // simple validation example
-        if (!formData.email) {
-            alert("Please provide an email address.");
-            return;
-        }
-        setShowSave(false);
-        console.log('Form submitted:', formData);
-        // TODO: send to backend / firebase etc.
-    };
-
     const [showSave, setShowSave] = useState(false);
     const [showEdit, setShowEdit] = useState(true);
+    const [originalFormData, setOriginalFormData] = useState(null);
+
+    // ✅ Track current user
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        return unsubscribe;
+    }, []);
+
+    // ✅ Fetch user data from Firestore
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!currentUser) {
+                setLoading(false);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const userDocRef = doc(db, "users", currentUser.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (userDoc.exists()) {
+                    const userData = userDoc.data();
+                    const userFormData = {
+                        email: userData.email || currentUser.email || "",
+                        firstName: userData.firstName || "",
+                        middleName: userData.middleName || "",
+                        lastName: userData.lastName || "",
+                        dateOfBirth: userData.dateOfBirth || "",
+                        gender: userData.gender || "",
+                        phoneNumber: userData.phoneNumber || "",
+                        city: userData.city || "",
+                        state: userData.state || "",
+                        zipCode: userData.zipCode || "",
+                        houseNumber: userData.houseNumber || ""
+                    };
+                    setFormData(userFormData);
+                    setOriginalFormData(userFormData);
+                    
+                    // Set profile image if exists
+                    if (userData.profileImage) {
+                        setProfileImageUrl(userData.profileImage);
+                    }
+                } else {
+                    // User document doesn't exist, use auth email
+                    const defaultData = {
+                        email: currentUser.email || "",
+                        firstName: "",
+                        middleName: "",
+                        lastName: "",
+                        dateOfBirth: "",
+                        gender: "",
+                        phoneNumber: "",
+                        city: "",
+                        state: "",
+                        zipCode: "",
+                        houseNumber: ""
+                    };
+                    setFormData(defaultData);
+                    setOriginalFormData(defaultData);
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [currentUser]);
 
     const handleEditClick = () => {
-    setShowSave(true); 
-    setShowEdit(false);
+        setShowSave(true);
+        setShowEdit(false);
+        setShowImageUpload(true);
     };
 
     const handleCancelBtn = () => {
+        // Reset to original data
+        if (originalFormData) {
+            setFormData(originalFormData);
+        }
         setShowSave(false);
         setShowEdit(true);
+        setShowImageUpload(false);
+        setProfileImage(null);
     };
+
+    // ✅ Handle profile image upload
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith("image/")) {
+                alert("Please select a valid image file");
+                return;
+            }
+            // Validate file size (max 3MB)
+            if (file.size > 3 * 1024 * 1024) {
+                alert("Image size must be less than 3MB");
+                return;
+            }
+            setProfileImage(file);
+            // Create preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setProfileImageUrl(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    // ✅ Upload image to Cloudinary
+    const uploadImageToCloudinary = async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", UPLOAD_PRESET);
+
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+            method: "POST",
+            body: formData,
+        });
+
+        if (!res.ok) throw new Error("Failed to upload image to Cloudinary");
+        const data = await res.json();
+        return data.secure_url;
+    };
+
+    // ✅ Save changes to Firestore
+    const handleSubmit = async (e) => {
+        e?.preventDefault();
+        
+        if (!currentUser) {
+            alert("Please log in to save your profile.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            let imageUrl = profileImageUrl;
+
+            // Upload new image if selected
+            if (profileImage) {
+                setUploadingImage(true);
+                imageUrl = await uploadImageToCloudinary(profileImage);
+                setProfileImageUrl(imageUrl);
+                setUploadingImage(false);
+            }
+
+            // Update Firestore
+            const userDocRef = doc(db, "users", currentUser.uid);
+            const updateData = {
+                ...formData,
+                profileImage: imageUrl || null,
+                updatedAt: serverTimestamp(),
+            };
+
+            // If user document doesn't exist, create it
+            const userDoc = await getDoc(userDocRef);
+            if (!userDoc.exists()) {
+                updateData.createdAt = serverTimestamp();
+                updateData.email = currentUser.email || formData.email;
+            }
+
+            await setDoc(userDocRef, updateData, { merge: true });
+
+            // Update original data
+            setOriginalFormData({ ...formData });
+            
+            alert("Profile updated successfully! ✅");
+            setShowSave(false);
+            setShowEdit(true);
+            setShowImageUpload(false);
+            setProfileImage(null);
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            alert("Failed to save profile. Please try again.");
+        } finally {
+            setLoading(false);
+            setUploadingImage(false);
+        }
+    };
+
+    if (loading && !currentUser) {
+        return (
+            <>
+                <Header />
+                <div className="profile-container" style={{ padding: "2rem", textAlign: "center" }}>
+                    <p>Loading profile...</p>
+                </div>
+                <Footer />
+            </>
+        );
+    }
 
     return (
         <>
@@ -67,15 +254,56 @@ export default function ProfileForm() {
                         <div className="profile-header-content">
                             <h1>Profile</h1>
                             <div className="profile-img-wrapper">
-                                <img
-                                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop"
-                                    alt="Profile"
-                                />
-                                <button type="button" className="edit-img">📷</button>
+                                {profileImageUrl ? (
+                                    <img
+                                        src={profileImageUrl}
+                                        alt="Profile"
+                                    />
+                                ) : (
+                                    <div style={{
+                                        width: "100%",
+                                        height: "100%",
+                                        borderRadius: "50%",
+                                        background: "var(--primary-gradient)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "4rem",
+                                        color: "#fff"
+                                    }}>
+                                        <User size={80} />
+                                    </div>
+                                )}
+                                {showImageUpload && (
+                                    <label htmlFor="profile-image-upload" className="edit-img" style={{ cursor: "pointer" }}>
+                                        📷
+                                        <input
+                                            id="profile-image-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageChange}
+                                            style={{ display: "none" }}
+                                        />
+                                    </label>
+                                )}
                             </div>
-                            <button type="button" className="edit-profile-btn">
+                            <button 
+                                type="button" 
+                                className="edit-profile-btn"
+                                onClick={handleEditClick}
+                                disabled={loading}
+                            >
                                 <span>✏️</span> Edit Profile
                             </button>
+                            {uploadingImage && (
+                                <div style={{ 
+                                    marginTop: "8px", 
+                                    color: "rgba(255,255,255,0.7)",
+                                    fontSize: "0.9rem"
+                                }}>
+                                    Uploading image...
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -180,7 +408,9 @@ export default function ProfileForm() {
                                             name="firstName"
                                             value={formData.firstName}
                                             onChange={handleChange}
-                                            placeholder="Enter first name"
+                                            placeholder={currentUser.firstName}
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -197,7 +427,9 @@ export default function ProfileForm() {
                                             name="middleName"
                                             value={formData.middleName}
                                             onChange={handleChange}
-                                            placeholder="Enter middle name"
+                                            placeholder={currentUser.middleName}
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -231,6 +463,8 @@ export default function ProfileForm() {
                                             name="dateOfBirth"
                                             value={formData.dateOfBirth}
                                             onChange={handleChange}
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -246,6 +480,7 @@ export default function ProfileForm() {
                                             name="gender"
                                             value={formData.gender}
                                             onChange={handleChange}
+                                            disabled={showEdit}
                                         >
                                             <option value="">Select gender</option>
                                             <option value="male">Male</option>
@@ -273,6 +508,8 @@ export default function ProfileForm() {
                                             value={formData.email}
                                             onChange={handleChange}
                                             placeholder="Enter Email address"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -287,6 +524,8 @@ export default function ProfileForm() {
                                             value={formData.phoneNumber}
                                             onChange={handleChange}
                                             placeholder="Enter Phone number"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -308,6 +547,8 @@ export default function ProfileForm() {
                                             value={formData.houseNumber}
                                             onChange={handleChange}
                                             placeholder="Enter House number/Lot number"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -322,6 +563,8 @@ export default function ProfileForm() {
                                             value={formData.city}
                                             onChange={handleChange}
                                             placeholder="Enter City name"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -336,6 +579,8 @@ export default function ProfileForm() {
                                             value={formData.state}
                                             onChange={handleChange}
                                             placeholder="Enter State name"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -350,6 +595,8 @@ export default function ProfileForm() {
                                             value={formData.zipCode}
                                             onChange={handleChange}
                                             placeholder="Enter Zipcode"
+                                            disabled={showEdit}
+                                            readOnly={showEdit}
                                         />
                                     </div>
                                 </fieldset>
@@ -370,7 +617,15 @@ export default function ProfileForm() {
                             )}
 
                             {showSave && (
-                            <button type="button" className="save-btn" id="saveBtn" onClick={handleSubmit}>Save Changes</button>
+                            <button 
+                                type="button" 
+                                className="save-btn" 
+                                id="saveBtn" 
+                                onClick={handleSubmit}
+                                disabled={loading || uploadingImage}
+                            >
+                                {loading || uploadingImage ? "Saving..." : "Save Changes"}
+                            </button>
                             )}
 
                             <button type="button" className="cancel-btn" onClick={handleCancelBtn}>
