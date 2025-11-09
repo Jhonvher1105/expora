@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { MapPin, Star, X, Sparkles } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
+import MapViewer from "../ui/MapViewer";
 
 import {
     collection,
@@ -101,8 +102,9 @@ function SuggestionsPage() {
 
             browsingHistory.forEach((item) => {
                 if (item.propertyData) {
-                    if (item.propertyData.location) {
-                        preferences.locations.add(item.propertyData.location.toLowerCase());
+                    const locationStr = item.propertyData.location?.address || item.propertyData.location;
+                    if (locationStr && typeof locationStr === 'string') {
+                        preferences.locations.add(locationStr.toLowerCase());
                     }
                     if (item.propertyData.price) {
                         preferences.priceRanges.push(item.propertyData.price);
@@ -131,7 +133,8 @@ function SuggestionsPage() {
                     let score = 0;
 
                     // Priority 1: Location match (highest weight: 50 points)
-                    if (property.location && preferences.locations.has(property.location.toLowerCase())) {
+                    const locationStr = property.location?.address || property.location;
+                    if (locationStr && typeof locationStr === 'string' && preferences.locations.has(locationStr.toLowerCase())) {
                         score += 50;
                     }
 
@@ -262,7 +265,7 @@ function SuggestionsPage() {
                                                         </span>
                                                     </div>
                                                     <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location}
+                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
                                                     </p>
                                                     <div className="destination-footer">
                                                         <div className="rating">
@@ -357,8 +360,17 @@ function SuggestionsPage() {
                                         </span>
                                     </h2>
                                     <p className="modal-location">
-                                        <MapPin size={14} /> {selectedDest.location}
+                                        <MapPin size={14} /> {selectedDest.location?.address || selectedDest.location || "Location not specified"}
                                     </p>
+                                    
+                                    {/* Map Viewer */}
+                                    {selectedDest.location && (selectedDest.location.lat && selectedDest.location.lng) && (
+                                        <MapViewer 
+                                            location={selectedDest.location} 
+                                            propertyTitle={selectedDest.title}
+                                        />
+                                    )}
+                                    
                                     <p className="modal-description">{selectedDest.description}</p>
 
                                     {/* Amenities */}

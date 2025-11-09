@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
-import { BarChart3, CreditCard, DollarSign, Settings, FileText, Users, Home, LogOut } from "lucide-react";
+import { 
+  BarChart3, CreditCard, DollarSign, Settings, FileText, Users, Home, 
+  LogOut, Menu, X, Shield 
+} from "lucide-react";
 import { auth } from "../../firebase";
 import "../cssFile/temp.css";
+import "./AdminDashboard.css";
 
-export default function AdminHeader({ activeTab, setActiveTab }) {
+export default function AdminHeader({ activeTab, setActiveTab, sidebarOpen, setSidebarOpen }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -27,63 +31,74 @@ export default function AdminHeader({ activeTab, setActiveTab }) {
     { id: "users", label: "Users", icon: Users },
   ];
 
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setSidebarOpen]);
+
   return (
-    <header style={{
-      background: "#fff",
-      borderBottom: "1px solid #e0e0e0",
-      padding: "16px 24px",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <h1 style={{ margin: 0, fontSize: "24px", fontWeight: "bold", color: "#333" }}>Admin Panel</h1>
-        <nav style={{ display: "flex", gap: 8 }}>
+    <>
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="admin-sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Top Header Bar */}
+      <header className="admin-top-header">
+        <div className="admin-header-left">
+          <button 
+            className="admin-menu-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle menu"
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+          <div className="admin-logo">
+            <Shield size={28} />
+            <h1 className="admin-logo-text">Admin Panel</h1>
+          </div>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="admin-logout-btn"
+        >
+          <LogOut size={18} />
+          <span className="admin-logout-text">Logout</span>
+        </button>
+      </header>
+
+      {/* Sidebar Navigation */}
+      <aside className={`admin-sidebar ${sidebarOpen ? "admin-sidebar-open" : ""}`}>
+        <nav className="admin-nav">
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                style={{
-                  padding: "8px 16px",
-                  border: "none",
-                  background: activeTab === item.id ? "#007bff" : "transparent",
-                  color: activeTab === item.id ? "#fff" : "#333",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  transition: "all 0.2s"
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setSidebarOpen(false);
                 }}
+                className={`admin-nav-item ${isActive ? "admin-nav-item-active" : ""}`}
               >
-                <Icon size={16} />
-                {item.label}
+                <Icon size={20} />
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
-      </div>
-      <button
-        onClick={handleLogout}
-        style={{
-          padding: "8px 16px",
-          border: "1px solid #ddd",
-          background: "#fff",
-          color: "#333",
-          borderRadius: "4px",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 8
-        }}
-      >
-        <LogOut size={16} />
-        Logout
-      </button>
-    </header>
+      </aside>
+    </>
   );
 }
-

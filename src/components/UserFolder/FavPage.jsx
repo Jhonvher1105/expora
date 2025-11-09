@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, MapPin, Calendar, Star, Heart, X } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
+import MapViewer from "../ui/MapViewer";
 
 import {
     collection,
@@ -243,7 +244,7 @@ function Body() {
                                                 <div className="destination-content">
                                                     <h3>{fav.propertyData.title}</h3>
                                                     <p>
-                                                        <MapPin size={14} /> {fav.propertyData.location}
+                                                        <MapPin size={14} /> {fav.propertyData.location?.address || fav.propertyData.location || "Location not specified"}
                                                     </p>
                                                     <button
                                                         className="explore-btn"
@@ -285,7 +286,7 @@ function Body() {
                                                 <div className="destination-content">
                                                     <h3>{fav.propertyData.title}</h3>
                                                     <p>
-                                                        <MapPin size={14} /> {fav.propertyData.location}
+                                                        <MapPin size={14} /> {fav.propertyData.location?.address || fav.propertyData.location || "Location not specified"}
                                                     </p>
                                                     <button
                                                         className="explore-btn"
@@ -327,7 +328,7 @@ function Body() {
                                                 <div className="destination-content">
                                                     <h3>{fav.propertyData.title}</h3>
                                                     <p>
-                                                        <MapPin size={14} /> {fav.propertyData.location}
+                                                        <MapPin size={14} /> {fav.propertyData.location?.address || fav.propertyData.location || "Location not specified"}
                                                     </p>
                                                     <button
                                                         className="explore-btn"
@@ -379,8 +380,17 @@ function Body() {
                                         </span>
                                     </h2>
                                     <p className="modal-location">
-                                        <MapPin size={14} /> {selectedDest.location}
+                                        <MapPin size={14} /> {selectedDest.location?.address || selectedDest.location || "Location not specified"}
                                     </p>
+                                    
+                                    {/* Map Viewer */}
+                                    {selectedDest.location && (selectedDest.location.lat && selectedDest.location.lng) && (
+                                        <MapViewer 
+                                            location={selectedDest.location} 
+                                            propertyTitle={selectedDest.title}
+                                        />
+                                    )}
+                                    
                                     <p className="modal-description">{selectedDest.description}</p>
 
                                     {/* Amenities */}

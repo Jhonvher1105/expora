@@ -80,15 +80,20 @@ export default function Reports({ bookings, users, listings }) {
         break;
       case "listings":
         headers = ["ID", "Title", "Category", "Location", "Price", "Owner ID", "Created At"];
-        rows = filteredData.map(l => [
-          l.id,
-          l.title || "",
-          l.category || "",
-          l.location || "",
-          l.price || 0,
-          l.ownerId || "",
-          l.createdAt?.toDate ? l.createdAt.toDate().toLocaleString() : ""
-        ]);
+        rows = filteredData.map(l => {
+          const locationStr = typeof l.location === 'string' 
+            ? l.location 
+            : (l.location?.address || JSON.stringify(l.location) || "");
+          return [
+            l.id,
+            l.title || "",
+            l.category || "",
+            locationStr,
+            l.price || 0,
+            l.ownerId || "",
+            l.createdAt?.toDate ? l.createdAt.toDate().toLocaleString() : ""
+          ];
+        });
         break;
     }
 
@@ -170,13 +175,18 @@ export default function Reports({ bookings, users, listings }) {
         break;
       case "listings":
         headers = ["ID", "Title", "Category", "Location", "Price"];
-        rows = filteredData.map(l => [
-          l.id.substring(0, 8),
-          l.title || "N/A",
-          l.category || "N/A",
-          l.location || "N/A",
-          `₱${l.price || 0}`
-        ]);
+        rows = filteredData.map(l => {
+          const locationStr = typeof l.location === 'string' 
+            ? l.location 
+            : (l.location?.address || "N/A");
+          return [
+            l.id.substring(0, 8),
+            l.title || "N/A",
+            l.category || "N/A",
+            locationStr,
+            `₱${l.price || 0}`
+          ];
+        });
         break;
     }
 

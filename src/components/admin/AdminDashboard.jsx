@@ -8,6 +8,8 @@ import ServiceFees from "./ServiceFees";
 import PolicyCompliance from "./PolicyCompliance";
 import Reports from "./Reports";
 import UserManagement from "./UserManagement";
+import "../cssFile/temp.css";
+import "./AdminDashboard.css";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -15,6 +17,23 @@ export default function AdminDashboard() {
   const [listings, setListings] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sidebarOpen && window.innerWidth < 768) {
+        const sidebar = document.querySelector('.admin-sidebar');
+        const toggle = document.querySelector('.admin-menu-toggle');
+        if (sidebar && !sidebar.contains(e.target) && toggle && !toggle.contains(e.target)) {
+          setSidebarOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [sidebarOpen]);
 
   useEffect(() => {
     loadAllData();
@@ -66,7 +85,8 @@ export default function AdminDashboard() {
   const renderContent = () => {
     if (loading) {
       return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "400px" }}>
+        <div className="admin-loading-container">
+          <div className="admin-loading-spinner"></div>
           <div>Loading dashboard...</div>
         </div>
       );
@@ -75,52 +95,57 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case "dashboard":
         return (
-          <div style={{ padding: "24px" }}>
-            <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Dashboard Overview</h2>
+          <div className="admin-content">
+            <h2 className="admin-page-title">Dashboard Overview</h2>
             
             {/* Key Metrics */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "16px",
-              marginBottom: "32px"
-            }}>
-              <MetricCard title="Total Bookings" value={bookings.length} color="#007bff" />
-              <MetricCard title="Total Revenue" value={`₱${bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0).toLocaleString()}`} color="#28a745" />
-              <MetricCard title="Total Users" value={users.length} color="#ffc107" />
-              <MetricCard title="Total Listings" value={listings.length} color="#dc3545" />
+            <div className="admin-metrics-grid">
+              <MetricCard 
+                title="Total Bookings" 
+                value={bookings.length} 
+                color="#ff6b35"
+                icon="📅"
+              />
+              <MetricCard 
+                title="Total Revenue" 
+                value={`₱${bookings.reduce((sum, b) => sum + (b.totalPrice || 0), 0).toLocaleString()}`} 
+                color="#10b981"
+                icon="💰"
+              />
+              <MetricCard 
+                title="Total Users" 
+                value={users.length} 
+                color="#8b5cf6"
+                icon="👥"
+              />
+              <MetricCard 
+                title="Total Listings" 
+                value={listings.length} 
+                color="#f59e0b"
+                icon="🏠"
+              />
             </div>
 
             {/* Recent Bookings */}
-            <div style={{
-              background: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-            }}>
-              <h3 style={{ marginBottom: "16px" }}>Recent Bookings</h3>
+            <div className="admin-card">
+              <h3 className="admin-card-title">Recent Bookings</h3>
               {bookings.slice(0, 10).length === 0 ? (
-                <div style={{ color: "#666" }}>No bookings found</div>
+                <div className="admin-empty-state">No bookings found</div>
               ) : (
-                <div style={{ display: "grid", gap: "12px" }}>
+                <div className="admin-bookings-list">
                   {bookings.slice(0, 10).map((booking) => (
-                    <div key={booking.id} style={{
-                      padding: "12px",
-                      background: "#f8f9fa",
-                      borderRadius: "4px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center"
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: "bold" }}>{booking.listingTitle || "Unknown Listing"}</div>
-                        <div style={{ fontSize: "14px", color: "#666" }}>
+                    <div key={booking.id} className="admin-booking-item">
+                      <div className="admin-booking-info">
+                        <div className="admin-booking-title">{booking.listingTitle || "Unknown Listing"}</div>
+                        <div className="admin-booking-dates">
                           {booking.startDate} → {booking.endDate}
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontWeight: "bold" }}>₱{booking.totalPrice?.toLocaleString() || "0"}</div>
-                        <div style={{ fontSize: "12px", color: "#666" }}>{booking.status || "pending"}</div>
+                      <div className="admin-booking-details">
+                        <div className="admin-booking-price">₱{booking.totalPrice?.toLocaleString() || "0"}</div>
+                        <div className={`admin-status-badge admin-status-${booking.status || "pending"}`}>
+                          {booking.status || "pending"}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -142,31 +167,33 @@ export default function AdminDashboard() {
       case "users":
         return <UserManagement />;
       default:
-        return <div>Page not found</div>;
+        return <div className="admin-content">Page not found</div>;
     }
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f5f5f5" }}>
-      <AdminHeader activeTab={activeTab} setActiveTab={setActiveTab} />
-      <main>
+    <div className="admin-dashboard-container">
+      <AdminHeader 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab}
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+      />
+      <main className="admin-main-content">
         {renderContent()}
       </main>
     </div>
   );
 }
 
-function MetricCard({ title, value, color }) {
+function MetricCard({ title, value, color, icon }) {
   return (
-    <div style={{
-      background: "#fff",
-      padding: "20px",
-      borderRadius: "8px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      borderLeft: `4px solid ${color}`
-    }}>
-      <div style={{ color: "#666", fontSize: "14px", marginBottom: "8px" }}>{title}</div>
-      <div style={{ fontSize: "32px", fontWeight: "bold", color: color }}>{value}</div>
+    <div className="admin-metric-card" style={{ borderLeftColor: color }}>
+      <div className="admin-metric-header">
+        <span className="admin-metric-icon">{icon}</span>
+        <span className="admin-metric-title">{title}</span>
+      </div>
+      <div className="admin-metric-value" style={{ color: color }}>{value}</div>
     </div>
   );
 }

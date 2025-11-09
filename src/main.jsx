@@ -5,6 +5,7 @@ import { BookingProvider } from "./context/BookingContext.jsx";
 import { WalletProvider } from "./context/WalletContext.jsx";
 import { ChatProvider } from "./context/ChatContext.jsx";
 import { PointsProvider } from "./context/PointsContext.jsx";
+import "leaflet/dist/leaflet.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

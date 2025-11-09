@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { collection, getDocs, doc, updateDoc, query, orderBy, where } from "firebase/firestore";
 import { db } from "../../firebase";
 import { CheckCircle, XCircle, Clock, Search } from "lucide-react";
+import "./AdminDashboard.css";
 
 export default function PaymentReview({ bookings }) {
   const [payments, setPayments] = useState([]);
@@ -77,44 +78,36 @@ export default function PaymentReview({ bookings }) {
   };
 
   if (loading) {
-    return <div>Loading payments...</div>;
+    return (
+      <div className="admin-loading-container">
+        <div className="admin-loading-spinner"></div>
+        <div>Loading payments...</div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Payment Review</h2>
+    <div className="admin-content">
+      <div className="admin-page-header">
+        <h2>Payment Review</h2>
+      </div>
 
       {/* Filters */}
-      <div style={{
-        display: "flex",
-        gap: "16px",
-        marginBottom: "24px",
-        flexWrap: "wrap",
-        alignItems: "center"
-      }}>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <Search size={20} />
+      <div className="admin-filters">
+        <div className="admin-search-container">
+          <Search className="admin-search-icon" size={20} />
           <input
             type="text"
-            placeholder="Search by booking ID, user ID, or PayPal order ID..."
+            className="admin-search-input"
+            placeholder="Search payments..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              minWidth: "300px"
-            }}
           />
         </div>
         <select
+          className="admin-filter-select"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          style={{
-            padding: "8px 12px",
-            border: "1px solid #ddd",
-            borderRadius: "4px"
-          }}
         >
           <option value="all">All Payments</option>
           <option value="pending">Pending</option>
@@ -123,111 +116,78 @@ export default function PaymentReview({ bookings }) {
         </select>
       </div>
 
-      {/* Payments Table */}
-      <div style={{
-        background: "#fff",
-        borderRadius: "8px",
-        overflow: "hidden",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-      }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      {/* Payments Table - Desktop */}
+      <div className="admin-table-container">
+        <table className="admin-table">
           <thead>
-            <tr style={{ background: "#f8f9fa", borderBottom: "2px solid #ddd" }}>
-              <th style={{ padding: "12px", textAlign: "left" }}>Date</th>
-              <th style={{ padding: "12px", textAlign: "left" }}>User ID</th>
-              <th style={{ padding: "12px", textAlign: "left" }}>Booking ID</th>
-              <th style={{ padding: "12px", textAlign: "left" }}>Type</th>
-              <th style={{ padding: "12px", textAlign: "right" }}>Amount</th>
-              <th style={{ padding: "12px", textAlign: "left" }}>Payment Method</th>
-              <th style={{ padding: "12px", textAlign: "left" }}>Status</th>
-              <th style={{ padding: "12px", textAlign: "center" }}>Actions</th>
+            <tr>
+              <th>Date</th>
+              <th>User ID</th>
+              <th>Booking ID</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Payment Method</th>
+              <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredPayments.length === 0 ? (
               <tr>
-                <td colSpan="8" style={{ padding: "24px", textAlign: "center", color: "#666" }}>
+                <td colSpan="8" className="admin-empty-state">
                   No payments found
                 </td>
               </tr>
             ) : (
               filteredPayments.map((payment) => {
                 const date = payment.createdAt?.toDate ? payment.createdAt.toDate() : new Date(payment.createdAt);
-                const statusColor = {
-                  completed: "#28a745",
-                  confirmed: "#28a745",
-                  pending: "#ffc107",
-                  rejected: "#dc3545",
-                  failed: "#dc3545"
-                }[payment.status] || "#666";
+                const statusClass = {
+                  completed: "admin-status-confirmed",
+                  confirmed: "admin-status-confirmed",
+                  pending: "admin-status-pending",
+                  rejected: "admin-status-cancelled",
+                  failed: "admin-status-cancelled"
+                }[payment.status] || "";
 
                 return (
-                  <tr key={payment.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: "12px" }}>{date.toLocaleDateString()}</td>
-                    <td style={{ padding: "12px", fontFamily: "monospace", fontSize: "12px" }}>
+                  <tr key={payment.id}>
+                    <td>{date.toLocaleDateString()}</td>
+                    <td style={{ fontFamily: "monospace", fontSize: "12px" }}>
                       {payment.userId?.substring(0, 8)}...
                     </td>
-                    <td style={{ padding: "12px", fontFamily: "monospace", fontSize: "12px" }}>
+                    <td style={{ fontFamily: "monospace", fontSize: "12px" }}>
                       {payment.bookingId?.substring(0, 8)}...
                     </td>
-                    <td style={{ padding: "12px" }}>{payment.type || "N/A"}</td>
-                    <td style={{ padding: "12px", textAlign: "right", fontWeight: "bold" }}>
+                    <td>{payment.type || "N/A"}</td>
+                    <td style={{ fontWeight: "bold" }}>
                       ₱{payment.amount?.toLocaleString() || "0"}
                     </td>
-                    <td style={{ padding: "12px" }}>{payment.paymentMethod || "E-wallet"}</td>
-                    <td style={{ padding: "12px" }}>
-                      <span style={{
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                        background: statusColor + "20",
-                        color: statusColor,
-                        fontSize: "12px",
-                        fontWeight: "bold"
-                      }}>
+                    <td>{payment.paymentMethod || "E-wallet"}</td>
+                    <td>
+                      <span className={`admin-status-badge ${statusClass}`}>
                         {payment.status?.toUpperCase() || "UNKNOWN"}
                       </span>
                     </td>
-                    <td style={{ padding: "12px", textAlign: "center" }}>
-                      {payment.status === "pending" && (
-                        <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                    <td>
+                      {payment.status === "pending" ? (
+                        <div style={{ display: "flex", gap: "8px", justifyContent: "center", flexWrap: "wrap" }}>
                           <button
                             onClick={() => handlePaymentAction(payment.id, "confirm")}
-                            style={{
-                              padding: "4px 12px",
-                              background: "#28a745",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
+                            className="admin-btn admin-btn-success"
                           >
                             <CheckCircle size={14} />
                             Confirm
                           </button>
                           <button
                             onClick={() => handlePaymentAction(payment.id, "reject")}
-                            style={{
-                              padding: "4px 12px",
-                              background: "#dc3545",
-                              color: "#fff",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
+                            className="admin-btn admin-btn-danger"
                           >
                             <XCircle size={14} />
                             Reject
                           </button>
                         </div>
-                      )}
-                      {payment.status !== "pending" && (
-                        <span style={{ color: "#666", fontSize: "12px" }}>
+                      ) : (
+                        <span style={{ color: "#6b7280", fontSize: "12px" }}>
                           {payment.status === "confirmed" || payment.status === "completed" ? "✓ Confirmed" : "✗ Rejected"}
                         </span>
                       )}
@@ -240,38 +200,110 @@ export default function PaymentReview({ bookings }) {
         </table>
       </div>
 
+      {/* Payments Cards - Mobile */}
+      <div className="admin-card-list">
+        {filteredPayments.length === 0 ? (
+          <div className="admin-empty-state">No payments found</div>
+        ) : (
+          filteredPayments.map((payment) => {
+            const date = payment.createdAt?.toDate ? payment.createdAt.toDate() : new Date(payment.createdAt);
+            const statusClass = {
+              completed: "admin-status-confirmed",
+              confirmed: "admin-status-confirmed",
+              pending: "admin-status-pending",
+              rejected: "admin-status-cancelled",
+              failed: "admin-status-cancelled"
+            }[payment.status] || "";
+
+            return (
+              <div key={payment.id} className="admin-card-item">
+                <div className="admin-card-item-header">
+                  <div>
+                    <div className="admin-card-item-value" style={{ fontSize: "16px", fontWeight: "600" }}>
+                      ₱{payment.amount?.toLocaleString() || "0"}
+                    </div>
+                    <span className={`admin-status-badge ${statusClass}`}>
+                      {payment.status?.toUpperCase() || "UNKNOWN"}
+                    </span>
+                  </div>
+                </div>
+                <div className="admin-card-item-body">
+                  <div className="admin-card-item-row">
+                    <span className="admin-card-item-label">Date</span>
+                    <span className="admin-card-item-value">{date.toLocaleDateString()}</span>
+                  </div>
+                  <div className="admin-card-item-row">
+                    <span className="admin-card-item-label">User ID</span>
+                    <span className="admin-card-item-value" style={{ fontFamily: "monospace", fontSize: "12px" }}>
+                      {payment.userId?.substring(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="admin-card-item-row">
+                    <span className="admin-card-item-label">Booking ID</span>
+                    <span className="admin-card-item-value" style={{ fontFamily: "monospace", fontSize: "12px" }}>
+                      {payment.bookingId?.substring(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="admin-card-item-row">
+                    <span className="admin-card-item-label">Type</span>
+                    <span className="admin-card-item-value">{payment.type || "N/A"}</span>
+                  </div>
+                  <div className="admin-card-item-row">
+                    <span className="admin-card-item-label">Payment Method</span>
+                    <span className="admin-card-item-value">{payment.paymentMethod || "E-wallet"}</span>
+                  </div>
+                  {payment.status === "pending" && (
+                    <div className="admin-card-item-actions">
+                      <button
+                        onClick={() => handlePaymentAction(payment.id, "confirm")}
+                        className="admin-btn admin-btn-success"
+                        style={{ flex: 1 }}
+                      >
+                        <CheckCircle size={14} />
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => handlePaymentAction(payment.id, "reject")}
+                        className="admin-btn admin-btn-danger"
+                        style={{ flex: 1 }}
+                      >
+                        <XCircle size={14} />
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* Summary */}
-      <div style={{
-        marginTop: "24px",
-        padding: "16px",
-        background: "#f8f9fa",
-        borderRadius: "8px",
-        display: "flex",
-        justifyContent: "space-around"
-      }}>
-        <div>
-          <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+      <div className="admin-summary-grid">
+        <div className="admin-summary-card">
+          <div className="admin-summary-value">
             {filteredPayments.filter(p => p.status === "pending").length}
           </div>
-          <div style={{ color: "#666" }}>Pending</div>
+          <div className="admin-summary-label">Pending</div>
         </div>
-        <div>
-          <div style={{ fontSize: "24px", fontWeight: "bold", color: "#28a745" }}>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value" style={{ color: "#10b981" }}>
             {filteredPayments.filter(p => p.status === "completed" || p.status === "confirmed").length}
           </div>
-          <div style={{ color: "#666" }}>Confirmed</div>
+          <div className="admin-summary-label">Confirmed</div>
         </div>
-        <div>
-          <div style={{ fontSize: "24px", fontWeight: "bold", color: "#dc3545" }}>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value" style={{ color: "#ef4444" }}>
             {filteredPayments.filter(p => p.status === "rejected" || p.status === "failed").length}
           </div>
-          <div style={{ color: "#666" }}>Rejected</div>
+          <div className="admin-summary-label">Rejected</div>
         </div>
-        <div>
-          <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value">
             ₱{filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
           </div>
-          <div style={{ color: "#666" }}>Total Amount</div>
+          <div className="admin-summary-label">Total Amount</div>
         </div>
       </div>
     </div>

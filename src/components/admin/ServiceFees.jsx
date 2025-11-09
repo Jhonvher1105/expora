@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc, collection, getDocs, serverTimestamp } from "firebase/firestore";
 import { db } from "../../firebase";
 import { DollarSign, Save, Edit } from "lucide-react";
+import "./AdminDashboard.css";
 
 export default function ServiceFees() {
   const [serviceFee, setServiceFee] = useState({ type: "percentage", value: 10 });
@@ -70,20 +71,21 @@ export default function ServiceFees() {
   };
 
   if (loading) {
-    return <div>Loading service fees...</div>;
+    return (
+      <div className="admin-loading-container">
+        <div className="admin-loading-spinner"></div>
+        <div>Loading service fees...</div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Service Fees Management</h2>
+    <div className="admin-content">
+      <div className="admin-page-header">
+        <h2>Service Fees Management</h2>
+      </div>
 
-      <div style={{
-        background: "#fff",
-        padding: "24px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        maxWidth: "600px"
-      }}>
+      <div className="admin-card" style={{ maxWidth: "600px" }}>
         <div style={{ marginBottom: "24px" }}>
           <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>
             Fee Type

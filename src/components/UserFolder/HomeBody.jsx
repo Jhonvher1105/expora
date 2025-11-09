@@ -24,9 +24,10 @@ import PayPalPayment from "../ui/PayPalPayment";
 import ReviewList from "../ui/ReviewList";
 import ReviewForm from "../ui/ReviewForm";
 import ChatModal from "../ui/ChatModal";
+import MapViewer from "../ui/MapViewer";
 
 function Body() {
-    const [activeTab, setActiveTab] = useState("properties");
+    const [activeTab, setActiveTab] = useState("all");
     const [selectedDest, setSelectedDest] = useState(null);
     const [showDetail, setShowDetail] = useState(false);
     const [properties, setProperties] = useState([]);
@@ -37,12 +38,10 @@ function Body() {
     const [checkInDate, setCheckInDate] = useState("");
     const [checkOutDate, setCheckOutDate] = useState("");
     const [filterGuests, setFilterGuests] = useState("");
-    // Airbnb-like search bar state
-    const [activeSearchModal, setActiveSearchModal] = useState(null); // 'location', 'dates', 'guests', null
+    // Direct input search bar state
     const [locationInput, setLocationInput] = useState("");
     const [locationSuggestions, setLocationSuggestions] = useState([]);
     const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
-    const [showGuestDropdown, setShowGuestDropdown] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
@@ -251,16 +250,54 @@ function Body() {
     useEffect(() => {
         const fetchProperties = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, activeTab));
-                const data = querySnapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }));
+                setLoading(true);
+                let data = [];
+
+                if (activeTab === "all") {
+                    // Fetch from all collections
+                    const [propertiesSnapshot, servicesSnapshot, experiencesSnapshot] = await Promise.all([
+                        getDocs(collection(db, "properties")),
+                        getDocs(collection(db, "services")),
+                        getDocs(collection(db, "experiences"))
+                    ]);
+
+                    const propertiesData = propertiesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "properties",
+                        ...doc.data(),
+                    }));
+
+                    const servicesData = servicesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "services",
+                        ...doc.data(),
+                    }));
+
+                    const experiencesData = experiencesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "experiences",
+                        ...doc.data(),
+                    }));
+
+                    data = [...propertiesData, ...servicesData, ...experiencesData];
+                } else {
+                    // Fetch from specific collection
+                    const querySnapshot = await getDocs(collection(db, activeTab));
+                    data = querySnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: activeTab,
+                        ...doc.data(),
+                    }));
+                }
+
                 setProperties(data);
                 setAllProperties(data);
                 
                 // Extract unique locations for autocomplete
-                const uniqueLocations = [...new Set(data.map(p => p.location).filter(Boolean))];
+                const uniqueLocations = [...new Set(data.map(p => {
+                    const locationStr = p.location?.address || p.location;
+                    return locationStr && typeof locationStr === 'string' ? locationStr : null;
+                }).filter(Boolean))];
                 setLocationSuggestions(uniqueLocations);
             } catch (error) {
                 console.error("Error fetching properties:", error);
@@ -275,7 +312,10 @@ function Body() {
     useEffect(() => {
         if (locationInput.trim() && allProperties.length > 0) {
             const filtered = allProperties
-                .map(p => p.location)
+                .map(p => {
+                    const locationStr = p.location?.address || p.location;
+                    return locationStr && typeof locationStr === 'string' ? locationStr : null;
+                })
                 .filter(Boolean)
                 .filter(loc => 
                     loc.toLowerCase().includes(locationInput.toLowerCase())
@@ -283,7 +323,10 @@ function Body() {
             const uniqueLocations = [...new Set(filtered)];
             setLocationSuggestions(uniqueLocations.slice(0, 5)); // Limit to 5 suggestions
         } else if (allProperties.length > 0) {
-            const uniqueLocations = [...new Set(allProperties.map(p => p.location).filter(Boolean))];
+            const uniqueLocations = [...new Set(allProperties.map(p => {
+                const locationStr = p.location?.address || p.location;
+                return locationStr && typeof locationStr === 'string' ? locationStr : null;
+            }).filter(Boolean))];
             setLocationSuggestions(uniqueLocations.slice(0, 5));
         }
     }, [locationInput, allProperties]);
@@ -421,11 +464,14 @@ function Body() {
 
         // Filter by location/title
         if (query.trim()) {
-            filtered = filtered.filter(
-                (p) =>
-                    p.location?.toLowerCase().includes(query.toLowerCase()) ||
-                    p.title?.toLowerCase().includes(query.toLowerCase())
-            );
+            filtered = filtered.filter((p) => {
+                const locationStr = p.location?.address || p.location;
+                const locationMatch = locationStr && typeof locationStr === 'string' 
+                    ? locationStr.toLowerCase().includes(query.toLowerCase())
+                    : false;
+                const titleMatch = p.title?.toLowerCase().includes(query.toLowerCase()) || false;
+                return locationMatch || titleMatch;
+            });
         }
 
         // Filter by guest count
@@ -463,23 +509,17 @@ function Body() {
         setProperties(filtered);
     }, [searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties, allBookings]);
 
-    // Format date for display
-    const formatDateDisplay = (dateString) => {
-        if (!dateString) return null;
-        const date = new Date(dateString);
-        const month = date.toLocaleString('default', { month: 'short' });
-        const day = date.getDate();
-        return `${month} ${day}`;
-    };
+    // Reset search when tab changes
+    useEffect(() => {
+        setSearchQuery("");
+        setLocationInput("");
+        setCheckInDate("");
+        setCheckOutDate("");
+        setFilterGuests("");
+        setGuests({ adults: 1, children: 0, infants: 0 });
+        // Properties will be updated when allProperties changes after tab switch
+    }, [activeTab]);
 
-    // Format guests display
-    const formatGuestsDisplay = () => {
-        const parts = [];
-        if (guests.adults > 0) parts.push(`${guests.adults} ${guests.adults === 1 ? 'guest' : 'guests'}`);
-        if (guests.children > 0) parts.push(`${guests.children} ${guests.children === 1 ? 'child' : 'children'}`);
-        if (guests.infants > 0) parts.push(`${guests.infants} ${guests.infants === 1 ? 'infant' : 'infants'}`);
-        return parts.length > 0 ? parts.join(', ') : 'Add guests';
-    };
 
     // Auto-search with debouncing when inputs change
     useEffect(() => {
@@ -546,50 +586,91 @@ function Body() {
                             Explore breathtaking destinations and create unforgettable memories
                         </p>
 
-                        {/* Airbnb-like Search Bar */}
+                        {/* Airbnb-like Search Bar with Direct Inputs */}
                         <div className="airbnb-search-bar">
-                            {/* Location Section */}
-                            <div 
-                                className={`search-section ${activeSearchModal === 'location' ? 'active' : ''}`}
-                                onClick={() => setActiveSearchModal('location')}
-                            >
+                            {/* Location Section with Input */}
+                            <div className="search-section search-section-input">
                                 <div className="search-section-label">Where</div>
-                                <div className={`search-section-value ${!locationInput && !searchQuery ? 'placeholder' : ''}`}>
-                                    {locationInput || searchQuery || "Search destinations"}
-                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Search destinations"
+                                    className="search-section-input-field"
+                                    value={locationInput || searchQuery || ""}
+                                    onChange={(e) => {
+                                        setLocationInput(e.target.value);
+                                        setSearchQuery(e.target.value);
+                                    }}
+                                />
+                                {/* Location Suggestions Dropdown */}
+                                {locationSuggestions.length > 0 && (locationInput || searchQuery) && locationInput.trim() !== "" && (
+                                    <div className="location-suggestions-dropdown-inline">
+                                        {locationSuggestions.slice(0, 5).map((location, index) => (
+                                            <div
+                                                key={index}
+                                                className="location-suggestion-item"
+                                                onClick={() => {
+                                                    setLocationInput(location);
+                                                    setSearchQuery(location);
+                                                }}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                            >
+                                                <MapPin size={16} />
+                                                <span>{location}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Dates Section */}
-                            <div 
-                                className={`search-section ${activeSearchModal === 'dates' ? 'active' : ''}`}
-                                onClick={() => setActiveSearchModal('dates')}
-                            >
+                            {/* Check-in Date Section with Input */}
+                            <div className="search-section search-section-input">
                                 <div className="search-section-label">Check in</div>
-                                <div className={`search-section-value ${!checkInDate ? 'placeholder' : ''}`}>
-                                    {checkInDate ? formatDateDisplay(checkInDate) : "Add dates"}
-                                </div>
+                                <input
+                                    type="date"
+                                    className="search-section-input-field search-section-date-input"
+                                    value={checkInDate}
+                                    onChange={(e) => {
+                                        setCheckInDate(e.target.value);
+                                        if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
+                                            setCheckOutDate("");
+                                        }
+                                    }}
+                                    min={new Date().toISOString().split('T')[0]}
+                                />
                             </div>
 
-                            {/* Check-out Section */}
-                            <div 
-                                className={`search-section ${activeSearchModal === 'dates' ? 'active' : ''}`}
-                                onClick={() => setActiveSearchModal('dates')}
-                            >
+                            {/* Check-out Date Section with Input */}
+                            <div className="search-section search-section-input">
                                 <div className="search-section-label">Check out</div>
-                                <div className={`search-section-value ${!checkOutDate ? 'placeholder' : ''}`}>
-                                    {checkOutDate ? formatDateDisplay(checkOutDate) : "Add dates"}
-                                </div>
+                                <input
+                                    type="date"
+                                    className="search-section-input-field search-section-date-input"
+                                    value={checkOutDate}
+                                    onChange={(e) => setCheckOutDate(e.target.value)}
+                                    min={checkInDate || new Date().toISOString().split('T')[0]}
+                                />
                             </div>
 
-                            {/* Guests Section */}
-                            <div 
-                                className={`search-section search-section-guests ${activeSearchModal === 'guests' ? 'active' : ''}`}
-                                onClick={() => setActiveSearchModal('guests')}
-                            >
+                            {/* Guests Section with Input */}
+                            <div className="search-section search-section-guests search-section-input">
                                 <div className="search-section-label">Who</div>
-                                <div className={`search-section-value ${totalGuests === 0 ? 'placeholder' : ''}`}>
-                                    {formatGuestsDisplay()}
-                                </div>
+                                <input
+                                    type="number"
+                                    className="search-section-input-field"
+                                    placeholder="Add guests"
+                                    min="1"
+                                    value={totalGuests > 0 ? totalGuests : ""}
+                                    onChange={(e) => {
+                                        const value = parseInt(e.target.value) || 0;
+                                        if (value >= 1) {
+                                            setGuests({ adults: value, children: 0, infants: 0 });
+                                            setFilterGuests(value.toString());
+                                        } else if (e.target.value === "") {
+                                            setGuests({ adults: 1, children: 0, infants: 0 });
+                                            setFilterGuests("");
+                                        }
+                                    }}
+                                />
                             </div>
 
                             {/* Search Button */}
@@ -597,7 +678,6 @@ function Body() {
                                 className="airbnb-search-btn" 
                                 onClick={() => {
                                     handleSearch();
-                                    setActiveSearchModal(null);
                                 }}
                             >
                                 <Search size={20} />
@@ -605,209 +685,6 @@ function Body() {
                             </button>
                         </div>
 
-                        {/* Location Modal */}
-                        {activeSearchModal === 'location' && (
-                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
-                                <div className="search-modal" onClick={(e) => e.stopPropagation()}>
-                                    <div className="search-modal-header">
-                                        <h3>Where to?</h3>
-                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-                                    <div className="search-modal-content">
-                                        <div className="location-input-container">
-                                            <MapPin size={20} className="search-icon" />
-                                            <input
-                                                type="text"
-                                                placeholder="Search destinations"
-                                                className="location-search-input"
-                                                value={locationInput}
-                                                onChange={(e) => {
-                                                    setLocationInput(e.target.value);
-                                                    setSearchQuery(e.target.value);
-                                                }}
-                                                autoFocus
-                                            />
-                                        </div>
-                                        {locationSuggestions.length > 0 && (
-                                            <div className="location-suggestions">
-                                                {locationSuggestions.map((location, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="location-suggestion-item"
-                                                        onClick={() => {
-                                                            setLocationInput(location);
-                                                            setSearchQuery(location);
-                                                            setActiveSearchModal(null);
-                                                        }}
-                                                    >
-                                                        <MapPin size={18} />
-                                                        <span>{location}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Dates Modal */}
-                        {activeSearchModal === 'dates' && (
-                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
-                                <div className="search-modal search-modal-dates" onClick={(e) => e.stopPropagation()}>
-                                    <div className="search-modal-header">
-                                        <h3>Select dates</h3>
-                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-                                    <div className="search-modal-content">
-                                        <div className="date-inputs-container">
-                                            <div className="date-input-group">
-                                                <label>Check-in</label>
-                                                <input
-                                                    type="date"
-                                                    value={checkInDate}
-                                                    onChange={(e) => {
-                                                        setCheckInDate(e.target.value);
-                                                        if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
-                                                            setCheckOutDate("");
-                                                        }
-                                                    }}
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                />
-                                            </div>
-                                            <div className="date-input-group">
-                                                <label>Check-out</label>
-                                                <input
-                                                    type="date"
-                                                    value={checkOutDate}
-                                                    onChange={(e) => setCheckOutDate(e.target.value)}
-                                                    min={checkInDate || new Date().toISOString().split('T')[0]}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="modal-actions">
-                                            <button 
-                                                className="clear-btn"
-                                                onClick={() => {
-                                                    setCheckInDate("");
-                                                    setCheckOutDate("");
-                                                }}
-                                            >
-                                                Clear
-                                            </button>
-                                            <button 
-                                                className="done-btn"
-                                                onClick={() => setActiveSearchModal(null)}
-                                            >
-                                                Done
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Guests Modal */}
-                        {activeSearchModal === 'guests' && (
-                            <div className="search-modal-overlay" onClick={() => setActiveSearchModal(null)}>
-                                <div className="search-modal search-modal-guests" onClick={(e) => e.stopPropagation()}>
-                                    <div className="search-modal-header">
-                                        <h3>Who's coming?</h3>
-                                        <button className="modal-close-btn" onClick={() => setActiveSearchModal(null)}>
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-                                    <div className="search-modal-content">
-                                        <div className="guest-selector">
-                                            <div className="guest-row">
-                                                <div className="guest-row-info">
-                                                    <div className="guest-row-label">Adults</div>
-                                                    <div className="guest-row-desc">Ages 13 or above</div>
-                                                </div>
-                                                <div className="guest-counter">
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, adults: Math.max(1, prev.adults - 1) }))}
-                                                        disabled={guests.adults <= 1}
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <span className="counter-value">{guests.adults}</span>
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, adults: prev.adults + 1 }))}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="guest-row">
-                                                <div className="guest-row-info">
-                                                    <div className="guest-row-label">Children</div>
-                                                    <div className="guest-row-desc">Ages 2-12</div>
-                                                </div>
-                                                <div className="guest-counter">
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, children: Math.max(0, prev.children - 1) }))}
-                                                        disabled={guests.children <= 0}
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <span className="counter-value">{guests.children}</span>
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, children: prev.children + 1 }))}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div className="guest-row">
-                                                <div className="guest-row-info">
-                                                    <div className="guest-row-label">Infants</div>
-                                                    <div className="guest-row-desc">Under 2</div>
-                                                </div>
-                                                <div className="guest-counter">
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, infants: Math.max(0, prev.infants - 1) }))}
-                                                        disabled={guests.infants <= 0}
-                                                    >
-                                                        -
-                                                    </button>
-                                                    <span className="counter-value">{guests.infants}</span>
-                                                    <button
-                                                        className="counter-btn"
-                                                        onClick={() => setGuests(prev => ({ ...prev, infants: prev.infants + 1 }))}
-                                                    >
-                                                        +
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="modal-actions">
-                                            <button 
-                                                className="clear-btn"
-                                                onClick={() => setGuests({ adults: 1, children: 0, infants: 0 })}
-                                            >
-                                                Clear
-                                            </button>
-                                            <button 
-                                                className="done-btn"
-                                                onClick={() => setActiveSearchModal(null)}
-                                            >
-                                                Done
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </section>
 
@@ -816,6 +693,12 @@ function Body() {
                     <div className="container">
                         {/* TABS */}
                         <div className="tabs">
+                            <button
+                                className={`tab ${activeTab === "all" ? "tab-active" : ""}`}
+                                onClick={() => setActiveTab("all")}
+                            >
+                                All
+                            </button>
                             <button
                                 className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
                                 onClick={() => setActiveTab("properties")}
@@ -868,13 +751,28 @@ function Body() {
 
                                                 <div className="destination-content">
                                                     <div className="destination-header">
-                                                        <h3 className="destination-name">{property.title}</h3>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                                            <h3 className="destination-name">{property.title}</h3>
+                                                            {activeTab === "all" && property.category && (
+                                                                <span style={{
+                                                                    fontSize: "11px",
+                                                                    fontWeight: "600",
+                                                                    textTransform: "uppercase",
+                                                                    color: "#717171",
+                                                                    backgroundColor: "#f7f7f7",
+                                                                    padding: "2px 8px",
+                                                                    borderRadius: "4px"
+                                                                }}>
+                                                                    {property.category}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <span className="destination-price">
                                                             ₱{property.price?.toLocaleString()} / night
                                                         </span>
                                                     </div>
                                                     <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location}
+                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
                                                     </p>
                                                     <div className="destination-footer">
                                                         <div className="rating">
@@ -946,7 +844,7 @@ function Body() {
                                                         </span>
                                                     </div>
                                                     <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location}
+                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
                                                     </p>
                                                     <div className="destination-footer">
                                                         <div className="rating">
@@ -1016,7 +914,7 @@ function Body() {
                                                         </span>
                                                     </div>
                                                     <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location}
+                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
                                                     </p>
                                                     <div className="destination-footer">
                                                         <div className="rating">
@@ -1091,7 +989,7 @@ function Body() {
                                                 <div className="destination-content">
                                                     <h3>{fav.propertyData.title}</h3>
                                                     <p>
-                                                        <MapPin size={14} /> {fav.propertyData.location}
+                                                        <MapPin size={14} /> {fav.propertyData.location?.address || fav.propertyData.location || "Location not specified"}
                                                     </p>
                                                     <button
                                                         className="explore-btn"
@@ -1205,8 +1103,17 @@ function Body() {
                                         </div>
                                     </div>
                                     <p className="modal-location">
-                                        <MapPin size={14} /> {selectedDest.location}
+                                        <MapPin size={14} /> {selectedDest.location?.address || selectedDest.location || "Location not specified"}
                                     </p>
+                                    
+                                    {/* Map Viewer */}
+                                    {selectedDest.location && (selectedDest.location.lat && selectedDest.location.lng) && (
+                                        <MapViewer 
+                                            location={selectedDest.location} 
+                                            propertyTitle={selectedDest.title}
+                                        />
+                                    )}
+                                    
                                     {/* Discount/Promo display */}
                                     {selectedDest.discountPercentage && (
                                         <div style={{ background: "#ff6b35", color: "white", padding: 8, borderRadius: 4, marginTop: 8, display: "inline-block" }}>

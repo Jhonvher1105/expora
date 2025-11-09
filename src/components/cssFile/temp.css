@@ -848,6 +848,199 @@ textarea {
     }
 }
 
+/* Service Form Step Indicator */
+.service-step-indicator {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow-x: auto;
+}
+
+.service-steps-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: fit-content;
+    gap: 0.5rem;
+}
+
+.service-step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.service-step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+}
+
+.service-step-pending {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.service-step-active {
+    background: var(--primary-gradient);
+    color: #ffffff;
+    border: 2px solid var(--primary);
+    box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.2);
+}
+
+.service-step-completed {
+    background: #10b981;
+    color: #ffffff;
+    border: 2px solid #10b981;
+}
+
+.service-step-label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    max-width: 100px;
+    line-height: 1.2;
+}
+
+.service-step-connector {
+    flex: 1;
+    height: 2px;
+    min-width: 20px;
+    max-width: 60px;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    margin: 0 0.5rem;
+}
+
+.service-step-connector-completed {
+    background: #10b981;
+}
+
+.service-step-content {
+    min-height: 300px;
+}
+
+/* Service Type Cards */
+.service-type-card {
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.service-type-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 107, 53, 0.5);
+    transform: translateY(-2px);
+}
+
+.service-type-selected {
+    background: rgba(255, 107, 53, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+}
+
+.service-type-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.service-type-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.service-type-description {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Responsive Service Form Styles */
+@media (max-width: 768px) {
+    .service-step-indicator {
+        padding: 1rem;
+    }
+
+    .service-steps-container {
+        gap: 0.25rem;
+    }
+
+    .service-step-item {
+        min-width: 60px;
+    }
+
+    .service-step-circle {
+        width: 32px;
+        height: 32px;
+        font-size: 0.75rem;
+    }
+
+    .service-step-label {
+        font-size: 0.65rem;
+        max-width: 60px;
+    }
+
+    .service-step-connector {
+        min-width: 10px;
+        max-width: 30px;
+        margin: 0 0.25rem;
+    }
+
+    .service-type-card {
+        padding: 1rem;
+    }
+
+    .service-type-icon {
+        font-size: 2rem;
+    }
+
+    .service-type-name {
+        font-size: 0.875rem;
+    }
+
+    .service-type-description {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .service-step-label {
+        display: none;
+    }
+
+    .service-step-item {
+        min-width: 40px;
+    }
+
+    .service-step-circle {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
+}
+
 /* Image upload area responsive styles */
 .host-modal .flex.flex-wrap {
     display: flex;
@@ -1926,6 +2119,88 @@ header.scrolled {
     font-weight: 500;
 }
 
+/* Direct Input Fields inside Search Sections */
+.search-section-input {
+    cursor: default;
+    padding: 14px 20px;
+}
+
+.search-section-input:hover {
+    background-color: transparent;
+}
+
+.search-section-input:focus-within {
+    background-color: #f7f7f7;
+}
+
+.search-section-input-field {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    color: #222;
+    padding: 0;
+    margin: 0;
+}
+
+.search-section-input-field::placeholder {
+    color: #717171;
+    font-weight: normal;
+}
+
+.search-section-date-input {
+    cursor: pointer;
+    color: #222;
+    position: relative;
+}
+
+.search-section-date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    margin-left: auto;
+}
+
+.search-section-date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* Ensure date inputs show value correctly */
+.search-section-date-input:not(:placeholder-shown) {
+    color: #222;
+    font-weight: 500;
+}
+
+/* Firefox date input styling */
+.search-section-date-input::-moz-placeholder {
+    color: #717171;
+}
+
+.search-section-input-field[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.search-section-input-field[type="number"]::-webkit-outer-spin-button,
+.search-section-input-field[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.location-suggestions-dropdown-inline {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
 .airbnb-search-btn {
     background-color: #ff6b35;
     color: white;
@@ -1945,6 +2220,60 @@ header.scrolled {
 
 .airbnb-search-btn:hover {
     background-color: #e55a2b;
+}
+
+/* Responsive Styles for Airbnb Search Bar with Direct Inputs */
+@media (max-width: 768px) {
+    .airbnb-search-bar {
+        flex-direction: column;
+        border-radius: 16px;
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .search-section {
+        width: 100%;
+        border-radius: 12px;
+        padding: 12px 16px;
+        border-right: none !important;
+    }
+
+    .search-section-input {
+        padding: 12px 16px;
+    }
+
+    .airbnb-search-btn {
+        width: 100%;
+        justify-content: center;
+        margin-left: 0;
+        border-radius: 12px;
+    }
+
+    .location-suggestions-dropdown-inline {
+        position: fixed;
+        left: 20px;
+        right: 20px;
+        max-width: calc(100% - 40px);
+    }
+}
+
+@media (max-width: 480px) {
+    .airbnb-search-bar {
+        padding: 12px;
+    }
+
+    .search-section-label {
+        font-size: 11px;
+    }
+
+    .search-section-input-field {
+        font-size: 13px;
+    }
+
+    .airbnb-search-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
 }
 
 /* Search Modal Overlay */
@@ -2239,70 +2568,6 @@ header.scrolled {
     background-color: #000;
 }
 
-/* Responsive Styles for Airbnb Search Bar */
-@media (max-width: 768px) {
-    .airbnb-search-bar {
-        flex-direction: column;
-        border-radius: 16px;
-        padding: 16px;
-        gap: 12px;
-    }
-
-    .search-section {
-        width: 100%;
-        border-radius: 12px;
-        padding: 12px 16px;
-    }
-
-    .search-section.active {
-        box-shadow: 0 0 0 2px #000;
-    }
-
-    .airbnb-search-btn {
-        width: 100%;
-        justify-content: center;
-        margin-left: 0;
-    }
-
-    .search-modal-overlay {
-        padding: 20px;
-        align-items: flex-start;
-        padding-top: 40px;
-    }
-
-    .search-modal {
-        max-width: 100%;
-        border-radius: 12px;
-    }
-
-    .date-inputs-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 480px) {
-    .search-modal-header {
-        padding: 16px 20px;
-    }
-
-    .search-modal-header h3 {
-        font-size: 18px;
-    }
-
-    .search-modal-content {
-        padding: 20px;
-    }
-
-    .guest-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
-
-    .guest-counter {
-        align-self: flex-end;
-    }
-}
 
 /* Search Bar */
 .search-bar {

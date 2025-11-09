@@ -1,7 +1,7 @@
 import Header from "./Hheader";
 import Footer from "../generalFile/Footer";
-import { useState, useEffect } from "react";
-import { MessageCircleMore, Heart, MapPin, Star, Plus, X } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { MessageCircleMore, Heart, MapPin, Star, Plus, X, Search } from "lucide-react";
 import "../../components/cssFile/temp.css";
 
 import {
@@ -20,15 +20,26 @@ import HostingType from "../ui/HostingType";
 import { collection as fbCollection, getDocs as fbGetDocs, query as fbQuery, where as fbWhere } from "firebase/firestore";
 
 export default function HostBody() {
-    const [activeTab, setActiveTab] = useState("properties");
+    const [activeTab, setActiveTab] = useState("all");
     const [selectedDest, setSelectedDest] = useState(null);
     const [currentUser, setCurrentUser] = useState(null);
     const [properties, setProperties] = useState([]);
+    const [allProperties, setAllProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showHostForm, setShowForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
     const [todayBookings, setTodayBookings] = useState([]);
     const [upcomingBookings, setUpcomingBookings] = useState([]);
+    
+    // Search state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [locationInput, setLocationInput] = useState("");
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
+    const [checkInDate, setCheckInDate] = useState("");
+    const [checkOutDate, setCheckOutDate] = useState("");
+    const [filterGuests, setFilterGuests] = useState("");
+    const [guests, setGuests] = useState({ adults: 1, children: 0, infants: 0 });
+    const [allBookings, setAllBookings] = useState([]);
 
     // Load current user
     useEffect(() => {
@@ -45,13 +56,56 @@ export default function HostBody() {
             if (!currentUser) return;
             setLoading(true);
             try {
-                const q = query(collection(db, activeTab), where("ownerId", "==", currentUser.uid));
-                const querySnapshot = await getDocs(q);
-                const data = querySnapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }));
+                let data = [];
+
+                if (activeTab === "all") {
+                    // Fetch from all collections for this host
+                    const [propertiesSnapshot, servicesSnapshot, experiencesSnapshot] = await Promise.all([
+                        getDocs(query(collection(db, "properties"), where("ownerId", "==", currentUser.uid))),
+                        getDocs(query(collection(db, "services"), where("ownerId", "==", currentUser.uid))),
+                        getDocs(query(collection(db, "experiences"), where("ownerId", "==", currentUser.uid)))
+                    ]);
+
+                    const propertiesData = propertiesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "properties",
+                        ...doc.data(),
+                    }));
+
+                    const servicesData = servicesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "services",
+                        ...doc.data(),
+                    }));
+
+                    const experiencesData = experiencesSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: "experiences",
+                        ...doc.data(),
+                    }));
+
+                    data = [...propertiesData, ...servicesData, ...experiencesData];
+                } else {
+                    // Fetch from specific collection
+                    const q = query(collection(db, activeTab), where("ownerId", "==", currentUser.uid));
+                    const querySnapshot = await getDocs(q);
+                    data = querySnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        category: activeTab,
+                        ...doc.data(),
+                    }));
+                }
+
+                setAllProperties(data);
+                // Initially show all properties (will be filtered by handleSearch if there are active filters)
                 setProperties(data);
+                
+                // Extract unique locations for autocomplete
+                const uniqueLocations = [...new Set(data.map(p => {
+                    const locationStr = p.location?.address || p.location;
+                    return locationStr && typeof locationStr === 'string' ? locationStr : null;
+                }).filter(Boolean))];
+                setLocationSuggestions(uniqueLocations);
             } catch (error) {
                 console.error("Error fetching properties:", error);
             } finally {
@@ -60,6 +114,53 @@ export default function HostBody() {
         };
         fetchProperties();
     }, [currentUser, activeTab]);
+
+    // Fetch all bookings for date filtering
+    useEffect(() => {
+        const fetchBookings = async () => {
+            try {
+                const bookingsSnapshot = await getDocs(collection(db, "bookings"));
+                const bookingsData = bookingsSnapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }));
+                setAllBookings(bookingsData);
+            } catch (error) {
+                console.error("Error fetching bookings:", error);
+            }
+        };
+        fetchBookings();
+    }, []);
+
+    // Location autocomplete filter
+    useEffect(() => {
+        if (locationInput.trim() && allProperties.length > 0) {
+            const filtered = allProperties
+                .map(p => {
+                    const locationStr = p.location?.address || p.location;
+                    return locationStr && typeof locationStr === 'string' ? locationStr : null;
+                })
+                .filter(Boolean)
+                .filter(loc => 
+                    loc.toLowerCase().includes(locationInput.toLowerCase())
+                );
+            const uniqueLocations = [...new Set(filtered)];
+            setLocationSuggestions(uniqueLocations.slice(0, 5)); // Limit to 5 suggestions
+        } else if (allProperties.length > 0) {
+            const uniqueLocations = [...new Set(allProperties.map(p => {
+                const locationStr = p.location?.address || p.location;
+                return locationStr && typeof locationStr === 'string' ? locationStr : null;
+            }).filter(Boolean))];
+            setLocationSuggestions(uniqueLocations.slice(0, 5));
+        }
+    }, [locationInput, allProperties]);
+
+    // Update searchQuery when locationInput changes
+    useEffect(() => {
+        if (locationInput && !searchQuery) {
+            setSearchQuery(locationInput);
+        }
+    }, [locationInput]);
 
     // Fetch bookings for this host (today and upcoming)
     useEffect(() => {
@@ -88,6 +189,135 @@ export default function HostBody() {
         loadBookings();
     }, [currentUser]);
 
+    // Helper function to normalize dates
+    const normalizeDate = (date) => {
+        if (!date) return null;
+        if (date && typeof date.toDate === 'function') {
+            return date.toDate().toISOString().split('T')[0];
+        }
+        if (date instanceof Date) {
+            return date.toISOString().split('T')[0];
+        }
+        return date;
+    };
+
+    // Helper function to check date overlap
+    const isOverlapping = (startA, endA, startB, endB) => {
+        const aStart = normalizeDate(startA);
+        const bStart = normalizeDate(startB);
+        const aEnd = normalizeDate(endA);
+        const bEnd = normalizeDate(endB);
+        
+        if (!aStart || !aEnd || !bStart || !bEnd) return false;
+        
+        const aStartTime = new Date(aStart).getTime();
+        const aEndTime = new Date(aEnd).getTime();
+        const bStartTime = new Date(bStart).getTime();
+        const bEndTime = new Date(bEnd).getTime();
+        
+        if (Number.isNaN(aStartTime) || Number.isNaN(aEndTime) || Number.isNaN(bStartTime) || Number.isNaN(bEndTime)) return false;
+        return aStartTime <= bEndTime && bStartTime <= aEndTime;
+    };
+
+    // Calculate total guests
+    const totalGuests = guests.adults + guests.children + guests.infants;
+    
+    // Update filterGuests when guests state changes
+    useEffect(() => {
+        if (totalGuests > 0) {
+            setFilterGuests(totalGuests.toString());
+        }
+    }, [totalGuests]);
+
+    // Filter Search with improved date filtering
+    const handleSearch = useCallback(() => {
+        if (allProperties.length === 0) {
+            return;
+        }
+
+        const query = (searchQuery || locationInput || "").trim();
+        const guestCount = totalGuests > 1 ? totalGuests : (filterGuests ? Number(filterGuests) : 0);
+        const hasDateFilter = checkInDate && checkOutDate;
+        
+        // If no filters are applied, show all properties
+        if (!query && guestCount === 0 && !hasDateFilter) {
+            setProperties([...allProperties]);
+            return;
+        }
+
+        let filtered = [...allProperties];
+
+        // Filter by location/title
+        if (query) {
+            filtered = filtered.filter((p) => {
+                const locationStr = p.location?.address || p.location;
+                const locationMatch = locationStr && typeof locationStr === 'string' 
+                    ? locationStr.toLowerCase().includes(query.toLowerCase())
+                    : false;
+                const titleMatch = p.title?.toLowerCase().includes(query.toLowerCase()) || false;
+                return locationMatch || titleMatch;
+            });
+        }
+
+        // Filter by guest count
+        if (guestCount > 0) {
+            filtered = filtered.filter(
+                (p) => p.maxGuests && Number(p.maxGuests) >= guestCount
+            );
+        }
+
+        // Filter by date availability - check for booking conflicts
+        if (hasDateFilter) {
+            const start = new Date(checkInDate);
+            const end = new Date(checkOutDate);
+            
+            if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
+                filtered = filtered.filter((p) => {
+                    // Get bookings for this property
+                    const propertyBookings = allBookings.filter(
+                        (b) => b.listingId === p.id && b.status !== "cancelled"
+                    );
+                    
+                    // Check if search dates overlap with any existing booking
+                    const hasConflict = propertyBookings.some((booking) =>
+                        isOverlapping(checkInDate, checkOutDate, booking.startDate, booking.endDate)
+                    );
+                    
+                    // Only show properties that don't have conflicts
+                    return !hasConflict;
+                });
+            }
+        }
+
+        setProperties(filtered);
+    }, [searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties, allBookings]);
+
+    // Auto-search with debouncing when inputs change or properties are loaded
+    useEffect(() => {
+        if (allProperties.length === 0) {
+            setProperties([]);
+            return;
+        }
+        
+        const timeoutId = setTimeout(() => {
+            handleSearch();
+        }, 300);
+
+        return () => clearTimeout(timeoutId);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties.length, allBookings.length]);
+
+    // Reset search when tab changes
+    useEffect(() => {
+        setSearchQuery("");
+        setLocationInput("");
+        setCheckInDate("");
+        setCheckOutDate("");
+        setFilterGuests("");
+        setGuests({ adults: 1, children: 0, infants: 0 });
+        // Properties will be updated when allProperties changes after tab switch
+    }, [activeTab]);
+
 
     // ✅ Safe delete: Firestore only (no Cloudinary deletion)
     const handleDelete = async (property) => {
@@ -114,7 +344,9 @@ export default function HostBody() {
             const propertyRef = doc(db, "properties", selectedDest.id);
             await updateDoc(propertyRef, {
                 title: selectedDest.title,
-                location: selectedDest.location,
+                location: typeof selectedDest.location === 'string' 
+                    ? selectedDest.location 
+                    : (selectedDest.location?.address || ""),
                 price: selectedDest.price,
                 description: selectedDest.description,
             });
@@ -137,9 +369,119 @@ export default function HostBody() {
             <div role="body" className="host_Body">
                 <h1>Dashboard</h1>
 
+                {/* Search Bar */}
+                <div style={{ maxWidth: "850px", margin: "2rem auto", padding: "0 1rem" }}>
+                    <div className="airbnb-search-bar">
+                        {/* Location Section with Input */}
+                        <div className="search-section search-section-input">
+                            <div className="search-section-label">Where</div>
+                            <input
+                                type="text"
+                                placeholder="Search destinations"
+                                className="search-section-input-field"
+                                value={locationInput || searchQuery || ""}
+                                onChange={(e) => {
+                                    setLocationInput(e.target.value);
+                                    setSearchQuery(e.target.value);
+                                }}
+                            />
+                            {/* Location Suggestions Dropdown */}
+                            {locationSuggestions.length > 0 && (locationInput || searchQuery) && locationInput.trim() !== "" && (
+                                <div className="location-suggestions-dropdown-inline">
+                                    {locationSuggestions.slice(0, 5).map((location, index) => (
+                                        <div
+                                            key={index}
+                                            className="location-suggestion-item"
+                                            onClick={() => {
+                                                setLocationInput(location);
+                                                setSearchQuery(location);
+                                            }}
+                                            onMouseDown={(e) => e.preventDefault()}
+                                        >
+                                            <MapPin size={16} />
+                                            <span>{location}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Check-in Date Section with Input */}
+                        <div className="search-section search-section-input">
+                            <div className="search-section-label">Check in</div>
+                            <input
+                                type="date"
+                                className="search-section-input-field search-section-date-input"
+                                value={checkInDate}
+                                onChange={(e) => {
+                                    setCheckInDate(e.target.value);
+                                    if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
+                                        setCheckOutDate("");
+                                    }
+                                }}
+                                min={new Date().toISOString().split('T')[0]}
+                            />
+                        </div>
+
+                        {/* Check-out Date Section with Input */}
+                        <div className="search-section search-section-input">
+                            <div className="search-section-label">Check out</div>
+                            <input
+                                type="date"
+                                className="search-section-input-field search-section-date-input"
+                                value={checkOutDate}
+                                onChange={(e) => setCheckOutDate(e.target.value)}
+                                min={checkInDate || new Date().toISOString().split('T')[0]}
+                            />
+                        </div>
+
+                        {/* Guests Section with Input */}
+                        <div className="search-section search-section-guests search-section-input">
+                            <div className="search-section-label">Who</div>
+                            <input
+                                type="number"
+                                className="search-section-input-field"
+                                placeholder="Add guests"
+                                min="1"
+                                value={totalGuests > 0 ? totalGuests : ""}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 0;
+                                    if (value >= 1) {
+                                        setGuests({ adults: value, children: 0, infants: 0 });
+                                        setFilterGuests(value.toString());
+                                    } else if (e.target.value === "") {
+                                        setGuests({ adults: 1, children: 0, infants: 0 });
+                                        setFilterGuests("");
+                                    }
+                                }}
+                            />
+                        </div>
+
+                        {/* Search Button */}
+                        <button 
+                            className="airbnb-search-btn" 
+                            onClick={() => {
+                                handleSearch();
+                            }}
+                        >
+                            <Search size={20} />
+                            <span>Search</span>
+                        </button>
+                    </div>
+                </div>
+
                 <main>
                     <article>
                         <div className="tabs">
+                            <button
+                                className={`tab ${activeTab === "all" ? "tab-active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("all");
+                                    console.log("All tab clicked");
+                                }}
+                            >
+                                All
+                            </button>
                             <button
                                 className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
                                 onClick={() => {
@@ -191,14 +533,29 @@ export default function HostBody() {
 
                                                 <div className="destination-content">
                                                     <div className="destination-header">
-                                                        <h3 className="destination-name">{property.title}</h3>
+                                                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+                                                            <h3 className="destination-name">{property.title}</h3>
+                                                            {activeTab === "all" && property.category && (
+                                                                <span style={{
+                                                                    fontSize: "11px",
+                                                                    fontWeight: "600",
+                                                                    textTransform: "uppercase",
+                                                                    color: "#717171",
+                                                                    backgroundColor: "#f7f7f7",
+                                                                    padding: "2px 8px",
+                                                                    borderRadius: "4px"
+                                                                }}>
+                                                                    {property.category}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                         <span className="destination-price">
                                                             ₱{property.price?.toLocaleString()} / night
                                                         </span>
                                                     </div>
 
                                                     <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location}
+                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
                                                     </p>
 
                                                     <div className="destination-footer">
@@ -273,7 +630,9 @@ export default function HostBody() {
                                             Location:
                                             <input
                                                 type="text"
-                                                value={selectedDest.location}
+                                                value={typeof selectedDest.location === 'string' 
+                                                    ? selectedDest.location 
+                                                    : (selectedDest.location?.address || "")}
                                                 onChange={(e) =>
                                                     setSelectedDest({ ...selectedDest, location: e.target.value })
                                                 }

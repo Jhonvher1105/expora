@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Plus,
     X,
@@ -9,9 +9,10 @@ import {
     Users,
     MapPin,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import MapPicker from "./MapPicker";
 
 const REQUIRED_IMAGE_COUNT = 3;
 const MAX_IMAGE_COUNT = 8;
@@ -42,20 +43,21 @@ const STEPS = [
 ];
 
 export default function AddServiceForm({onClose}) {
-    const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
     const [images, setImages] = useState([]);
     const [uploadError, setUploadError] = useState("");
     const [stepErrors, setStepErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
 
     const [formData, setFormData] = useState({
         category: "service",
         type: "",
         title: "",
         description: "",
-        location: "",
+        location: "", // Keep for backward compatibility (text address)
+        locationData: null, // New: { lat, lng, address }
         duration: "",
         maxGuests: "",
         minGuests: "1",
@@ -69,6 +71,27 @@ export default function AddServiceForm({onClose}) {
         startTime: "",
         languages: "",
     });
+
+    // Track current user
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setCurrentUser(user);
+        });
+        return unsubscribe;
+    }, []);
+
+    // Cleanup image preview URLs on unmount
+    useEffect(() => {
+        return () => {
+            images.forEach((img) => {
+                try {
+                    URL.revokeObjectURL(img.preview);
+                } catch (error) {
+                    // Ignore errors when revoking URLs
+                }
+            });
+        };
+    }, [images]);
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
@@ -116,13 +139,17 @@ export default function AddServiceForm({onClose}) {
                 if (!formData.description) errors.description = "Description is required";
                 break;
             case 3:
-                if (!formData.location) errors.location = "Location is required";
+                if (!formData.locationData && !formData.location) {
+                    errors.location = "Location is required. Please select a location on the map.";
+                }
                 if (!formData.duration) errors.duration = "Duration is required";
                 if (!formData.maxGuests || formData.maxGuests <= 0)
                     errors.maxGuests = "Valid guest count required";
                 break;
             case 4:
-                if (!formData.included) errors.included = "Please specify what's included";
+                if (!formData.included || formData.included.trim() === "") {
+                    errors.included = "Please specify what's included";
+                }
                 break;
             case 5:
                 if (images.length < REQUIRED_IMAGE_COUNT)
@@ -146,33 +173,93 @@ export default function AddServiceForm({onClose}) {
     const prevStep = () => setCurrentStep((p) => Math.max(p - 1, 1));
 
     const uploadToCloudinary = async (file) => {
-        const data = new FormData();
-        data.append("file", file);
-        data.append("upload_preset", UPLOAD_PRESET);
-        const res = await fetch(CLOUDINARY_URL, { method: "POST", body: data });
-        const json = await res.json();
-        return json.secure_url;
+        try {
+            const data = new FormData();
+            data.append("file", file);
+            data.append("upload_preset", UPLOAD_PRESET);
+            const res = await fetch(CLOUDINARY_URL, { method: "POST", body: data });
+            
+            if (!res.ok) {
+                throw new Error(`Upload failed with status: ${res.status}`);
+            }
+            
+            const json = await res.json();
+            if (!json.secure_url) {
+                throw new Error("No secure URL returned from Cloudinary");
+            }
+            
+            return json.secure_url;
+        } catch (error) {
+            console.error("Error uploading to Cloudinary:", error);
+            throw error;
+        }
     };
 
     const handleSubmit = async () => {
         if (!validateStep(6)) return;
+
+        if (!currentUser) {
+            setUploadError("You must be signed in to create a service.");
+            return;
+        }
+
         try {
             setLoading(true);
+            setUploadError("");
+
+            // Upload images to Cloudinary
             const uploadedUrls = [];
             for (const img of images) {
-                const url = await uploadToCloudinary(img.file);
-                uploadedUrls.push(url);
+                try {
+                    const url = await uploadToCloudinary(img.file);
+                    uploadedUrls.push(url);
+                } catch (error) {
+                    console.error("Error uploading image:", error);
+                    throw new Error(`Failed to upload image: ${error.message}`);
+                }
             }
-            await addDoc(collection(db, "services"), {
+
+            // Prepare data for Firestore
+            const finalData = {
                 ...formData,
+                price: Number(formData.price) || 0,
+                maxGuests: Number(formData.maxGuests) || 0,
+                minGuests: Number(formData.minGuests) || 1,
+                // Process included items if they're separated by newlines
+                included: formData.included ? formData.included.split('\n').filter(item => item.trim()) : [],
+                notIncluded: formData.notIncluded ? formData.notIncluded.split('\n').filter(item => item.trim()) : [],
+                requirements: formData.requirements ? formData.requirements.split('\n').filter(item => item.trim()) : [],
+                languages: formData.languages ? formData.languages.split(',').map(lang => lang.trim()).filter(lang => lang) : [],
+                // Store location data in Firestore
+                location: formData.locationData ? {
+                    lat: formData.locationData.lat,
+                    lng: formData.locationData.lng,
+                    address: formData.locationData.address
+                } : (formData.location ? { address: formData.location } : null),
                 images: uploadedUrls,
+                ownerId: currentUser.uid,
                 createdAt: Timestamp.now(),
-            });
+            };
+
+            await addDoc(collection(db, "services"), finalData);
             setSuccess(true);
-            if(onClose) onClose();
-        } catch (e) {
-            alert("❌ Error creating service");
-        } finally {
+            
+            // Clean up image preview URLs after successful upload
+            images.forEach((img) => {
+                try {
+                    URL.revokeObjectURL(img.preview);
+                } catch (error) {
+                    // Ignore errors
+                }
+            });
+
+            // Close modal after a short delay to show success message
+            setTimeout(() => {
+                if (onClose) onClose();
+            }, 1500);
+        } catch (error) {
+            console.error("Error creating service:", error);
+            setUploadError(error.message || "Failed to create service. Please try again.");
             setLoading(false);
         }
     };
@@ -181,163 +268,223 @@ export default function AddServiceForm({onClose}) {
         switch (currentStep) {
             case 1:
                 return (
-                    <div className="grid sm:grid-cols-2 gap-6">
+                    <div className="host-form-grid host-form-grid-2">
                         {SERVICE_TYPES.map((type) => (
                             <button
                                 key={type.id}
+                                type="button"
                                 onClick={() => setFormData({ ...formData, type: type.name })}
-                                className={`p-6 border-2 rounded-xl flex flex-col items-center gap-2 transition-all ${formData.type === type.name
-                                        ? "border-blue-600 bg-blue-50"
-                                        : "border-gray-200 hover:border-blue-400"
-                                    }`}
+                                className={`service-type-card ${formData.type === type.name ? "service-type-selected" : ""}`}
                             >
-                                <span className="text-4xl">{type.icon}</span>
-                                <span className="font-semibold">{type.name}</span>
-                                <p className="text-sm text-gray-500">{type.description}</p>
+                                <span className="service-type-icon">{type.icon}</span>
+                                <span className="service-type-name">{type.name}</span>
+                                <p className="service-type-description">{type.description}</p>
                             </button>
                         ))}
-                        {stepErrors.type && <p className="text-red-500 text-sm">{stepErrors.type}</p>}
+                        {stepErrors.type && <p className="host-form-error">{stepErrors.type}</p>}
                     </div>
                 );
             case 2:
                 return (
-                    <div className="space-y-4">
-                        <input
-                            type="text"
-                            placeholder="Service title"
-                            value={formData.title}
-                            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            className="w-full border rounded-lg p-3"
-                        />
-                        <textarea
-                            placeholder="Describe your service"
-                            rows={5}
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full border rounded-lg p-3"
-                        />
-                        {Object.values(stepErrors).map((err) => (
-                            <p key={err} className="text-red-500 text-sm">{err}</p>
-                        ))}
+                    <div className="host-form-group" style={{ gap: "1rem" }}>
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Service Title <span className="required">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="Enter service title"
+                                value={formData.title}
+                                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                className="host-form-input"
+                            />
+                            {stepErrors.title && <p className="host-form-error">{stepErrors.title}</p>}
+                        </div>
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Description <span className="required">*</span>
+                            </label>
+                            <textarea
+                                placeholder="Describe your service in detail..."
+                                rows={5}
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="host-form-textarea"
+                            />
+                            {stepErrors.description && <p className="host-form-error">{stepErrors.description}</p>}
+                        </div>
                     </div>
                 );
             case 3:
                 return (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="sm:col-span-2">
-                            <label className="flex items-center gap-2 text-gray-700 mb-1">
-                                <MapPin size={16} /> Location
-                            </label>
-                            <input
-                                type="text"
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                className="w-full border rounded-lg p-3"
+                    <div className="host-form-grid host-form-grid-2">
+                        {/* Map Picker */}
+                        <div className="host-form-group" style={{ gridColumn: "1 / -1" }}>
+                            <MapPicker
+                                onLocationSelect={(locationData) => {
+                                    setFormData({
+                                        ...formData,
+                                        locationData: locationData,
+                                        location: locationData.address, // Keep text location for backward compatibility
+                                    });
+                                }}
+                                initialLocation={formData.locationData}
                             />
+                            {stepErrors.location && <p className="host-form-error">{stepErrors.location}</p>}
                         </div>
-                        <div>
-                            <label className="flex items-center gap-2 text-gray-700 mb-1">
-                                <Clock size={16} /> Duration
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                <Clock size={16} style={{ marginRight: "4px" }} />
+                                Duration <span className="required">*</span>
                             </label>
                             <select
                                 value={formData.duration}
                                 onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                                className="w-full border rounded-lg p-3"
+                                className="host-form-select"
                             >
                                 <option value="">Select duration</option>
                                 {DURATION_OPTIONS.map((d) => (
-                                    <option key={d}>{d}</option>
+                                    <option key={d} value={d}>{d}</option>
                                 ))}
                             </select>
+                            {stepErrors.duration && <p className="host-form-error">{stepErrors.duration}</p>}
                         </div>
-                        <div>
-                            <label className="flex items-center gap-2 text-gray-700 mb-1">
-                                <Users size={16} /> Max Guests
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                <Users size={16} style={{ marginRight: "4px" }} />
+                                Max Guests <span className="required">*</span>
                             </label>
                             <input
                                 type="number"
+                                min="1"
+                                placeholder="Maximum number of guests"
                                 value={formData.maxGuests}
                                 onChange={(e) => setFormData({ ...formData, maxGuests: e.target.value })}
-                                className="w-full border rounded-lg p-3"
+                                className="host-form-input"
                             />
+                            {stepErrors.maxGuests && <p className="host-form-error">{stepErrors.maxGuests}</p>}
                         </div>
-                        {Object.values(stepErrors).map((err) => (
-                            <p key={err} className="text-red-500 text-sm">{err}</p>
-                        ))}
                     </div>
                 );
             case 4:
                 return (
-                    <div className="grid gap-4">
-                        <textarea
-                            rows={4}
-                            placeholder="What's included?"
-                            value={formData.included}
-                            onChange={(e) => setFormData({ ...formData, included: e.target.value })}
-                            className="w-full border rounded-lg p-3"
-                        />
-                        <textarea
-                            rows={3}
-                            placeholder="Not included (optional)"
-                            value={formData.notIncluded}
-                            onChange={(e) => setFormData({ ...formData, notIncluded: e.target.value })}
-                            className="w-full border rounded-lg p-3"
-                        />
-                        {Object.values(stepErrors).map((err) => (
-                            <p key={err} className="text-red-500 text-sm">{err}</p>
-                        ))}
+                    <div className="host-form-group" style={{ gap: "1rem" }}>
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                What's Included <span className="required">*</span>
+                            </label>
+                            <textarea
+                                rows={4}
+                                placeholder="List what guests will experience (e.g., Guided tour, Equipment, Refreshments)"
+                                value={formData.included}
+                                onChange={(e) => setFormData({ ...formData, included: e.target.value })}
+                                className="host-form-textarea"
+                            />
+                            {stepErrors.included && <p className="host-form-error">{stepErrors.included}</p>}
+                        </div>
+                        <div className="host-form-group">
+                            <label className="host-form-label">Not Included (Optional)</label>
+                            <textarea
+                                rows={3}
+                                placeholder="List what's not included (e.g., Transportation, Meals)"
+                                value={formData.notIncluded}
+                                onChange={(e) => setFormData({ ...formData, notIncluded: e.target.value })}
+                                className="host-form-textarea"
+                            />
+                        </div>
                     </div>
                 );
             case 5:
                 return (
-                    <div>
-                        <div className="grid grid-cols-3 gap-4 mb-4">
+                    <div className="host-form-group">
+                        <label className="host-form-label">
+                            Service Photos <span className="required">*</span>
+                            <span className="host-form-subtitle" style={{ marginLeft: "8px" }}>
+                                ({images.length} / {REQUIRED_IMAGE_COUNT} minimum, {MAX_IMAGE_COUNT} maximum)
+                            </span>
+                        </label>
+                        <div className="host-image-preview-grid">
                             {images.map((img, idx) => (
-                                <div key={idx} className="relative">
+                                <div key={idx} className="host-image-preview-item">
                                     <img
                                         src={img.preview}
-                                        alt="preview"
-                                        className="rounded-lg object-cover w-full h-32"
+                                        alt={`Preview ${idx + 1}`}
+                                        className="host-image-preview"
                                     />
                                     <button
+                                        type="button"
                                         onClick={() => removeImage(idx)}
-                                        className="absolute top-1 right-1 bg-white rounded-full p-1 shadow"
+                                        className="host-image-remove-btn"
+                                        aria-label="Remove image"
                                     >
                                         <X size={16} />
                                     </button>
                                 </div>
                             ))}
                             {images.length < MAX_IMAGE_COUNT && (
-                                <label className="border-2 border-dashed rounded-lg flex flex-col items-center justify-center h-32 cursor-pointer hover:border-blue-400">
-                                    <Plus />
-                                    <span className="text-sm text-gray-500">Add Photo</span>
-                                    <input type="file" multiple accept="image/*" onChange={handleImageChange} className="hidden" />
+                                <label className="host-image-upload-btn">
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={handleImageChange}
+                                        className="host-image-input-hidden"
+                                    />
+                                    <Plus size={24} className="host-image-upload-icon" />
+                                    <span className="host-image-upload-text">Add Images</span>
                                 </label>
                             )}
                         </div>
-                        {uploadError && <p className="text-red-500 text-sm">{uploadError}</p>}
-                        {stepErrors.images && <p className="text-red-500 text-sm">{stepErrors.images}</p>}
+                        {uploadError && <p className="host-form-error">{uploadError}</p>}
+                        {stepErrors.images && <p className="host-form-error">{stepErrors.images}</p>}
                     </div>
                 );
             case 6:
                 return (
-                    <div className="grid sm:grid-cols-2 gap-4">
-                        <input
-                            type="number"
-                            placeholder="Price"
-                            value={formData.price}
-                            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                            className="border rounded-lg p-3"
-                        />
-                        <input
-                            type="time"
-                            value={formData.startTime}
-                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                            className="border rounded-lg p-3"
-                        />
-                        {Object.values(stepErrors).map((err) => (
-                            <p key={err} className="text-red-500 text-sm">{err}</p>
-                        ))}
+                    <div className="host-form-grid host-form-grid-2">
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Price <span className="required">*</span>
+                            </label>
+                            <div style={{ position: "relative" }}>
+                                <span style={{
+                                    position: "absolute",
+                                    left: "12px",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    color: "rgba(255, 255, 255, 0.6)",
+                                    fontSize: "1rem"
+                                }}>₱</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    value={formData.price}
+                                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                                    className="host-form-input"
+                                    style={{ paddingLeft: "2.5rem" }}
+                                />
+                            </div>
+                            {stepErrors.price && <p className="host-form-error">{stepErrors.price}</p>}
+                        </div>
+                        <div className="host-form-group">
+                            <label className="host-form-label">
+                                Start Time <span className="required">*</span>
+                            </label>
+                            <input
+                                type="time"
+                                value={formData.startTime}
+                                onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                className="host-form-input"
+                            />
+                            {stepErrors.startTime && <p className="host-form-error">{stepErrors.startTime}</p>}
+                        </div>
+                        {uploadError && (
+                            <div className="host-form-group" style={{ gridColumn: "1 / -1" }}>
+                                <p className="host-form-error">{uploadError}</p>
+                            </div>
+                        )}
                     </div>
                 );
             default:
@@ -347,85 +494,94 @@ export default function AddServiceForm({onClose}) {
 
     if (success) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-100 via-blue-100 to-gray-50">
-                <Check size={64} className="text-green-500 mb-4 animate-bounce" />
-                <h2 className="text-2xl font-semibold text-gray-800">
-                    Service Created Successfully!
-                </h2>
-                <p className="text-gray-500 mt-2">Redirecting back...</p>
+            <div className="host-modal-form-container">
+                <div className="host-modal-form-wrapper" style={{ textAlign: "center", padding: "3rem" }}>
+                    <Check size={64} style={{ color: "#10b981", marginBottom: "1rem" }} />
+                    <h2 className="host-modal-title" style={{ marginBottom: "0.5rem" }}>
+                        Service Created Successfully!
+                    </h2>
+                    <p className="host-form-subtitle">Redirecting back...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-gray-50 py-8 px-4 sm:px-6 lg:px-8 relative">
-            <button
-                onClick={onClose}
-                className="absolute top-6 right-6 bg-white shadow-md p-2 rounded-full hover:bg-gray-100 transition"
-            >
-                <X className="w-5 h-5 text-gray-700" />
-            </button>
+        <div className="host-modal-form-container">
+            <div className="host-modal-form-wrapper">
+                <button
+                    onClick={() => {
+                        // Clean up image preview URLs before closing
+                        images.forEach((img) => {
+                            try {
+                                URL.revokeObjectURL(img.preview);
+                            } catch (error) {
+                                // Ignore errors
+                            }
+                        });
+                        if (onClose) onClose();
+                    }}
+                    className="host-modal-close-btn"
+                    aria-label="Close"
+                >
+                    <X size={20} />
+                </button>
 
-            <div className="max-w-3xl mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                        Create a Service
-                    </h1>
-                    <p className="text-gray-600">
-                        Share your expertise and experiences with travelers
-                    </p>
-                </div>
+                <div className="host-modal-form">
+                    <h2 className="host-modal-title">Create a Service</h2>
 
-                <div className="mb-8">
-                    <div className="flex items-center justify-between mb-4">
-                        {STEPS.map((step, idx) => (
-                            <React.Fragment key={step.id}>
-                                <div className="flex flex-col items-center">
-                                    <div
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${currentStep > step.id
-                                                ? "bg-green-500 text-white"
-                                                : currentStep === step.id
-                                                    ? "bg-blue-600 text-white ring-4 ring-blue-200"
-                                                    : "bg-gray-200 text-gray-500"
-                                            }`}
-                                    >
-                                        {currentStep > step.id ? <Check size={20} /> : step.id}
+                    {/* Step Indicator */}
+                    <div className="service-step-indicator">
+                        <div className="service-steps-container">
+                            {STEPS.map((step, idx) => (
+                                <React.Fragment key={step.id}>
+                                    <div className="service-step-item">
+                                        <div
+                                            className={`service-step-circle ${currentStep > step.id
+                                                    ? "service-step-completed"
+                                                    : currentStep === step.id
+                                                        ? "service-step-active"
+                                                        : "service-step-pending"
+                                                }`}
+                                        >
+                                            {currentStep > step.id ? <Check size={18} /> : step.id}
+                                        </div>
+                                        <span className="service-step-label">
+                                            {step.title}
+                                        </span>
                                     </div>
-                                    <span className="text-xs mt-2 text-center hidden md:block max-w-[80px]">
-                                        {step.title}
-                                    </span>
-                                </div>
-                                {idx < STEPS.length - 1 && (
-                                    <div
-                                        className={`flex-1 h-1 mx-2 transition-all ${currentStep > step.id ? "bg-green-500" : "bg-gray-200"
-                                            }`}
-                                    />
-                                )}
-                            </React.Fragment>
-                        ))}
+                                    {idx < STEPS.length - 1 && (
+                                        <div
+                                            className={`service-step-connector ${currentStep > step.id ? "service-step-connector-completed" : ""}`}
+                                        />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-gray-900">
+                    {/* Step Content */}
+                    <div className="host-form-section">
+                        <h3 className="host-form-section-title">
                             {STEPS[currentStep - 1].title}
-                        </h2>
-                        <p className="text-gray-600 mt-2">
+                        </h3>
+                        <p className="host-form-subtitle">
                             {STEPS[currentStep - 1].description}
                         </p>
+
+                        <div className="service-step-content">{renderStep()}</div>
                     </div>
 
-                    <div className="min-h-[400px]">{renderStep()}</div>
-
-                    <div className="flex justify-between mt-8 pt-6 border-t">
+                    {/* Navigation Buttons */}
+                    <div className="host-form-actions">
                         <button
                             type="button"
                             onClick={prevStep}
                             disabled={currentStep === 1}
-                            className="flex items-center gap-2 px-6 py-3 border rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="host-form-cancel-btn"
+                            style={{ opacity: currentStep === 1 ? 0.5 : 1, cursor: currentStep === 1 ? "not-allowed" : "pointer" }}
                         >
-                            <ArrowLeft size={20} />
+                            <ArrowLeft size={18} style={{ marginRight: "8px" }} />
                             Back
                         </button>
 
@@ -433,23 +589,24 @@ export default function AddServiceForm({onClose}) {
                             <button
                                 type="button"
                                 onClick={nextStep}
-                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                className="host-form-submit-btn"
                             >
                                 Next
-                                <ArrowRight size={20} />
+                                <ArrowRight size={18} style={{ marginLeft: "8px" }} />
                             </button>
                         ) : (
                             <button
                                 type="button"
                                 onClick={handleSubmit}
-                                disabled={loading}
-                                className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium shadow-lg transition-colors ${loading
-                                        ? "bg-gray-400 cursor-not-allowed"
-                                        : "bg-green-600 hover:bg-green-700 text-white"
-                                    }`}
+                                disabled={loading || !currentUser}
+                                className="host-form-submit-btn"
+                                style={{ 
+                                    background: (loading || !currentUser) ? "rgba(255, 255, 255, 0.2)" : "var(--primary-gradient)",
+                                    cursor: (loading || !currentUser) ? "not-allowed" : "pointer"
+                                }}
                             >
                                 {loading ? "Uploading..." : "Create Service"}
-                                {!loading && <Check size={20} />}
+                                {!loading && <Check size={18} style={{ marginLeft: "8px" }} />}
                             </button>
                         )}
                     </div>

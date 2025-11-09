@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy, limit, where } from "firebase/firestore";
 import { db } from "../../firebase";
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Users, Star } from "lucide-react";
+import "./AdminDashboard.css";
 
 export default function Analytics({ bookings, listings, users }) {
   const [reviews, setReviews] = useState([]);
@@ -74,100 +74,95 @@ export default function Analytics({ bookings, listings, users }) {
   };
 
   if (loading) {
-    return <div>Loading analytics...</div>;
+    return (
+      <div className="admin-loading-container">
+        <div className="admin-loading-spinner"></div>
+        <div>Loading analytics...</div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Analytics Dashboard</h2>
+    <div className="admin-content">
+      <div className="admin-page-header">
+        <h2>Analytics Dashboard</h2>
+      </div>
 
       {/* Key Metrics */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-        gap: "16px",
-        marginBottom: "32px"
-      }}>
+      <div className="admin-metrics-grid">
         <MetricCard
           title="Total Bookings"
           value={totalBookings}
-          icon={Calendar}
+          color="#ff6b35"
+          icon="📅"
           trend={confirmedBookings}
           trendLabel="Confirmed"
         />
         <MetricCard
           title="Total Revenue"
           value={`₱${totalRevenue.toLocaleString()}`}
-          icon={DollarSign}
+          color="#10b981"
+          icon="💰"
           trend={pendingBookings}
           trendLabel="Pending"
         />
         <MetricCard
           title="Total Users"
           value={totalUsers}
-          icon={Users}
+          color="#8b5cf6"
+          icon="👥"
           trend={listings.length}
           trendLabel="Hosts"
         />
         <MetricCard
           title="Total Listings"
           value={totalListings}
-          icon={Star}
+          color="#f59e0b"
+          icon="🏠"
           trend={reviews.length}
           trendLabel="Reviews"
         />
       </div>
 
       {/* Booking Status Breakdown */}
-      <div style={{
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "24px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-      }}>
-        <h3 style={{ marginBottom: "16px", fontSize: "20px" }}>Booking Status</h3>
-        <div style={{ display: "flex", gap: "24px" }}>
-          <div>
-            <div style={{ color: "#28a745", fontSize: "24px", fontWeight: "bold" }}>{confirmedBookings}</div>
-            <div style={{ color: "#666" }}>Confirmed</div>
+      <div className="admin-card">
+        <h3 className="admin-card-title">Booking Status</h3>
+        <div className="admin-summary-grid">
+          <div className="admin-summary-card">
+            <div className="admin-summary-value" style={{ color: "#10b981" }}>{confirmedBookings}</div>
+            <div className="admin-summary-label">Confirmed</div>
           </div>
-          <div>
-            <div style={{ color: "#ffc107", fontSize: "24px", fontWeight: "bold" }}>{pendingBookings}</div>
-            <div style={{ color: "#666" }}>Pending</div>
+          <div className="admin-summary-card">
+            <div className="admin-summary-value" style={{ color: "#f59e0b" }}>{pendingBookings}</div>
+            <div className="admin-summary-label">Pending</div>
           </div>
-          <div>
-            <div style={{ color: "#dc3545", fontSize: "24px", fontWeight: "bold" }}>{cancelledBookings}</div>
-            <div style={{ color: "#666" }}>Cancelled</div>
+          <div className="admin-summary-card">
+            <div className="admin-summary-value" style={{ color: "#ef4444" }}>{cancelledBookings}</div>
+            <div className="admin-summary-label">Cancelled</div>
           </div>
         </div>
       </div>
 
       {/* Best Reviewed Listings */}
-      <div style={{
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "24px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-      }}>
-        <h3 style={{ marginBottom: "16px", fontSize: "20px" }}>Best Reviewed Listings</h3>
+      <div className="admin-card">
+        <h3 className="admin-card-title">Best Reviewed Listings</h3>
         {bestReviewed.length > 0 ? (
-          <div style={{ display: "grid", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {bestReviewed.map((item) => {
               const listing = getListingDetails(item.listingId);
               return (
                 <div key={item.listingId} style={{
                   padding: "12px",
-                  background: "#f8f9fa",
-                  borderRadius: "4px",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "8px",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center"
                 }}>
                   <div>
-                    <div style={{ fontWeight: "bold" }}>{listing?.title || "Unknown Listing"}</div>
-                    <div style={{ fontSize: "14px", color: "#666" }}>
+                    <div style={{ fontWeight: "600", color: "#ffffff" }}>{listing?.title || "Unknown Listing"}</div>
+                    <div style={{ fontSize: "14px", color: "rgba(255, 255, 255, 0.6)" }}>
                       {item.reviewCount} reviews • {item.averageRating.toFixed(1)} ⭐
                     </div>
                   </div>
@@ -176,35 +171,30 @@ export default function Analytics({ bookings, listings, users }) {
             })}
           </div>
         ) : (
-          <div style={{ color: "#666" }}>No reviews available</div>
+          <div className="admin-empty-state">No reviews available</div>
         )}
       </div>
 
       {/* Lowest Reviewed Listings */}
-      <div style={{
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        marginBottom: "24px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-      }}>
-        <h3 style={{ marginBottom: "16px", fontSize: "20px" }}>Lowest Reviewed Listings</h3>
+      <div className="admin-card">
+        <h3 className="admin-card-title">Lowest Reviewed Listings</h3>
         {lowestReviewed.length > 0 ? (
-          <div style={{ display: "grid", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {lowestReviewed.map((item) => {
               const listing = getListingDetails(item.listingId);
               return (
                 <div key={item.listingId} style={{
                   padding: "12px",
-                  background: "#f8f9fa",
-                  borderRadius: "4px",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "8px",
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center"
                 }}>
                   <div>
-                    <div style={{ fontWeight: "bold" }}>{listing?.title || "Unknown Listing"}</div>
-                    <div style={{ fontSize: "14px", color: "#666" }}>
+                    <div style={{ fontWeight: "600", color: "#ffffff" }}>{listing?.title || "Unknown Listing"}</div>
+                    <div style={{ fontSize: "14px", color: "rgba(255, 255, 255, 0.6)" }}>
                       {item.reviewCount} reviews • {item.averageRating.toFixed(1)} ⭐
                     </div>
                   </div>
@@ -213,20 +203,15 @@ export default function Analytics({ bookings, listings, users }) {
             })}
           </div>
         ) : (
-          <div style={{ color: "#666" }}>No reviews available</div>
+          <div className="admin-empty-state">No reviews available</div>
         )}
       </div>
 
       {/* Monthly Revenue */}
-      <div style={{
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "8px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-      }}>
-        <h3 style={{ marginBottom: "16px", fontSize: "20px" }}>Monthly Revenue (Last 6 Months)</h3>
+      <div className="admin-card">
+        <h3 className="admin-card-title">Monthly Revenue (Last 6 Months)</h3>
         {Object.keys(monthlyRevenue).length > 0 ? (
-          <div style={{ display: "grid", gap: "8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {Object.entries(monthlyRevenue)
               .sort((a, b) => b[0].localeCompare(a[0]))
               .slice(0, 6)
@@ -234,38 +219,34 @@ export default function Analytics({ bookings, listings, users }) {
                 <div key={month} style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "8px",
-                  background: "#f8f9fa",
-                  borderRadius: "4px"
+                  padding: "12px",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "8px"
                 }}>
-                  <span>{month}</span>
-                  <span style={{ fontWeight: "bold" }}>₱{revenue.toLocaleString()}</span>
+                  <span style={{ color: "rgba(255, 255, 255, 0.7)" }}>{month}</span>
+                  <span style={{ fontWeight: "700", color: "#ff6b35" }}>₱{revenue.toLocaleString()}</span>
                 </div>
               ))}
           </div>
         ) : (
-          <div style={{ color: "#666" }}>No revenue data available</div>
+          <div className="admin-empty-state">No revenue data available</div>
         )}
       </div>
     </div>
   );
 }
 
-function MetricCard({ title, value, icon: Icon, trend, trendLabel }) {
+function MetricCard({ title, value, icon, color, trend, trendLabel }) {
   return (
-    <div style={{
-      background: "#fff",
-      padding: "20px",
-      borderRadius: "8px",
-      boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <div style={{ color: "#666", fontSize: "14px" }}>{title}</div>
-        <Icon size={20} color="#666" />
+    <div className="admin-metric-card" style={{ borderLeftColor: color }}>
+      <div className="admin-metric-header">
+        <span className="admin-metric-icon">{icon}</span>
+        <span className="admin-metric-title">{title}</span>
       </div>
-      <div style={{ fontSize: "32px", fontWeight: "bold", marginBottom: "8px" }}>{value}</div>
+      <div className="admin-metric-value" style={{ color: color }}>{value}</div>
       {trend !== undefined && (
-        <div style={{ fontSize: "12px", color: "#666" }}>
+        <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.6)", marginTop: "8px" }}>
           {trendLabel}: {trend}
         </div>
       )}

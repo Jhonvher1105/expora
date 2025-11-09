@@ -3,8 +3,8 @@ import { Plus, X } from "lucide-react";
 import { auth, db } from "../../firebase";
 import { doc, updateDoc, collection, addDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
-
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import MapPicker from "./MapPicker";
 
 const REQUIRED_IMAGE_COUNT = 5;
 const MAX_IMAGE_COUNT = 10;
@@ -29,7 +29,8 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         category: "home",
         price: "",
         day_night: "",
-        location: "",
+        location: "", // Keep for backward compatibility (text address)
+        locationData: null, // New: { lat, lng, address }
         maxGuests: "",
         bedrooms: "",
         bathrooms: "",
@@ -151,7 +152,9 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         if (!formData.type) errors.type = "Property type is required";
         if (!formData.price || formData.price <= 0)
             errors.price = "Valid price is required";
-        if (!formData.location) errors.location = "Location is required";
+        if (!formData.locationData && !formData.location) {
+            errors.location = "Location is required. Please select a location on the map.";
+        }
         if (!formData.maxGuests || formData.maxGuests <= 0)
             errors.maxGuests = "Valid guest count is required";
         if (!formData.bedrooms || formData.bedrooms < 0)
@@ -192,6 +195,12 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                 promoStartDate: formData.promoStartDate || null,
                 promoEndDate: formData.promoEndDate || null,
                 images: cloudinaryUrls,
+                // Store location data in Firestore
+                location: formData.locationData ? {
+                    lat: formData.locationData.lat,
+                    lng: formData.locationData.lng,
+                    address: formData.locationData.address
+                } : (formData.location ? { address: formData.location } : null),
                 ownerId: currentUser.uid,
                 createdAt: new Date(),
                 isDraft: false,
@@ -308,19 +317,18 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                     <section className="host-form-section">
                         <h3 className="host-form-section-title">Location & Pricing</h3>
                         
-                        <div className="host-form-group">
-                            <label className="host-form-label">
-                                Location <span className="required">*</span>
-                            </label>
-                            <input
-                                className="host-form-input"
-                                type="text"
-                                placeholder="Enter property location"
-                                value={formData.location}
-                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                            />
-                            {formErrors.location && <p className="host-form-error">{formErrors.location}</p>}
-                        </div>
+                        {/* Map Picker */}
+                        <MapPicker
+                            onLocationSelect={(locationData) => {
+                                setFormData({
+                                    ...formData,
+                                    locationData: locationData,
+                                    location: locationData.address, // Keep text location for backward compatibility
+                                });
+                            }}
+                            initialLocation={formData.locationData}
+                        />
+                        {formErrors.location && <p className="host-form-error">{formErrors.location}</p>}
 
                         <div className="host-form-group">
                             <label className="host-form-label">
