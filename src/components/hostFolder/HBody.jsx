@@ -17,6 +17,7 @@ import { auth, db } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import AddProperty from "../ui/AddProperty";
 import HostingType from "../ui/HostingType";
+import Earnings from "./Earnings";
 import { collection as fbCollection, getDocs as fbGetDocs, query as fbQuery, where as fbWhere } from "firebase/firestore";
 
 export default function HostBody() {
@@ -176,12 +177,24 @@ export default function HostBody() {
                 const startOfToday = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate()).getTime();
                 const endOfToday = startOfToday + 24 * 60 * 60 * 1000 - 1;
                 all.forEach((b) => {
-                    const start = new Date(b.startDate).getTime();
-                    if (start >= startOfToday && start <= endOfToday) today.push(b);
-                    else if (start > endOfToday) upcoming.push(b);
+                    // Handle Firestore Timestamps
+                    const startDate = b.startDate?.toDate ? b.startDate.toDate() : new Date(b.startDate);
+                    const start = startDate.getTime();
+                    if (!isNaN(start)) {
+                        if (start >= startOfToday && start <= endOfToday) today.push(b);
+                        else if (start > endOfToday) upcoming.push(b);
+                    }
                 });
-                setTodayBookings(today.sort((a,b)=> new Date(a.startDate)-new Date(b.startDate)));
-                setUpcomingBookings(upcoming.sort((a,b)=> new Date(a.startDate)-new Date(b.startDate)));
+                setTodayBookings(today.sort((a,b)=> {
+                    const aStart = a.startDate?.toDate ? a.startDate.toDate().getTime() : new Date(a.startDate).getTime();
+                    const bStart = b.startDate?.toDate ? b.startDate.toDate().getTime() : new Date(b.startDate).getTime();
+                    return aStart - bStart;
+                }));
+                setUpcomingBookings(upcoming.sort((a,b)=> {
+                    const aStart = a.startDate?.toDate ? a.startDate.toDate().getTime() : new Date(a.startDate).getTime();
+                    const bStart = b.startDate?.toDate ? b.startDate.toDate().getTime() : new Date(b.startDate).getTime();
+                    return aStart - bStart;
+                }));
             } catch (e) {
                 console.error(e);
             }
@@ -509,11 +522,22 @@ export default function HostBody() {
                             >
                                 Experiences
                             </button>
+                            <button
+                                className={`tab ${activeTab === "earnings" ? "tab-active" : ""}`}
+                                onClick={() => {
+                                    setActiveTab("earnings")
+                                    console.log("Earnings tab clicked");
+                                }}
+                            >
+                                Earnings
+                            </button>
                         </div>
                     </article>
 
                     <article>
-                        {activeTab && (
+                        {activeTab === "earnings" ? (
+                            <Earnings showHeader={false} />
+                        ) : activeTab && (
                             <section className="section">
                                 <div className="destinations-grid">
                                     {properties.length > 0 ? (
@@ -550,7 +574,7 @@ export default function HostBody() {
                                                             )}
                                                         </div>
                                                         <span className="destination-price">
-                                                            ₱{property.price?.toLocaleString()} / night
+                                                            ₱{property.price?.toLocaleString()} {property.day_night || (property.category === "services" ? "/ Head" : "/ night")}
                                                         </span>
                                                     </div>
 

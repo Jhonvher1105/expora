@@ -762,6 +762,17 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.admin-summary-amount {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-top: 4px;
+}
+
+.spin {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
 /* Forms */
 .admin-form {
   display: flex;

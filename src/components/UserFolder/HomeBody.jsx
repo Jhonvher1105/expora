@@ -25,6 +25,7 @@ import ReviewList from "../ui/ReviewList";
 import ReviewForm from "../ui/ReviewForm";
 import ChatModal from "../ui/ChatModal";
 import MapViewer from "../ui/MapViewer";
+import AvailabilityCalendar from "../ui/AvailabilityCalendar";
 
 function Body() {
     const [activeTab, setActiveTab] = useState("all");
@@ -57,9 +58,10 @@ function Body() {
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
     const [allBookings, setAllBookings] = useState([]);
-    const { checkAvailability, createBooking, creating } = useBooking();
+    const { checkAvailability, createBooking, creating, calculateServiceFee } = useBooking();
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
     const { openChat } = useChat();
+    const [serviceFee, setServiceFee] = useState(0);
 
     // Auto-check availability when dates change
     useEffect(() => {
@@ -126,35 +128,39 @@ function Body() {
             errors.numGuests = "Maximum 20 guests allowed";
         }
 
-        // Price calculation validation
-        if (startDate && endDate && selectedDest?.price) {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-            
-            if (nights <= 0) {
-                errors.dates = "Invalid date range";
-            }
-            
-            const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
-            const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
-            const finalPrice = basePrice - listingDiscount - couponDiscount;
-            
-            if (finalPrice <= 0) {
-                errors.price = "Invalid price calculation";
-            }
+            // Price calculation validation
+            if (startDate && endDate && selectedDest?.price) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                
+                if (nights <= 0) {
+                    errors.dates = "Invalid date range";
+                }
+                
+                const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
+                const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
+                const priceAfterListingDiscount = basePrice - listingDiscount;
+                // Total price includes service fee (coupon discount applied in payment)
+                const totalPrice = priceAfterListingDiscount + serviceFee;
+                // Final price after coupon discount (what guest actually pays)
+                const finalPrice = totalPrice - couponDiscount;
+                
+                if (finalPrice <= 0) {
+                    errors.price = "Invalid price calculation";
+                }
 
-            // Balance validation for wallet payment
-            if (paymentMethod === "wallet" && balance < finalPrice) {
-                errors.balance = `Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`;
+                // Balance validation for wallet payment
+                if (paymentMethod === "wallet" && balance < finalPrice) {
+                    errors.balance = `Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`;
+                }
             }
-        }
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
-    // Calculate total price
+    // Calculate total price (includes service fee, coupon discount applied later in payment)
     const calculateTotalPrice = () => {
         if (!startDate || !endDate || !selectedDest?.price) return 0;
         
@@ -163,8 +169,39 @@ function Body() {
         const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
         const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
         const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
-        return basePrice - listingDiscount - couponDiscount;
+        // Price after listing discount (before coupon)
+        const priceAfterListingDiscount = basePrice - listingDiscount;
+        // Total includes service fee (coupon discount applied in payment processing)
+        return priceAfterListingDiscount + serviceFee;
     };
+
+    // Calculate service fee when price changes
+    // Service fee is calculated on price after listing discount (before coupon discount)
+    useEffect(() => {
+        const calculateFee = async () => {
+            if (!startDate || !endDate || !selectedDest?.price) {
+                setServiceFee(0);
+                return;
+            }
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
+            const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
+            // Service fee is calculated on price after listing discount, before coupon discount
+            const priceAfterListingDiscount = basePrice - listingDiscount;
+            
+            if (priceAfterListingDiscount > 0) {
+                const fee = await calculateServiceFee(priceAfterListingDiscount);
+                setServiceFee(fee);
+            } else {
+                setServiceFee(0);
+            }
+        };
+        
+        calculateFee();
+    }, [startDate, endDate, selectedDest?.price, selectedDest?.discountPercentage, numGuests, calculateServiceFee]);
 
     // Award points after successful booking
     const awardBookingPoints = async (booking, totalPrice) => {
@@ -421,23 +458,29 @@ function Body() {
     };
 
     // Helper function to check date overlap (same logic as BookingContext)
+    // Helper to convert date to timestamp (handles Firestore Timestamps, Date objects, and strings)
+    const toTimestamp = (date) => {
+        if (!date) return null;
+        // If it's a Firestore Timestamp, convert to Date first
+        if (date.toDate && typeof date.toDate === 'function') {
+            return date.toDate().getTime();
+        }
+        // If it's already a Date object or can be converted
+        const dateObj = date instanceof Date ? date : new Date(date);
+        return dateObj.getTime();
+    };
+
     const isOverlapping = (startA, endA, startB, endB) => {
-        // Normalize dates to ensure consistent comparison
-        const aStart = normalizeDate(startA);
-        const bStart = normalizeDate(startB);
-        const aEnd = normalizeDate(endA);
-        const bEnd = normalizeDate(endB);
+        const aStart = toTimestamp(startA);
+        const aEnd = toTimestamp(endA);
+        const bStart = toTimestamp(startB);
+        const bEnd = toTimestamp(endB);
         
-        if (!aStart || !aEnd || !bStart || !bEnd) return false;
+        if (aStart === null || aEnd === null || bStart === null || bEnd === null) return false;
+        if (Number.isNaN(aStart) || Number.isNaN(aEnd) || Number.isNaN(bStart) || Number.isNaN(bEnd)) return false;
         
-        const aStartTime = new Date(aStart).getTime();
-        const aEndTime = new Date(aEnd).getTime();
-        const bStartTime = new Date(bStart).getTime();
-        const bEndTime = new Date(bEnd).getTime();
-        
-        if (Number.isNaN(aStartTime) || Number.isNaN(aEndTime) || Number.isNaN(bStartTime) || Number.isNaN(bEndTime)) return false;
         // Overlap when ranges intersect: aStart <= bEnd && bStart <= aEnd
-        return aStartTime <= bEndTime && bStartTime <= aEndTime;
+        return aStart <= bEnd && bStart <= aEnd;
     };
 
     // Calculate total guests
@@ -758,17 +801,18 @@ function Body() {
                                                                     fontSize: "11px",
                                                                     fontWeight: "600",
                                                                     textTransform: "uppercase",
-                                                                    color: "#717171",
-                                                                    backgroundColor: "#f7f7f7",
+                                                                    color: "var(--text-muted, rgba(255, 255, 255, 0.7))",
+                                                                    backgroundColor: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
                                                                     padding: "2px 8px",
-                                                                    borderRadius: "4px"
+                                                                    borderRadius: "var(--radius-sm, 4px)",
+                                                                    border: "1px solid var(--border-light, rgba(255, 255, 255, 0.06))"
                                                                 }}>
                                                                     {property.category}
                                                                 </span>
                                                             )}
                                                         </div>
                                                         <span className="destination-price">
-                                                            ₱{property.price?.toLocaleString()} / night
+                                                            ₱{property.price?.toLocaleString()} {property.day_night || "/ night"}
                                                         </span>
                                                     </div>
                                                     <p className="destination-location">
@@ -1066,35 +1110,96 @@ function Body() {
                                                     position: "absolute",
                                                     right: 0,
                                                     top: 40,
-                                                    background: "white",
-                                                    border: "1px solid #ccc",
-                                                    borderRadius: 8,
-                                                    padding: 8,
+                                                    background: "var(--bg-modal, rgba(15, 15, 30, 0.95))",
+                                                    border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                                                    borderRadius: "var(--radius-md, 8px)",
+                                                    padding: "8px",
                                                     zIndex: 1000,
-                                                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                                                    minWidth: 180
+                                                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                                                    minWidth: 180,
+                                                    backdropFilter: "blur(10px)"
                                                 }}>
                                                     <button
                                                         onClick={() => handleCopyLink(selectedDest.id)}
-                                                        style={{ width: "100%", padding: 8, textAlign: "left", display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer" }}
+                                                        style={{ 
+                                                            width: "100%", 
+                                                            padding: "8px", 
+                                                            textAlign: "left", 
+                                                            display: "flex", 
+                                                            alignItems: "center", 
+                                                            gap: 8, 
+                                                            border: "none", 
+                                                            background: "transparent", 
+                                                            cursor: "pointer",
+                                                            color: "var(--text, #ffffff)",
+                                                            borderRadius: "var(--radius-sm, 4px)",
+                                                            transition: "background 0.2s ease"
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
+                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
                                                     >
                                                         <Copy size={16} /> Copy Link
                                                     </button>
                                                     <button
                                                         onClick={() => handleShareSocial("facebook", selectedDest.id)}
-                                                        style={{ width: "100%", padding: 8, textAlign: "left", display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer" }}
+                                                        style={{ 
+                                                            width: "100%", 
+                                                            padding: "8px", 
+                                                            textAlign: "left", 
+                                                            display: "flex", 
+                                                            alignItems: "center", 
+                                                            gap: 8, 
+                                                            border: "none", 
+                                                            background: "transparent", 
+                                                            cursor: "pointer",
+                                                            color: "var(--text, #ffffff)",
+                                                            borderRadius: "var(--radius-sm, 4px)",
+                                                            transition: "background 0.2s ease"
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
+                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
                                                     >
                                                         <Facebook size={16} /> Facebook
                                                     </button>
                                                     <button
                                                         onClick={() => handleShareSocial("twitter", selectedDest.id)}
-                                                        style={{ width: "100%", padding: 8, textAlign: "left", display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer" }}
+                                                        style={{ 
+                                                            width: "100%", 
+                                                            padding: "8px", 
+                                                            textAlign: "left", 
+                                                            display: "flex", 
+                                                            alignItems: "center", 
+                                                            gap: 8, 
+                                                            border: "none", 
+                                                            background: "transparent", 
+                                                            cursor: "pointer",
+                                                            color: "var(--text, #ffffff)",
+                                                            borderRadius: "var(--radius-sm, 4px)",
+                                                            transition: "background 0.2s ease"
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
+                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
                                                     >
                                                         <Twitter size={16} /> Twitter
                                                     </button>
                                                     <button
                                                         onClick={() => handleShareSocial("instagram", selectedDest.id)}
-                                                        style={{ width: "100%", padding: 8, textAlign: "left", display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer" }}
+                                                        style={{ 
+                                                            width: "100%", 
+                                                            padding: "8px", 
+                                                            textAlign: "left", 
+                                                            display: "flex", 
+                                                            alignItems: "center", 
+                                                            gap: 8, 
+                                                            border: "none", 
+                                                            background: "transparent", 
+                                                            cursor: "pointer",
+                                                            color: "var(--text, #ffffff)",
+                                                            borderRadius: "var(--radius-sm, 4px)",
+                                                            transition: "background 0.2s ease"
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
+                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
                                                     >
                                                         <Instagram size={16} /> Instagram
                                                     </button>
@@ -1116,7 +1221,17 @@ function Body() {
                                     
                                     {/* Discount/Promo display */}
                                     {selectedDest.discountPercentage && (
-                                        <div style={{ background: "#ff6b35", color: "white", padding: 8, borderRadius: 4, marginTop: 8, display: "inline-block" }}>
+                                        <div style={{ 
+                                            background: "var(--primary-gradient, linear-gradient(135deg, #ff6b35 0%, #f7931e 100%))", 
+                                            color: "var(--text, #ffffff)", 
+                                            padding: "8px 12px", 
+                                            borderRadius: "var(--radius-sm, 4px)", 
+                                            marginTop: "8px", 
+                                            display: "inline-block",
+                                            fontWeight: "600",
+                                            fontSize: "0.9rem",
+                                            boxShadow: "0 2px 8px rgba(255, 107, 53, 0.3)"
+                                        }}>
                                             {selectedDest.discountPercentage}% OFF
                                             {selectedDest.promoCode && ` - Use code: ${selectedDest.promoCode}`}
                                         </div>
@@ -1133,10 +1248,32 @@ function Body() {
                                         </ul>
                                     )}
 
+                                    {/* Availability Calendar */}
+                                    {selectedDest?.id && (
+                                        <div style={{ marginTop: 16, marginBottom: 16 }}>
+                                            <h3 style={{ marginBottom: 12, fontSize: "1.1rem", fontWeight: 600 }}>Availability Calendar</h3>
+                                            <AvailabilityCalendar 
+                                                listingId={selectedDest.id}
+                                                initialStartDate={startDate}
+                                                initialEndDate={endDate}
+                                                onDateSelect={(dates) => {
+                                                    if (dates.start) {
+                                                        setStartDate(dates.start.toISOString().split('T')[0]);
+                                                        setValidationErrors({ ...validationErrors, startDate: "" });
+                                                    }
+                                                    if (dates.end) {
+                                                        setEndDate(dates.end.toISOString().split('T')[0]);
+                                                        setValidationErrors({ ...validationErrors, endDate: "" });
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
                                     {/* Booking inputs */}
                                     <div className="booking-inputs" style={{ display: "grid", gap: 8, marginTop: 12 }}>
                                         <div style={{ display: "grid", gap: 4 }}>
-                                            <label>Check-in <span style={{ color: "#ff4444" }}>*</span></label>
+                                            <label>Check-in <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
                                             <input 
                                                 type="date" 
                                                 value={startDate} 
@@ -1150,17 +1287,17 @@ function Body() {
                                                 }}
                                                 min={new Date().toISOString().split('T')[0]}
                                                 style={{ 
-                                                    borderColor: validationErrors.startDate ? "#ff4444" : undefined 
+                                                    borderColor: validationErrors.startDate ? "var(--error, #ef4444)" : undefined 
                                                 }}
                                             />
                                             {validationErrors.startDate && (
-                                                <span style={{ color: "#ff4444", fontSize: "0.875rem" }}>
+                                                <span style={{ color: "var(--error, #ef4444)", fontSize: "0.875rem" }}>
                                                     {validationErrors.startDate}
                                                 </span>
                                             )}
                                         </div>
                                         <div style={{ display: "grid", gap: 4 }}>
-                                            <label>Check-out <span style={{ color: "#ff4444" }}>*</span></label>
+                                            <label>Check-out <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
                                             <input 
                                                 type="date" 
                                                 value={endDate} 
@@ -1170,17 +1307,17 @@ function Body() {
                                                 }} 
                                                 min={startDate || new Date().toISOString().split('T')[0]}
                                                 style={{ 
-                                                    borderColor: validationErrors.endDate ? "#ff4444" : undefined 
+                                                    borderColor: validationErrors.endDate ? "var(--error, #ef4444)" : undefined 
                                                 }}
                                             />
                                             {validationErrors.endDate && (
-                                                <span style={{ color: "#ff4444", fontSize: "0.875rem" }}>
+                                                <span style={{ color: "var(--error, #ef4444)", fontSize: "0.875rem" }}>
                                                     {validationErrors.endDate}
                                                 </span>
                                             )}
                                         </div>
                                         <div style={{ display: "grid", gap: 4 }}>
-                                            <label>Guests <span style={{ color: "#ff4444" }}>*</span></label>
+                                            <label>Guests <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
                                             <input 
                                                 type="number" 
                                                 min={1} 
@@ -1192,11 +1329,11 @@ function Body() {
                                                     setValidationErrors({ ...validationErrors, numGuests: "" });
                                                 }}
                                                 style={{ 
-                                                    borderColor: validationErrors.numGuests ? "#ff4444" : undefined 
+                                                    borderColor: validationErrors.numGuests ? "var(--error, #ef4444)" : undefined 
                                                 }}
                                             />
                                             {validationErrors.numGuests && (
-                                                <span style={{ color: "#ff4444", fontSize: "0.875rem" }}>
+                                                <span style={{ color: "var(--error, #ef4444)", fontSize: "0.875rem" }}>
                                                     {validationErrors.numGuests}
                                                 </span>
                                             )}
@@ -1235,41 +1372,64 @@ function Body() {
                                         </div>
                                         {/* Price breakdown */}
                                         {startDate && endDate && selectedDest.price && (
-                                            <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 8, background: "#f9f9f9" }}>
-                                                <h4>Price Breakdown</h4>
+                                            <div style={{ 
+                                                border: "1px solid var(--border, rgba(255, 255, 255, 0.1))", 
+                                                padding: "12px", 
+                                                borderRadius: "var(--radius-md, 8px)", 
+                                                background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
+                                                color: "var(--text, #ffffff)"
+                                            }}>
+                                                <h4 style={{ margin: "0 0 12px 0", color: "var(--text, #ffffff)", fontSize: "1.1rem", fontWeight: "600" }}>Price Breakdown</h4>
                                                 {(() => {
                                                     const start = new Date(startDate);
                                                     const end = new Date(endDate);
                                                     const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
                                                     const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
                                                     const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
-                                                    const finalPrice = basePrice - listingDiscount - couponDiscount;
+                                                    const priceAfterListingDiscount = basePrice - listingDiscount;
+                                                    const totalPrice = priceAfterListingDiscount + serviceFee;
+                                                    const finalPrice = totalPrice - couponDiscount;
                                                     return (
                                                         <>
-                                                            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                                                            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px", color: "var(--text-muted, rgba(255, 255, 255, 0.7))" }}>
                                                                 <span>₱{selectedDest.price?.toLocaleString()} × {nights} nights × {numGuests} guests</span>
                                                                 <span>₱{basePrice.toLocaleString()}</span>
                                                             </div>
                                                             {listingDiscount > 0 && (
-                                                                <div style={{ display: "flex", justifyContent: "space-between", color: "green" }}>
+                                                                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--success, #10b981)", marginTop: "4px" }}>
                                                                     <span>Listing discount ({selectedDest.discountPercentage}%)</span>
                                                                     <span>-₱{listingDiscount.toFixed(2)}</span>
                                                                 </div>
                                                             )}
+                                                            {serviceFee > 0 && (
+                                                                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary, rgba(255, 255, 255, 0.6))", marginTop: "4px" }}>
+                                                                    <span>Service fee</span>
+                                                                    <span>+₱{serviceFee.toFixed(2)}</span>
+                                                                </div>
+                                                            )}
                                                             {couponDiscount > 0 && (
-                                                                <div style={{ display: "flex", justifyContent: "space-between", color: "green" }}>
+                                                                <div style={{ display: "flex", justifyContent: "space-between", color: "var(--success, #10b981)", marginTop: "4px" }}>
                                                                     <span>Coupon discount</span>
                                                                     <span>-₱{couponDiscount.toFixed(2)}</span>
                                                                 </div>
                                                             )}
-                                                            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", marginTop: 8, paddingTop: 8, borderTop: "1px solid #ddd" }}>
+                                                            <div style={{ 
+                                                                display: "flex", 
+                                                                justifyContent: "space-between", 
+                                                                fontWeight: "bold", 
+                                                                marginTop: "8px", 
+                                                                paddingTop: "8px", 
+                                                                borderTop: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                                                                color: "var(--text, #ffffff)",
+                                                                fontSize: "1.1rem"
+                                                            }}>
                                                                 <span>Total</span>
-                                                                <span>₱{finalPrice.toFixed(2)}</span>
+                                                                <span style={{ color: "var(--primary, #ff6b35)" }}>₱{finalPrice.toFixed(2)}</span>
                                                             </div>
-                                                            <div style={{ marginTop: 8, fontSize: "0.9em", color: "#666" }}>
+                                                            <div style={{ marginTop: "8px", fontSize: "0.9em", color: "var(--text-secondary, rgba(255, 255, 255, 0.6))" }}>
                                                                 Your balance: ₱{balance.toLocaleString()}
                                                                 {paymentMethod === "wallet" && finalPrice > balance && (
-                                                                    <span style={{ color: "#ff4444", display: "block", marginTop: 4 }}>
+                                                                    <span style={{ color: "var(--error, #ef4444)", display: "block", marginTop: "4px", fontWeight: "500" }}>
                                                                         Insufficient balance. Need ₱{(finalPrice - balance).toFixed(2)} more
                                                                     </span>
                                                                 )}
@@ -1283,15 +1443,15 @@ function Body() {
                                         {showValidationErrors && Object.keys(validationErrors).length > 0 && (
                                             <div style={{ 
                                                 padding: "12px", 
-                                                borderRadius: "8px", 
-                                                background: "rgb(255, 230, 230)", 
-                                                border: "1px solid rgb(255, 68, 68)",
+                                                borderRadius: "var(--radius-md, 8px)", 
+                                                background: "rgba(239, 68, 68, 0.2)", 
+                                                border: "1px solid rgba(239, 68, 68, 0.3)",
                                                 marginTop: "8px"
                                             }}>
-                                                <strong style={{ color: "#ff4444", display: "block", marginBottom: "8px" }}>
+                                                <strong style={{ color: "var(--error, #ef4444)", display: "block", marginBottom: "8px", fontWeight: "600" }}>
                                                     Please fix the following errors:
                                                 </strong>
-                                                <ul style={{ margin: 0, paddingLeft: "20px", color: "#ff4444" }}>
+                                                <ul style={{ margin: 0, paddingLeft: "20px", color: "var(--error, #ef4444)" }}>
                                                     {Object.values(validationErrors).map((error, index) => (
                                                         <li key={index} style={{ marginBottom: "4px" }}>{error}</li>
                                                     ))}
@@ -1300,10 +1460,11 @@ function Body() {
                                         )}
                                         {checkingAvailability && (
                                             <div style={{ 
-                                                color: "#666",
+                                                color: "var(--text-secondary, rgba(255, 255, 255, 0.6))",
                                                 padding: "8px",
-                                                borderRadius: "4px",
-                                                background: "#f0f0f0",
+                                                borderRadius: "var(--radius-sm, 4px)",
+                                                background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
+                                                border: "1px solid var(--border-light, rgba(255, 255, 255, 0.06))",
                                                 marginTop: "8px",
                                                 fontSize: "0.875rem"
                                             }}>
@@ -1312,12 +1473,20 @@ function Body() {
                                         )}
                                         {availabilityMsg && !checkingAvailability && (
                                             <div style={{ 
-                                                color: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed") ? "green" : "crimson",
+                                                color: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed") 
+                                                    ? "var(--success, #10b981)" 
+                                                    : "var(--error, #ef4444)",
                                                 padding: "8px",
-                                                borderRadius: "4px",
-                                                background: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed") ? "#e6ffe6" : "#ffe6e6",
+                                                borderRadius: "var(--radius-sm, 4px)",
+                                                background: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed")
+                                                    ? "rgba(16, 185, 129, 0.2)"
+                                                    : "rgba(239, 68, 68, 0.2)",
+                                                border: `1px solid ${availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed")
+                                                    ? "rgba(16, 185, 129, 0.3)"
+                                                    : "rgba(239, 68, 68, 0.3)"}`,
                                                 marginTop: "8px",
-                                                fontSize: "0.875rem"
+                                                fontSize: "0.875rem",
+                                                fontWeight: "500"
                                             }}>
                                                 {availabilityMsg}
                                             </div>
@@ -1357,14 +1526,7 @@ function Body() {
                                     {paymentMethod === "paypal" && startDate && endDate && selectedDest.price && bookingCreated && (
                                         <div style={{ marginTop: 16 }}>
                                             <PayPalPayment
-                                                amount={(() => {
-                                                    const start = new Date(startDate);
-                                                    const end = new Date(endDate);
-                                                    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                                                    const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
-                                                    const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
-                                                    return basePrice - listingDiscount - couponDiscount;
-                                                })()}
+                                                amount={bookingCreated.totalPrice || calculateTotalPrice()}
                                                 bookingId={bookingCreated.id}
                                                 couponCode={couponCode || null}
                                                 onSuccess={async (result) => {

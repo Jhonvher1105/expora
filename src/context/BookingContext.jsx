@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { addDoc, collection, doc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 
 const BookingContext = createContext(null);
@@ -7,18 +7,65 @@ const BookingContext = createContext(null);
 export function BookingProvider({ children }) {
   const [creating, setCreating] = useState(false);
 
+  // Load service fee configuration
+  const getServiceFee = useCallback(async () => {
+    try {
+      const feeRef = doc(db, "settings", "serviceFee");
+      const feeSnap = await getDoc(feeRef);
+      if (feeSnap.exists()) {
+        return feeSnap.data();
+      }
+      // Return default if not set
+      return { type: "percentage", value: 10 };
+    } catch (error) {
+      console.error("Error loading service fee:", error);
+      // Return default on error
+      return { type: "percentage", value: 10 };
+    }
+  }, []);
+
+  // Calculate service fee based on amount
+  const calculateServiceFee = useCallback(async (amount) => {
+    const serviceFeeConfig = await getServiceFee();
+    if (!serviceFeeConfig || !serviceFeeConfig.value) {
+      return 0;
+    }
+
+    if (serviceFeeConfig.type === "percentage") {
+      return (amount * serviceFeeConfig.value) / 100;
+    } else if (serviceFeeConfig.type === "fixed") {
+      return serviceFeeConfig.value;
+    }
+    return 0;
+  }, [getServiceFee]);
+
   const getListingBookings = useCallback(async (listingId) => {
     const q = query(collection(db, "bookings"), where("listingId", "==", listingId));
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }, []);
 
+  // Helper to convert date to timestamp (handles Firestore Timestamps, Date objects, and strings)
+  const toTimestamp = (date) => {
+    if (!date) return null;
+    // If it's a Firestore Timestamp, convert to Date first
+    if (date.toDate && typeof date.toDate === 'function') {
+      return date.toDate().getTime();
+    }
+    // If it's already a Date object or can be converted
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.getTime();
+  };
+
   const isOverlapping = (startA, endA, startB, endB) => {
-    const aStart = new Date(startA).getTime();
-    const aEnd = new Date(endA).getTime();
-    const bStart = new Date(startB).getTime();
-    const bEnd = new Date(endB).getTime();
+    const aStart = toTimestamp(startA);
+    const aEnd = toTimestamp(endA);
+    const bStart = toTimestamp(startB);
+    const bEnd = toTimestamp(endB);
+    
+    if (aStart === null || aEnd === null || bStart === null || bEnd === null) return false;
     if (Number.isNaN(aStart) || Number.isNaN(aEnd) || Number.isNaN(bStart) || Number.isNaN(bEnd)) return false;
+    
     // Overlap when ranges intersect: aStart <= bEnd && bStart <= aEnd
     return aStart <= bEnd && bStart <= aEnd;
   };
@@ -45,9 +92,10 @@ export function BookingProvider({ children }) {
     if (conflictingBookings.length > 0) {
       // Find the conflicting booking dates for better error message
       const conflictingDates = conflictingBookings.map(b => {
-        const bStart = new Date(b.startDate).toLocaleDateString();
-        const bEnd = new Date(b.endDate).toLocaleDateString();
-        return `${bStart} - ${bEnd}`;
+        // Handle Firestore Timestamps
+        const bStart = b.startDate?.toDate ? b.startDate.toDate() : new Date(b.startDate);
+        const bEnd = b.endDate?.toDate ? b.endDate.toDate() : new Date(b.endDate);
+        return `${bStart.toLocaleDateString()} - ${bEnd.toLocaleDateString()}`;
       }).join(", ");
       
       return { 
@@ -85,7 +133,18 @@ export function BookingProvider({ children }) {
         discountAmount = (basePrice * listing.discountPercentage) / 100;
       }
 
-      const totalPrice = basePrice - discountAmount;
+      // Calculate price after discount (before service fee)
+      const priceAfterDiscount = basePrice - discountAmount;
+
+      // Calculate service fee (on the price after discount)
+      const serviceFee = await calculateServiceFee(priceAfterDiscount);
+
+      // Total price includes service fee (guest pays this)
+      const totalPrice = priceAfterDiscount + serviceFee;
+
+      // Host earnings (price after discount minus service fee, which equals priceAfterDiscount - serviceFee)
+      // Actually, service fee is added to guest payment, so host receives priceAfterDiscount
+      const hostEarnings = priceAfterDiscount;
 
       const payload = {
         listingId: listing.id,
@@ -100,7 +159,9 @@ export function BookingProvider({ children }) {
         pricePerNight: listing.price || 0,
         basePrice,
         discountAmount,
-        totalPrice,
+        serviceFee,
+        hostEarnings,
+        totalPrice, // Guest pays this (includes service fee)
         couponCode,
         currency: "PHP",
         status: "pending",
@@ -112,9 +173,16 @@ export function BookingProvider({ children }) {
     } finally {
       setCreating(false);
     }
-  }, [checkAvailability]);
+  }, [checkAvailability, calculateServiceFee]);
 
-  const value = useMemo(() => ({ creating, checkAvailability, createBooking }), [creating, checkAvailability, createBooking]);
+  const value = useMemo(() => ({ 
+    creating, 
+    checkAvailability, 
+    createBooking, 
+    getListingBookings, 
+    getServiceFee, 
+    calculateServiceFee 
+  }), [creating, checkAvailability, createBooking, getListingBookings, getServiceFee, calculateServiceFee]);
 
   return (
     <BookingContext.Provider value={value}>

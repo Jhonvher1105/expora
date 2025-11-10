@@ -19,7 +19,7 @@ export default function PayPalPayment({
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paypalClientId, setPaypalClientId] = useState(PAYPAL_CLIENT_ID_GUEST);
-  const { applyCoupon, addHostEarnings } = useWallet();
+  const { applyCoupon } = useWallet();
   const currentUser = auth.currentUser;
 
   // Get hostId from booking if not provided
@@ -133,11 +133,25 @@ export default function PayPalPayment({
     }
   };
 
-  const createOrder = (data, actions) => {
+  const createOrder = async (data, actions) => {
     let finalAmount = amount;
     
-    // Apply coupon discount if needed (calculate on frontend)
-    // For full coupon validation, you'd need to do this server-side
+    // Apply coupon discount if provided (calculate upfront for PayPal order)
+    // Note: Full validation happens in handleApprove, but we estimate for order creation
+    if (couponCode) {
+      try {
+        // Estimate discount (full validation in handleApprove)
+        // For percentage coupons, we estimate; for fixed, we use the value
+        // This is an approximation - actual discount is validated in handleApprove
+        const discountAmount = await applyCoupon(couponCode, amount);
+        finalAmount = amount - discountAmount;
+      } catch (e) {
+        // If coupon validation fails, use original amount
+        // PayPal will charge the original amount, and we'll handle discount in handleApprove
+        console.warn("Coupon validation failed in createOrder:", e.message);
+      }
+    }
+    
     const usdAmount = convertToUSD(finalAmount);
     
     return actions.order.create({

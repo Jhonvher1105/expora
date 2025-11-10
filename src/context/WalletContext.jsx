@@ -101,8 +101,8 @@ export function WalletProvider({ children }) {
     }
   }, [currentUser]);
 
-  // Add host earnings
-  const addHostEarnings = useCallback(async (hostId, amount, bookingId) => {
+  // Add host earnings (with service fee deduction)
+  const addHostEarnings = useCallback(async (hostId, amount, bookingId, serviceFee = 0) => {
     try {
       const hostWalletRef = doc(db, "wallets", hostId);
       const hostWalletSnap = await getDoc(hostWalletRef);
@@ -112,7 +112,12 @@ export function WalletProvider({ children }) {
         currentEarnings = hostWalletSnap.data().earnings || 0;
       }
 
-      const newEarnings = currentEarnings + Number(amount);
+      // Host earnings = amount - service fee
+      // Note: If booking already has serviceFee deducted (hostEarnings field), use that
+      // Otherwise, deduct service fee here
+      const hostEarningsAmount = Number(amount) - Number(serviceFee);
+      const newEarnings = currentEarnings + hostEarningsAmount;
+
       await setDoc(
         hostWalletRef,
         {
@@ -123,16 +128,31 @@ export function WalletProvider({ children }) {
         { merge: true }
       );
 
-      // Record host earnings transaction
+      // Record host earnings transaction (amount received by host)
       await addDoc(collection(db, "transactions"), {
         hostId,
         type: "earnings",
-        amount: Number(amount),
+        amount: hostEarningsAmount,
+        serviceFee: Number(serviceFee),
+        grossAmount: Number(amount), // Total before service fee
         bookingId,
         currency: "PHP",
         status: "completed",
         createdAt: serverTimestamp(),
       });
+
+      // Record service fee transaction (platform revenue)
+      if (serviceFee > 0) {
+        await addDoc(collection(db, "transactions"), {
+          type: "service_fee",
+          amount: Number(serviceFee),
+          bookingId,
+          hostId,
+          currency: "PHP",
+          status: "completed",
+          createdAt: serverTimestamp(),
+        });
+      }
     } catch (error) {
       console.error("Error adding host earnings:", error);
       throw error;
@@ -156,11 +176,19 @@ export function WalletProvider({ children }) {
       }
     }
 
-    if (balance < finalAmount) throw new Error("Insufficient balance");
-
     try {
+      // Fetch fresh balance from Firestore to avoid race conditions
       const walletRef = doc(db, "wallets", currentUser.uid);
-      const newBalance = balance - finalAmount;
+      const walletSnap = await getDoc(walletRef);
+      let currentBalance = balance;
+      
+      if (walletSnap.exists()) {
+        currentBalance = walletSnap.data().balance || 0;
+      }
+
+      if (currentBalance < finalAmount) throw new Error("Insufficient balance");
+
+      const newBalance = currentBalance - finalAmount;
       await setDoc(walletRef, { balance: newBalance, currency: "PHP", updatedAt: serverTimestamp() }, { merge: true });
 
       // Record guest payment transaction
@@ -171,7 +199,7 @@ export function WalletProvider({ children }) {
         discountAmount,
         couponCode: couponCode || null,
         bookingId,
-        balanceBefore: balance,
+        balanceBefore: currentBalance,
         balanceAfter: newBalance,
         currency: "PHP",
         status: "completed",
@@ -210,4 +238,5 @@ export function useWallet() {
   if (!ctx) throw new Error("useWallet must be used within WalletProvider");
   return ctx;
 }
+
 

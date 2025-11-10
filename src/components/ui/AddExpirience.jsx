@@ -641,17 +641,17 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.875rem" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
                                     <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Type:</span>
-                                    <span style={{ color: "#ffffff", fontWeight: "500", textTransform: "capitalize" }}>
+                                    <span style={{ color: "var(--text, #ffffff)", fontWeight: "500", textTransform: "capitalize" }}>
                                         {EXPERIENCE_TYPES.find(t => t.id === formData.type)?.name || "—"}
                                     </span>
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                                    <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Duration:</span>
-                                    <span style={{ color: "#ffffff", fontWeight: "500" }}>{formData.duration || "—"}</span>
+                                    <span style={{ color: "var(--text-secondary, rgba(255, 255, 255, 0.6))" }}>Duration:</span>
+                                    <span style={{ color: "var(--text, #ffffff)", fontWeight: "500" }}>{formData.duration || "—"}</span>
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                                    <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Skill Level:</span>
-                                    <span style={{ color: "#ffffff", fontWeight: "500" }}>{formData.skillLevel || "—"}</span>
+                                    <span style={{ color: "var(--text-secondary, rgba(255, 255, 255, 0.6))" }}>Skill Level:</span>
+                                    <span style={{ color: "var(--text, #ffffff)", fontWeight: "500" }}>{formData.skillLevel || "—"}</span>
                                 </div>
                                 <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "0.75rem", borderBottom: "1px solid rgba(255, 255, 255, 0.1)" }}>
                                     <span style={{ color: "rgba(255, 255, 255, 0.6)" }}>Capacity:</span>

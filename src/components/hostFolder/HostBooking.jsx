@@ -156,8 +156,20 @@ function HostBooking() {
             });
 
             // Add host earnings only when booking is confirmed
-            if (booking.paymentStatus === "paid" && booking.totalPrice) {
+            // Use hostEarnings from booking (already has service fee deducted)
+            // If hostEarnings doesn't exist, fall back to totalPrice - serviceFee
+            if (booking.paymentStatus === "paid") {
                 try {
+                    const hostEarningsAmount = booking.hostEarnings !== undefined 
+                        ? Number(booking.hostEarnings) 
+                        : (Number(booking.totalPrice || 0) - Number(booking.serviceFee || 0));
+                    const serviceFeeAmount = Number(booking.serviceFee || 0);
+
+                    if (hostEarningsAmount <= 0) {
+                        console.warn("Invalid host earnings amount:", hostEarningsAmount);
+                        return;
+                    }
+
                     // Get host wallet
                     const hostWalletRef = doc(db, "wallets", currentUser.uid);
                     const hostWalletSnap = await getDoc(hostWalletRef);
@@ -167,23 +179,38 @@ function HostBooking() {
                         currentEarnings = hostWalletSnap.data().earnings || 0;
                     }
 
-                    const newEarnings = currentEarnings + Number(booking.totalPrice);
+                    const newEarnings = currentEarnings + hostEarningsAmount;
                     await updateDoc(hostWalletRef, {
                         earnings: newEarnings,
                         currency: "PHP",
                         updatedAt: serverTimestamp(),
                     });
 
-                    // Record host earnings transaction
+                    // Record host earnings transaction (net amount after service fee)
                     await addDoc(collection(db, "transactions"), {
                         hostId: currentUser.uid,
                         type: "earnings",
-                        amount: Number(booking.totalPrice),
+                        amount: hostEarningsAmount,
+                        serviceFee: serviceFeeAmount,
+                        grossAmount: hostEarningsAmount + serviceFeeAmount, // Total before service fee
                         bookingId,
                         currency: "PHP",
                         status: "completed",
                         createdAt: serverTimestamp(),
                     });
+
+                    // Record service fee transaction (platform revenue)
+                    if (serviceFeeAmount > 0) {
+                        await addDoc(collection(db, "transactions"), {
+                            type: "service_fee",
+                            amount: serviceFeeAmount,
+                            bookingId,
+                            hostId: currentUser.uid,
+                            currency: "PHP",
+                            status: "completed",
+                            createdAt: serverTimestamp(),
+                        });
+                    }
                 } catch (earningsError) {
                     console.error("Error adding host earnings:", earningsError);
                     // Don't fail the confirmation if earnings fail
@@ -471,12 +498,12 @@ function HostBooking() {
                                                         gap: "0.5rem"
                                                     }}
                                                     onMouseOver={(e) => {
-                                                        e.target.style.background = "#ef4444";
-                                                        e.target.style.color = "white";
+                                                        e.target.style.background = "var(--error, #ef4444)";
+                                                        e.target.style.color = "var(--text, #ffffff)";
                                                     }}
                                                     onMouseOut={(e) => {
                                                         e.target.style.background = "transparent";
-                                                        e.target.style.color = "#ef4444";
+                                                        e.target.style.color = "var(--error, #ef4444)";
                                                     }}
                                                 >
                                                     <X size={16} />
@@ -487,7 +514,7 @@ function HostBooking() {
                                                     style={{
                                                         padding: "0.5rem 1.5rem",
                                                         background: "var(--primary)",
-                                                        color: "white",
+                                                        color: "var(--text, #ffffff)",
                                                         border: "none",
                                                         borderRadius: "8px",
                                                         cursor: "pointer",
@@ -523,4 +550,5 @@ function HostBooking() {
 }
 
 export default HostBooking;
+
 

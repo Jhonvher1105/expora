@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { signOut } from "firebase/auth";
 import { 
   BarChart3, CreditCard, DollarSign, Settings, FileText, Users, Home, 
-  LogOut, Menu, X, Shield 
+  LogOut, Menu, X, Shield, Wallet
 } from "lucide-react";
 import { auth } from "../../firebase";
 import "../cssFile/temp.css";
@@ -25,7 +25,8 @@ export default function AdminHeader({ activeTab, setActiveTab, sidebarOpen, setS
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "payments", label: "Payments", icon: CreditCard },
-    { id: "serviceFees", label: "Service Fees", icon: DollarSign },
+    { id: "payouts", label: "Payout Requests", icon: Wallet },
+    { id: "serviceFees", label: "Service Fees", icon: Settings },
     { id: "policy", label: "Policy & Compliance", icon: FileText },
     { id: "reports", label: "Reports", icon: FileText },
     { id: "users", label: "Users", icon: Users },

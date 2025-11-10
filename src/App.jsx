@@ -7,6 +7,7 @@ import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
 import HostBody from './components/hostFolder/HBody';
 import HostBooking from './components/hostFolder/HostBooking';
+import Earnings from './components/hostFolder/Earnings';
 import FavPage from './components/UserFolder/FavPage';
 import SuggestionsPage from './components/UserFolder/SuggestionsPage';
 import Rewards from './components/UserFolder/Rewards';
@@ -31,6 +32,7 @@ function App() {
                 <Route path="/Settings" element={<Settings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
                 <Route path="/HostBooking" element={<HostBooking/>}/>
+                <Route path="/HostEarnings" element={<Earnings/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
                 <Route path="/SuggestionsPage" element={<SuggestionsPage/>}/>
                 <Route path="/Rewards" element={<Rewards/>}/>

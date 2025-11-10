@@ -230,7 +230,8 @@ export default function ProfileForm() {
         }
     };
 
-    if (loading && !currentUser) {
+    // Show loading state while fetching user data or if user is not authenticated
+    if (loading || !currentUser) {
         return (
             <>
                 <Header />
@@ -406,9 +407,9 @@ export default function ProfileForm() {
                                         <input
                                             type="text"
                                             name="firstName"
-                                            value={formData.firstName}
+                                            value={formData.firstName || ""}
                                             onChange={handleChange}
-                                            placeholder={currentUser.firstName}
+                                            placeholder="Enter first name"
                                             disabled={showEdit}
                                             readOnly={showEdit}
                                         />
@@ -425,9 +426,9 @@ export default function ProfileForm() {
                                         <input
                                             type="text"
                                             name="middleName"
-                                            value={formData.middleName}
+                                            value={formData.middleName || ""}
                                             onChange={handleChange}
-                                            placeholder={currentUser.middleName}
+                                            placeholder="Enter middle name"
                                             disabled={showEdit}
                                             readOnly={showEdit}
                                         />

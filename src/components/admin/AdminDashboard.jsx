@@ -4,6 +4,7 @@ import { db } from "../../firebase";
 import AdminHeader from "./AdminHeader";
 import Analytics from "./Analytics";
 import PaymentReview from "./PaymentReview";
+import PayoutRequests from "./PayoutRequests";
 import ServiceFees from "./ServiceFees";
 import PolicyCompliance from "./PolicyCompliance";
 import Reports from "./Reports";
@@ -158,6 +159,8 @@ export default function AdminDashboard() {
         return <Analytics bookings={bookings} listings={listings} users={users} />;
       case "payments":
         return <PaymentReview bookings={bookings} />;
+      case "payouts":
+        return <PayoutRequests />;
       case "serviceFees":
         return <ServiceFees />;
       case "policy":

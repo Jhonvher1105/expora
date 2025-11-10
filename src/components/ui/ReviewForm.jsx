@@ -66,49 +66,64 @@ export default function ReviewForm({ listingId, bookingId, onClose, onSuccess })
       left: 0,
       right: 0,
       bottom: 0,
-      background: "rgba(0,0,0,0.5)",
+      background: "rgba(0,0,0,0.7)",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
-      zIndex: 1000
+      zIndex: 1000,
+      backdropFilter: "blur(4px)"
     }}>
       <div style={{
-        background: "#fff",
+        background: "var(--bg-modal, rgba(15, 15, 30, 0.95))",
         padding: "24px",
-        borderRadius: "8px",
+        borderRadius: "var(--radius-lg, 12px)",
         maxWidth: "600px",
         width: "90%",
         maxHeight: "90vh",
         overflow: "auto",
-        boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+        boxShadow: "0 25px 80px rgba(0, 0, 0, 0.6)",
+        border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+        color: "var(--text, #ffffff)"
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h2 style={{ margin: 0, fontSize: "24px", fontWeight: "bold" }}>Write a Review</h2>
+          <h2 style={{ margin: 0, fontSize: "24px", fontWeight: "bold", color: "var(--text, #ffffff)" }}>Write a Review</h2>
           {onClose && (
             <button
               onClick={onClose}
               style={{
-                background: "none",
-                border: "none",
+                background: "rgba(255, 255, 255, 0.1)",
+                border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                borderRadius: "var(--radius-md, 8px)",
                 cursor: "pointer",
-                padding: "4px"
+                padding: "8px",
+                color: "var(--text, #ffffff)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease"
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = "rgba(255, 255, 255, 0.2)";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = "rgba(255, 255, 255, 0.1)";
               }}
             >
-              <X size={24} />
+              <X size={20} />
             </button>
           )}
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>
+            <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "var(--text, #ffffff)" }}>
               Your Rating *
             </label>
             <StarRating rating={rating} setRating={setRating} />
           </div>
 
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>
+            <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", color: "var(--text, #ffffff)" }}>
               Your Review *
             </label>
             <textarea
@@ -119,15 +134,27 @@ export default function ReviewForm({ listingId, bookingId, onClose, onSuccess })
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
+                border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                borderRadius: "var(--radius-md, 8px)",
                 fontFamily: "inherit",
                 fontSize: "14px",
-                resize: "vertical"
+                resize: "vertical",
+                background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
+                color: "var(--text, #ffffff)",
+                outline: "none",
+                transition: "border-color 0.2s, background 0.2s"
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = "var(--primary, #ff6b35)";
+                e.target.style.background = "var(--bg-surface-hover, rgba(255, 255, 255, 0.08))";
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = "var(--border, rgba(255, 255, 255, 0.1))";
+                e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))";
               }}
               required
             />
-            <div style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+            <div style={{ fontSize: "12px", color: "var(--text-secondary, rgba(255, 255, 255, 0.6))", marginTop: "4px" }}>
               {comment.length} characters
             </div>
           </div>
@@ -135,10 +162,11 @@ export default function ReviewForm({ listingId, bookingId, onClose, onSuccess })
           {error && (
             <div style={{
               padding: "12px",
-              background: "#f8d7da",
-              color: "#721c24",
-              borderRadius: "4px",
-              marginBottom: "16px"
+              background: "rgba(239, 68, 68, 0.2)",
+              color: "var(--error, #ef4444)",
+              borderRadius: "var(--radius-md, 8px)",
+              marginBottom: "16px",
+              border: "1px solid rgba(239, 68, 68, 0.3)"
             }}>
               {error}
             </div>
@@ -151,11 +179,21 @@ export default function ReviewForm({ listingId, bookingId, onClose, onSuccess })
                 onClick={onClose}
                 style={{
                   padding: "10px 20px",
-                  background: "#6c757d",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer"
+                  background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
+                  color: "var(--text, #ffffff)",
+                  border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                  borderRadius: "var(--radius-md, 8px)",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                  transition: "all 0.2s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = "var(--bg-surface-hover, rgba(255, 255, 255, 0.08))";
+                  e.target.style.borderColor = "var(--border-strong, rgba(255, 255, 255, 0.2))";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))";
+                  e.target.style.borderColor = "var(--border, rgba(255, 255, 255, 0.1))";
                 }}
               >
                 Cancel
@@ -166,12 +204,31 @@ export default function ReviewForm({ listingId, bookingId, onClose, onSuccess })
               disabled={loading || rating === 0 || comment.trim().length < 10}
               style={{
                 padding: "10px 20px",
-                background: loading || rating === 0 || comment.trim().length < 10 ? "#ccc" : "#007bff",
-                color: "#fff",
+                background: loading || rating === 0 || comment.trim().length < 10 
+                  ? "rgba(255, 255, 255, 0.1)" 
+                  : "var(--primary-gradient, linear-gradient(135deg, #ff6b35 0%, #f7931e 100%))",
+                color: "var(--text, #ffffff)",
                 border: "none",
-                borderRadius: "4px",
+                borderRadius: "var(--radius-md, 8px)",
                 cursor: loading || rating === 0 || comment.trim().length < 10 ? "not-allowed" : "pointer",
-                fontWeight: "bold"
+                fontWeight: "600",
+                boxShadow: loading || rating === 0 || comment.trim().length < 10 
+                  ? "none" 
+                  : "0 4px 12px rgba(255, 107, 53, 0.3)",
+                transition: "all 0.2s ease",
+                opacity: loading || rating === 0 || comment.trim().length < 10 ? 0.6 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && rating > 0 && comment.trim().length >= 10) {
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow = "0 6px 16px rgba(255, 107, 53, 0.4)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && rating > 0 && comment.trim().length >= 10) {
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 4px 12px rgba(255, 107, 53, 0.3)";
+                }
               }}
             >
               {loading ? "Submitting..." : "Submit Review"}
