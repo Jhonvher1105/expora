@@ -609,10 +609,42 @@ function Body() {
         return `${window.location.origin}/listing/${listingId}`;
     };
 
+    const handleShare = async (listing) => {
+        const listingId = typeof listing === "string" ? listing : listing?.id;
+        if (!listingId) return;
+        const url = getListingUrl(listingId);
+        const title = selectedDest?.title || "Check out this listing!";
+        const text = `Check out ${selectedDest?.title || "this listing"} on Expora!`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({ title, text, url });
+                setShowShareMenu(false);
+                return;
+            } catch (err) {
+                // If user cancels or it fails, fall back to menu below
+            }
+        }
+        // Fallback: open custom share menu
+        setShowShareMenu((prev) => !prev);
+    };
+
     const handleCopyLink = async (listingId) => {
         const url = getListingUrl(listingId);
         try {
-            await navigator.clipboard.writeText(url);
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                const temp = document.createElement("textarea");
+                temp.value = url;
+                temp.style.position = "fixed";
+                temp.style.left = "-9999px";
+                document.body.appendChild(temp);
+                temp.focus();
+                temp.select();
+                document.execCommand("copy");
+                document.body.removeChild(temp);
+            }
             alert("Link copied to clipboard!");
             setShowShareMenu(false);
         } catch (e) {
@@ -920,7 +952,7 @@ function Body() {
                                                 </button>
                                             )}
                                             <button
-                                                onClick={() => setShowShareMenu(!showShareMenu)}
+                                                onClick={() => handleShare(selectedDest)}
                                                 className="icon-btn"
                                                 style={{ padding: 8 }}
                                                 title="Share"
