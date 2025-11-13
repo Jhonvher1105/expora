@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../pic/logo.png";
+import bgVid from "../bgVidFolder/bgVid.mp4";
 import "../cssFile/temp.css";
 
 export default function LandingPage() {
@@ -34,6 +35,15 @@ export default function LandingPage() {
 
             <main className="landing-main">
                 <section className="hero">
+                    <video 
+                        className="hero-background-video" 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline
+                    >
+                        <source src={bgVid} type="video/mp4" />
+                    </video>
                     <div className="hero-background" />
                     <div className="floating-shapes" aria-hidden="true">
                         <div className="shape shape-1" />

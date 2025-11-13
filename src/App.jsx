@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./components/generalFile/LandingPage";
 import Registration from "./login2/Registration";
 import LogIn2 from "./login2/LogIn2";
+import ForgotPassword from "./login2/ForgotPassword";
 import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
@@ -27,6 +28,7 @@ function App() {
                 <Route path="/" element={<LandingPage/>}></Route>
                 <Route path="/Registration" element={<Registration />} />
                 <Route path="/LogIn" element={<LogIn2/>}/>
+                <Route path="/forgot-password" element={<ForgotPassword/>}/>
                 <Route path="/Home" element={<UserHomePage />} />
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>

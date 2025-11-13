@@ -450,9 +450,14 @@ function Body() {
 
     useEffect(() => {
         const tab = localStorage.getItem("openTab");
-        if (tab) {
+        // Only set tab from localStorage if it's a valid tab value, otherwise default to "all"
+        const validTabs = ["all", "properties", "services", "experiences"];
+        if (tab && validTabs.includes(tab)) {
             setActiveTab(tab);
             localStorage.removeItem("openTab");
+        } else {
+            // Ensure "all" is the default
+            setActiveTab("all");
         }
     }, []);
 
