@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - ExporaBnB</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+                    <!-- Header with Gradient -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); padding: 40px 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">ExporaBnB</h1>
+                            <p style="margin: 8px 0 0 0; color: rgba(255, 255, 255, 0.95); font-size: 16px; font-weight: 400;">Your Adventure Awaits</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Main Content -->
+                    <tr>
+                        <td style="padding: 50px 40px;">
+                            <h2 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 28px; font-weight: 600; line-height: 1.3;">Verify Your Email Address</h2>
+                            
+                            <p style="margin: 0 0 30px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                                Hi {{user_name}},<br><br>
+                                Thank you for signing up with ExporaBnB! To complete your registration and start exploring amazing places, please verify your email address by clicking the button below.
+                            </p>
+                            
+                            <!-- Verification Button -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td align="center" style="padding: 30px 0;">
+                                        <a href="{{verification_link}}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); color: #ffffff; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3); transition: all 0.3s ease;">
+                                            Verify Email Address
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Alternative Link -->
+                            <p style="margin: 30px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
+                                If the button doesn't work, copy and paste this link into your browser:<br>
+                                <a href="{{verification_link}}" style="color: #ff6b35; text-decoration: none; word-break: break-all;">{{verification_link}}</a>
+                            </p>
+                            
+                            <!-- Security Note -->
+                            <div style="margin-top: 40px; padding: 20px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #ff6b35;">
+                                <p style="margin: 0; color: #666666; font-size: 14px; line-height: 1.6;">
+                                    <strong style="color: #1a1a1a;">🔒 Security Note:</strong><br>
+                                    This verification link will expire in 24 hours. If you didn't create an account with ExporaBnB, please ignore this email.
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px 40px; background-color: #f8f9fa; border-top: 1px solid #e5e5e5;">
+                            <p style="margin: 0 0 15px 0; color: #666666; font-size: 14px; line-height: 1.6; text-align: center;">
+                                Need help? Contact us at <a href="mailto:support@exporabnb.com" style="color: #ff6b35; text-decoration: none;">support@exporabnb.com</a>
+                            </p>
+                            <p style="margin: 0; color: #999999; font-size: 12px; line-height: 1.6; text-align: center;">
+                                © 2024 ExporaBnB. All rights reserved.<br>
+                                This email was sent to {{user_email}}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

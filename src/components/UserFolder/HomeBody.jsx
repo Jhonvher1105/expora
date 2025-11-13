@@ -27,6 +27,7 @@ import ChatModal from "../ui/ChatModal";
 import MapViewer from "../ui/MapViewer";
 import AvailabilityCalendar from "../ui/AvailabilityCalendar";
 import ShareMenu from "../ui/ShareMenu";
+import SharedListing from "../ui/SharedListing";
 
 function Body() {
     const [activeTab, setActiveTab] = useState("all");
@@ -608,14 +609,17 @@ function Body() {
     }, [handleSearch, searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties]);
 
     // ✅ Share functionality
-    const getListingUrl = (listingId) => {
-        return `${window.location.origin}/listing/${listingId}`;
+    const getListingUrl = (listingId, category = null) => {
+        // If category is provided, use it; otherwise try to get from selectedDest
+        const listingCategory = category || selectedDest?.category || "properties";
+        return `${window.location.origin}/listing/${listingCategory}/${listingId}`;
     };
 
     const handleShare = async (listing) => {
         const listingId = typeof listing === "string" ? listing : listing?.id;
         if (!listingId) return;
-        const url = getListingUrl(listingId);
+        const listingCategory = listing?.category || selectedDest?.category || "properties";
+        const url = getListingUrl(listingId, listingCategory);
         const title = selectedDest?.title || "Check out this listing!";
         const text = `Check out ${selectedDest?.title || "this listing"} on Expora!`;
 
@@ -633,7 +637,8 @@ function Body() {
     };
 
     const handleCopyLink = async (listingId) => {
-        const url = getListingUrl(listingId);
+        const listingCategory = selectedDest?.category || "properties";
+        const url = getListingUrl(listingId, listingCategory);
         try {
             if (navigator.clipboard && window.isSecureContext) {
                 await navigator.clipboard.writeText(url);
@@ -656,7 +661,8 @@ function Body() {
     };
 
     const handleShareSocial = (platform, listingId) => {
-        const url = encodeURIComponent(getListingUrl(listingId));
+        const listingCategory = selectedDest?.category || "properties";
+        const url = encodeURIComponent(getListingUrl(listingId, listingCategory));
         const title = encodeURIComponent(selectedDest?.title || "Check out this listing!");
         const text = encodeURIComponent(`Check out ${selectedDest?.title || "this listing"} on Expora!`);
 

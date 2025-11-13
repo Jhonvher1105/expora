@@ -3,6 +3,7 @@ import LandingPage from "./components/generalFile/LandingPage";
 import Registration from "./login2/Registration";
 import LogIn2 from "./login2/LogIn2";
 import ForgotPassword from "./login2/ForgotPassword";
+import VerifyEmail from "./login2/VerifyEmail";
 import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
@@ -21,6 +22,7 @@ import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 
 import HostingType from './components/ui/HostingType';
 import Service from './components/ui/AddService';
+import SharedListing from './components/ui/SharedListing';
 
 function App() {
     return (
@@ -30,6 +32,7 @@ function App() {
                 <Route path="/Registration" element={<Registration />} />
                 <Route path="/LogIn" element={<LogIn2/>}/>
                 <Route path="/forgot-password" element={<ForgotPassword/>}/>
+                <Route path="/verify-email" element={<VerifyEmail/>}/>
                 <Route path="/Home" element={<UserHomePage />} />
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>
@@ -46,6 +49,10 @@ function App() {
                 
                 <Route path="/HostingType" element={<HostingType/>}/>
                 <Route path="/Service" element={<Service/>}/>
+                
+                {/* Shared Listing Routes */}
+                <Route path="/listing/:category/:id" element={<SharedListing />}/>
+                <Route path="/SharedListing" element={<SharedListing />}/>
 
                 {/* Admin Routes */}
                 <Route path="/Admin" element={

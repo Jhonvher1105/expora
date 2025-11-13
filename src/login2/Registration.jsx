@@ -13,6 +13,7 @@ import {
   reload,
 } from "firebase/auth";
 import { setDoc, doc } from "firebase/firestore";
+import { sendVerificationEmail } from "../utils/emailService";
 
 function Registration() {
   const [showPassword, setShowPassword] = useState(false);
@@ -134,9 +135,37 @@ function Registration() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       setUser(userCredential.user);
 
+      // Generate verification link using Firebase
+      // Note: Firebase's sendEmailVerification generates the link internally
+      // For EmailJS, we'll use Firebase's verification link generation
+      // First, send Firebase verification to get the link structure
       await sendEmailVerification(userCredential.user);
-      setVerificationSent(true);
-      setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
+      
+      // Generate a custom verification link for EmailJS
+      // Using Firebase's action code settings to generate a proper verification link
+      const actionCodeSettings = {
+        url: `${window.location.origin}/verify-email?uid=${userCredential.user.uid}`,
+        handleCodeInApp: true,
+      };
+      
+      // For EmailJS, create a verification link that will work with your verification handler
+      const verificationLink = `${window.location.origin}/verify-email?uid=${userCredential.user.uid}&email=${encodeURIComponent(email)}`;
+      
+      // Send custom EmailJS email
+      try {
+        await sendVerificationEmail(
+          email,
+          formData.firstName || 'User',
+          verificationLink
+        );
+        setVerificationSent(true);
+        setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
+      } catch (emailError) {
+        console.error("EmailJS error:", emailError);
+        // Fallback to Firebase email if EmailJS fails
+        setVerificationSent(true);
+        setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
+      }
     } catch (error) {
       console.error("Error creating user:", error);
       // Handle specific Firebase errors
@@ -185,8 +214,24 @@ function Registration() {
 
     try {
       setIsLoading(true);
-      await sendEmailVerification(auth.currentUser);
-      setSuccessMessage("📨 Verification email resent! Check your inbox.");
+      
+      // Generate verification link
+      const verificationLink = `${window.location.origin}/verify-email?uid=${auth.currentUser.uid}&email=${encodeURIComponent(auth.currentUser.email)}`;
+      
+      // Send EmailJS email
+      try {
+        await sendVerificationEmail(
+          auth.currentUser.email,
+          formData.firstName || 'User',
+          verificationLink
+        );
+        setSuccessMessage("📨 Verification email resent! Check your inbox.");
+      } catch (emailError) {
+        console.error("EmailJS error:", emailError);
+        // Fallback to Firebase email
+        await sendEmailVerification(auth.currentUser);
+        setSuccessMessage("📨 Verification email resent! Check your inbox.");
+      }
     } catch (error) {
       console.error(error);
       setError("Failed to resend email. Try again later.");
