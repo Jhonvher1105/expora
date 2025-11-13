@@ -12,7 +12,8 @@ dist
 dist-ssr
 *.local
 
-src/components/bgVidFolder/bgVid.mp4
+bgVid.mp4
+.mp4
 
 # Environment variables
 .env
