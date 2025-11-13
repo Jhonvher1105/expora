@@ -28,7 +28,7 @@ export default function LandingPage() {
 
                 <div className="auth-buttons">
                     <Link to="/login" className="btn btn-login">Log In</Link>
-                    <Link to="/register" className="btn btn-signup">Sign Up</Link>
+                    <Link to="/Registration" className="btn btn-signup">Sign Up</Link>
                 </div>
             </header>
 

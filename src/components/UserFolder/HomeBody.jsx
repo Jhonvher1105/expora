@@ -33,7 +33,6 @@ function Body() {
     const [showDetail, setShowDetail] = useState(false);
     const [properties, setProperties] = useState([]);
     const [allProperties, setAllProperties] = useState([]);
-    const [favorites, setFavorites] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [checkInDate, setCheckInDate] = useState("");
@@ -58,6 +57,7 @@ function Body() {
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
     const [allBookings, setAllBookings] = useState([]);
+    const [favorites, setFavorites] = useState([]); // Track favorited property IDs
     const { checkAvailability, createBooking, creating, calculateServiceFee } = useBooking();
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
     const { openChat } = useChat();
@@ -253,11 +253,6 @@ function Body() {
         }
     };
 
-    const upcomingTrips = [
-        { id: 1, destination: "Boracay", date: "Nov 15-18, 2025", status: "Confirmed" },
-        { id: 2, destination: "El Nido", date: "Dec 20-25, 2025", status: "Pending" },
-    ];
-
     // ✅ Track current user
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -282,6 +277,27 @@ function Body() {
         };
         fetchBookings();
     }, []);
+
+    // ✅ Fetch favorites for current user
+    useEffect(() => {
+        if (!currentUser) {
+            setFavorites([]);
+            return;
+        }
+        
+        const fetchFavorites = async () => {
+            try {
+                const q = query(collection(db, "favorites"), where("userId", "==", currentUser.uid));
+                const favSnap = await getDocs(q);
+                const favoriteIds = favSnap.docs.map((doc) => doc.data().propertyId);
+                setFavorites(favoriteIds);
+            } catch (error) {
+                console.error("Error loading favorites:", error);
+            }
+        };
+        
+        fetchFavorites();
+    }, [currentUser]);
 
     // ✅ Fetch properties
     useEffect(() => {
@@ -327,8 +343,9 @@ function Body() {
                     }));
                 }
 
-                setProperties(data);
+                // Set all properties and display them immediately
                 setAllProperties(data);
+                setProperties(data); // Show all properties by default
                 
                 // Extract unique locations for autocomplete
                 const uniqueLocations = [...new Set(data.map(p => {
@@ -368,22 +385,6 @@ function Body() {
         }
     }, [locationInput, allProperties]);
 
-    // ✅ Fetch favorites
-    useEffect(() => {
-        if (!currentUser) return;
-        const fetchFavorites = async () => {
-            try {
-                const favSnap = await getDocs(collection(db, "favorites"));
-                const userFavs = favSnap.docs
-                    .map((doc) => doc.data())
-                    .filter((fav) => fav.userId === currentUser.uid);
-                setFavorites(userFavs);
-            } catch (error) {
-                console.error("Error loading favorites:", error);
-            }
-        };
-        fetchFavorites();
-    }, [currentUser]);
 
     // ✅ Track property view in browsing history
     const trackPropertyView = async (property) => {
@@ -417,21 +418,34 @@ function Body() {
             const favDocRef = doc(db, "favorites", `${currentUser.uid}_${property.id}`);
             const favDoc = await getDoc(favDocRef);
 
+            // Determine category from property.category or activeTab
+            const category = property.category || (activeTab !== "all" ? activeTab : "properties");
+
             if (favDoc.exists()) {
                 await deleteDoc(favDocRef);
+                // Update local state immediately
+                setFavorites((prev) => prev.filter((id) => id !== property.id));
                 alert("Removed from favorites 💔");
             } else {
                 await setDoc(favDocRef, {
                     userId: currentUser.uid,
                     propertyId: property.id,
                     propertyData: property,
+                    category: category,
                     createdAt: new Date(),
                 });
+                // Update local state immediately
+                setFavorites((prev) => [...prev, property.id]);
                 alert("Added to favorites ❤️");
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
         }
+    };
+
+    // Helper function to check if a property is favorited
+    const isFavorited = (propertyId) => {
+        return favorites.includes(propertyId);
     };
 
     useEffect(() => {
@@ -566,13 +580,24 @@ function Body() {
 
     // Auto-search with debouncing when inputs change
     useEffect(() => {
-        // Debounce search execution
+        // Only run search if there are active filters
+        const hasFilters = (searchQuery || locationInput || checkInDate || checkOutDate || filterGuests || totalGuests > 1);
+        
+        if (!hasFilters && allProperties.length > 0) {
+            // No filters - show all properties
+            setProperties([...allProperties]);
+            return;
+        }
+        
+        // Debounce search execution when filters are present
         const timeoutId = setTimeout(() => {
-            handleSearch();
-        }, 500); // Wait 500ms after user stops typing/changing inputs
+            if (hasFilters) {
+                handleSearch();
+            }
+        }, 300); // Wait 300ms after user stops typing/changing inputs
 
         return () => clearTimeout(timeoutId);
-    }, [handleSearch]);
+    }, [handleSearch, searchQuery, locationInput, checkInDate, checkOutDate, filterGuests, totalGuests, allProperties]);
 
     // ✅ Share functionality
     const getListingUrl = (listingId) => {
@@ -788,7 +813,11 @@ function Body() {
                                                             handleFavBtn(property);
                                                         }}
                                                     >
-                                                        <Heart size={20} />
+                                                        <Heart 
+                                                            size={20} 
+                                                            fill={isFavorited(property.id) ? "#ff6b35" : "none"}
+                                                            color={isFavorited(property.id) ? "#ff6b35" : "currentColor"}
+                                                        />
                                                     </button>
                                                 </div>
 
@@ -844,219 +873,7 @@ function Body() {
                                 </div>
                             </section>
                         )}
-
-                        {/* service */}
-                        {/* {activeTab === "experiences" && (
-                            <section className="section">
-                                <div className="section-header">
-                                    <h2 className="section-title">
-                                        <Star size={24} />
-                                        Popular Destinations
-                                    </h2>
-                                </div>
-
-                                <div className="destinations-grid">
-                                    {properties.length > 0 ? (
-                                        properties.map((property) => (
-                                            <div key={property.id} className="destination-card">
-                                                <div className="destination-image">
-                                                    {property.images && property.images.length > 0 ? (
-                                                        <img
-                                                            src={property.images[0]}
-                                                            alt={property.title}
-                                                            className="property-img"
-                                                        />
-                                                    ) : (
-                                                        <div className="no-image">No Image</div>
-                                                    )}
-                                                    <button
-                                                        className="favorite-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleFavBtn(property);
-                                                        }}
-                                                    >
-                                                        <Heart size={20} />
-                                                    </button>
-                                                </div>
-
-                                                <div className="destination-content">
-                                                    <div className="destination-header">
-                                                        <h3 className="destination-name">{property.title}</h3>
-                                                        <span className="destination-price">
-                                                            ₱{property.price?.toLocaleString()} / night
-                                                        </span>
-                                                    </div>
-                                                    <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
-                                                    </p>
-                                                    <div className="destination-footer">
-                                                        <div className="rating">
-                                                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
-                                                            <span>4.8</span>
-                                                        </div>
-                                                        <button
-                                                            className="explore-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                trackPropertyView(property);
-                                                                setSelectedDest(property);
-                                                                setShowDetail(true);
-                                                            }}
-                                                        >
-                                                            Explore
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-center mt-5 text-gray-500">No properties found.</p>
-                                    )}
-                                </div>
-                            </section>
-                        )}
-                        {activeTab === "services" && (
-                            <section className="section">
-                                <div className="section-header">
-                                    <h2 className="section-title">
-                                        <Star size={24} />
-                                        Popular Destinations
-                                    </h2>
-                                </div>
-
-                                <div className="destinations-grid">
-                                    {properties.length > 0 ? (
-                                        properties.map((property) => (
-                                            <div key={property.id} className="destination-card">
-                                                <div className="destination-image">
-                                                    {property.images && property.images.length > 0 ? (
-                                                        <img
-                                                            src={property.images[0]}
-                                                            alt={property.title}
-                                                            className="property-img"
-                                                        />
-                                                    ) : (
-                                                        <div className="no-image">No Image</div>
-                                                    )}
-                                                    <button
-                                                        className="favorite-btn"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleFavBtn(property);
-                                                        }}
-                                                    >
-                                                        <Heart size={20} />
-                                                    </button>
-                                                </div>
-
-                                                <div className="destination-content">
-                                                    <div className="destination-header">
-                                                        <h3 className="destination-name">{property.title}</h3>
-                                                        <span className="destination-price">
-                                                            ₱{property.price?.toLocaleString()} / night
-                                                        </span>
-                                                    </div>
-                                                    <p className="destination-location">
-                                                        <MapPin size={14} /> {property.location?.address || property.location || "Location not specified"}
-                                                    </p>
-                                                    <div className="destination-footer">
-                                                        <div className="rating">
-                                                            <Star size={16} fill="#fbbf24" color="#fbbf24" />
-                                                            <span>4.8</span>
-                                                        </div>
-                                                        <button
-                                                            className="explore-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                trackPropertyView(property);
-                                                                setSelectedDest(property);
-                                                                setShowDetail(true);
-                                                            }}
-                                                        >
-                                                            Explore
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p className="text-center mt-5 text-gray-500">No properties found.</p>
-                                    )}
-                                </div>
-                            </section>
-                        )} */}
-
-                        {/* TRIPS TAB */}
-                        {activeTab === "favorite" && (
-                            <section className="section">
-                                <div className="section-header">
-                                    <h2 className="section-title">
-                                        <Calendar size={24} /> Upcoming Trips
-                                    </h2>
-                                </div>
-                                <div className="trips-list">
-                                    {upcomingTrips.map((trip) => (
-                                        <div key={trip.id} className="trip-card">
-                                            <div className="trip-info">
-                                                <h3 className="trip-destination">{trip.destination}</h3>
-                                                <p className="trip-date">{trip.date}</p>
-                                            </div>
-                                            <span className={`trip-status ${trip.status.toLowerCase()}`}>
-                                                {trip.status}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button className="plan-trip-btn">Plan a New Trip</button>
-                            </section>
-                        )}
-
-                        {/* FAVORITES TAB */}
-                        {activeTab === "favorites" && (
-                            <section className="section">
-                                <div className="section-header">
-                                    <h2 className="section-title">
-                                        <Heart size={24} /> Saved Destinations
-                                    </h2>
-                                </div>
-
-                                {favorites.length > 0 ? (
-                                    <div className="destinations-grid">
-                                        {favorites.map((fav) => (
-                                            <div key={fav.propertyId} className="destination-card">
-                                                <img
-                                                    src={fav.propertyData.images?.[0]}
-                                                    alt={fav.propertyData.title}
-                                                    className="property-img"
-                                                />
-                                                <div className="destination-content">
-                                                    <h3>{fav.propertyData.title}</h3>
-                                                    <p>
-                                                        <MapPin size={14} /> {fav.propertyData.location?.address || fav.propertyData.location || "Location not specified"}
-                                                    </p>
-                                                    <button
-                                                        className="explore-btn"
-                                                        onClick={() => {
-                                                            setSelectedDest(fav.propertyData);
-                                                            setShowDetail(true);
-                                                        }}
-                                                    >
-                                                        View Details
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="empty-state">
-                                        <Heart size={64} className="empty-icon" />
-                                        <h3>No favorites yet</h3>
-                                        <p>Start exploring and save your favorite destinations</p>
-                                    </div>
-                                )}
-                            </section>
-                        )}
+                        
                     </div>
                 </main>
 

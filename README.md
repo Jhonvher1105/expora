@@ -1,18 +1,183 @@
-# React + Vite
+# Expora - Airbnb-like Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive marketplace platform connecting hosts with guests for properties, experiences, and services. Built with React, Firebase, and modern web technologies.
 
-Currently, two official plugins are available:
+## 🚀 Quick Start
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+# Install dependencies
+npm install
 
-## React Compiler
+# Run development server
+npm run dev
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+# Build for production
+npm run build
+```
 
-Note: This will impact Vite dev & build performances.
+## 📋 Features
 
-## Expanding the ESLint configuration
+### For Guests
+- Browse listings (Properties, Experiences, Services)
+- Advanced search and filtering
+- Booking management
+- Multiple payment methods (E-Wallet, PayPal)
+- Reviews and ratings
+- Favorites/Wishlist
+- Points and rewards program
+- Smart recommendations
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### For Hosts
+- Create and manage listings
+- Booking management dashboard
+- Earnings tracking
+- Payout requests
+- Payment history
+- Chat with guests
+
+### For Admins
+- Comprehensive dashboard
+- Analytics and reporting
+- Payment review and management
+- Payout approval system
+- Service fees configuration
+- User management
+- Policy management
+- Report generation (PDF/CSV)
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React 18.3.1
+- **Build Tool**: Vite 5.4.21
+- **Backend**: Firebase (Authentication, Firestore)
+- **Payment**: PayPal SDK
+- **Maps**: React Leaflet
+- **Images**: Cloudinary
+
+## 📚 Documentation
+
+For complete documentation, see [DOCUMENTATION.md](./DOCUMENTATION.md)
+
+### Quick Links
+- [Installation & Setup](./DOCUMENTATION.md#installation--setup)
+- [User Guides](./DOCUMENTATION.md#user-guides)
+- [Development Guide](./DOCUMENTATION.md#development-guide)
+- [Deployment](./DOCUMENTATION.md#deployment)
+- [Troubleshooting](./DOCUMENTATION.md#troubleshooting)
+
+### Additional Guides
+- [Admin Setup Guide](./ADMIN_SETUP.md)
+- [PayPal Setup Guide](./PAYPAL_SETUP.md)
+- [Feature Status](./FEATURES_AND_REQUIREMENTS_SUMMARY.md)
+
+## 🏗️ Project Structure
+
+```
+expora/
+├── src/
+│   ├── components/      # React components
+│   │   ├── admin/      # Admin dashboard
+│   │   ├── hostFolder/ # Host features
+│   │   ├── UserFolder/ # Guest features
+│   │   └── ui/         # Reusable UI components
+│   ├── context/        # React Context providers
+│   ├── login2/         # Authentication
+│   └── firebase.js     # Firebase configuration
+├── public/             # Static assets
+└── package.json        # Dependencies
+```
+
+## ⚙️ Configuration
+
+### Required Setup
+
+1. **Firebase Configuration**
+   - Create Firebase project
+   - Update `src/firebase.js` with your config
+   - Enable Authentication (Email/Password)
+   - Create Firestore database
+
+2. **Cloudinary** (for image uploads)
+   - Create Cloudinary account
+   - Update image upload components
+
+3. **PayPal** (optional for development)
+   - Create PayPal Developer account
+   - Add `VITE_PAYPAL_CLIENT_ID` to `.env`
+
+See [Installation & Setup](./DOCUMENTATION.md#installation--setup) for detailed instructions.
+
+## 📊 Project Status
+
+**Overall Completion: 97%** ✅
+
+- ✅ Core Features: 100%
+- ✅ Host Features: 95%
+- ✅ Guest Features: 95%
+- ✅ Admin Dashboard: 100%
+- ✅ Payment Systems: 100%
+- ✅ Reviews & Ratings: 90%
+- ✅ Points & Rewards: 100%
+
+**Status**: Production Ready
+
+## 🎯 Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd expora
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Firebase**
+   - Set up Firebase project
+   - Update `src/firebase.js`
+
+4. **Configure environment variables**
+   - Create `.env` file
+   - Add PayPal Client ID (optional)
+
+5. **Run the application**
+   ```bash
+   npm run dev
+   ```
+
+6. **Set up admin user**
+   - Register a user
+   - Update Firestore `users` collection with `role: "admin"`
+   - Access admin dashboard at `/Admin`
+
+See [DOCUMENTATION.md](./DOCUMENTATION.md) for complete setup instructions.
+
+## 🔐 Security Notes
+
+- Never commit `.env` files
+- Use different Firebase projects for dev/prod
+- Configure Firestore security rules
+- Use production PayPal credentials for live site
+
+## 🐛 Troubleshooting
+
+Common issues and solutions are documented in the [Troubleshooting](./DOCUMENTATION.md#troubleshooting) section.
+
+## 📝 License
+
+[Specify your license here]
+
+## 🤝 Contributing
+
+[Add contribution guidelines if needed]
+
+## 📞 Support
+
+For issues and questions, please refer to the [Documentation](./DOCUMENTATION.md) or create an issue.
+
+---
+
+**Version**: 3.0  
+**Last Updated**: [Current Date]

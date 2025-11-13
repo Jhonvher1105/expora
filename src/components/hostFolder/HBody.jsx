@@ -3,6 +3,8 @@ import Footer from "../generalFile/Footer";
 import { useState, useEffect, useCallback } from "react";
 import { MessageCircleMore, Heart, MapPin, Star, Plus, X, Search } from "lucide-react";
 import "../../components/cssFile/temp.css";
+import { useChat } from "../../context/ChatContext";
+import ChatModal from "../ui/ChatModal";
 
 import {
     collection,
@@ -31,6 +33,9 @@ export default function HostBody() {
     const [showEditForm, setShowEditForm] = useState(false);
     const [todayBookings, setTodayBookings] = useState([]);
     const [upcomingBookings, setUpcomingBookings] = useState([]);
+    
+    // Chat system
+    const { openChat } = useChat();
     
     // Search state
     const [searchQuery, setSearchQuery] = useState("");
@@ -710,11 +715,25 @@ export default function HostBody() {
                     <button className="icon-btn" onClick={() => setShowForm(true)}>
                         <Plus size={20} />
                     </button>
-                    <button className="icon-btn">
+                    <button 
+                        className="icon-btn" 
+                        onClick={() => {
+                            if (!currentUser) {
+                                alert("Please log in to use chat.");
+                                return;
+                            }
+                            openChat();
+                        }}
+                        title="Open Messages"
+                    >
                         <MessageCircleMore size={20} />
                     </button>
                 </div>
             </div>
+            
+            {/* Chat Modal */}
+            <ChatModal />
+            
             <Footer />
         </>
     );

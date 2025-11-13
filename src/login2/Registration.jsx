@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, AlertCircle, Mail, Lock } from "lucide-react";
 import logo from "../components/pic/logo.png";
 import "./index.css";
 // import "../components/cssFile/temp.css";
@@ -23,6 +23,8 @@ function Registration() {
   const [verificationSent, setVerificationSent] = useState(false);
   const [gender, setGender] = useState('');
   const [otherInput, setOtherInput] = useState('');
+  const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -44,7 +46,11 @@ function Registration() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Trim text inputs (except password fields to preserve spaces if needed)
+    const trimmedValue = (name === 'password' || name === 'confirmPassword') 
+      ? value 
+      : value.trim();
+    setFormData((prev) => ({ ...prev, [name]: trimmedValue }));
   };
 
   const handleGenderChange = (event) => {
@@ -59,77 +65,247 @@ function Registration() {
     }
   };
 
+  // =======================
+  // Handle Send Verification (Step 1)
+  // =======================
   const handleSendVerification = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccessMessage('');
 
-    if (!formData.email || !formData.password) {
-      alert("Please enter your email and password.");
+    // Trim inputs before validation
+    const email = formData.email.trim();
+    const password = formData.password;
+    const confirmPassword = formData.confirmPassword;
+
+    // Basic input validations
+    if (!email) {
+      setError("Please enter your email address.");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+    if (!password) {
+      setError("Please enter a password.");
+      return;
+    }
+
+    if (!confirmPassword) {
+      setError("Please confirm your password.");
+      return;
+    }
+
+    // Email format validation (more robust)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    // Password length validation (check first)
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (password.length > 128) {
+      setError("Password must be less than 128 characters.");
+      return;
+    }
+
+    // Password match validation
+    if (password !== confirmPassword) {
+      setError("Passwords do not match!");
+      return;
+    }
+
+    // Password strength validation
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+
+    if (!hasUpperCase || !hasNumber || !hasSpecialChar) {
+      setError("Password must include at least one uppercase letter, one number, and one special character (!@#$%^&*).");
       return;
     }
 
     try {
       setIsLoading(true);
 
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       setUser(userCredential.user);
 
       await sendEmailVerification(userCredential.user);
       setVerificationSent(true);
-      alert(
-        "📩 Verification email sent! Please check your inbox or spam folder."
-      );
+      setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
     } catch (error) {
       console.error("Error creating user:", error);
-      alert(error.message);
+      // Handle specific Firebase errors
+      if (error.code === 'auth/email-already-in-use') {
+        setError("This email is already registered. Please use a different email or sign in.");
+      } else if (error.code === 'auth/invalid-email') {
+        setError("Invalid email address. Please check and try again.");
+      } else if (error.code === 'auth/weak-password') {
+        setError("Password is too weak. Please use a stronger password.");
+      } else {
+        setError(error.message || "An error occurred. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+
   const handleCheckVerification = async () => {
     if (!auth.currentUser) {
-      alert("Please create an account first.");
+      setError("Please create an account first.");
       return;
     }
 
-    await reload(auth.currentUser);
-    if (auth.currentUser.emailVerified) {
-      alert("✅ Email verified successfully!");
-      setStep(2);
-    } else {
-      alert("❌ Email not verified yet. Please check your inbox again.");
+    try {
+      setIsLoading(true);
+      await reload(auth.currentUser);
+      if (auth.currentUser.emailVerified) {
+        setSuccessMessage("✅ Email verified successfully!");
+        setTimeout(() => setStep(2), 500);
+      } else {
+        setError("❌ Email not verified yet. Please check your inbox again.");
+      }
+    } catch (err) {
+      setError("Error checking verification status.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleResendVerification = async () => {
     if (!auth.currentUser) {
-      alert("Please create an account first.");
+      setError("Please create an account first.");
       return;
     }
 
     try {
+      setIsLoading(true);
       await sendEmailVerification(auth.currentUser);
-      alert("📨 Verification email resent! Check your inbox.");
+      setSuccessMessage("📨 Verification email resent! Check your inbox.");
     } catch (error) {
       console.error(error);
-      alert("Failed to resend email. Try again later.");
+      setError("Failed to resend email. Try again later.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccessMessage('');
 
     if (!auth.currentUser || !auth.currentUser.emailVerified) {
-      alert("Please verify your email before submitting your profile.");
+      setError("Please verify your email before submitting your profile.");
+      return;
+    }
+
+    // Validate required fields
+    const firstName = formData.firstName.trim();
+    if (!firstName) {
+      setError("First name is required.");
+      return;
+    }
+
+    // Validate name fields (letters, spaces, hyphens, apostrophes only)
+    const nameRegex = /^[a-zA-Z\s'-]+$/;
+    if (!nameRegex.test(firstName)) {
+      setError("First name can only contain letters, spaces, hyphens, and apostrophes.");
+      return;
+    }
+
+    if (firstName.length < 2) {
+      setError("First name must be at least 2 characters long.");
+      return;
+    }
+
+    if (formData.middleName && !nameRegex.test(formData.middleName.trim())) {
+      setError("Middle name can only contain letters, spaces, hyphens, and apostrophes.");
+      return;
+    }
+
+    if (formData.lastName && !nameRegex.test(formData.lastName.trim())) {
+      setError("Last name can only contain letters, spaces, hyphens, and apostrophes.");
+      return;
+    }
+
+    // Validate date of birth
+    if (formData.dateOfBirth) {
+      const birthDate = new Date(formData.dateOfBirth);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      if (birthDate > today) {
+        setError("Date of birth cannot be in the future.");
+        return;
+      }
+
+      if (age < 13) {
+        setError("You must be at least 13 years old to register.");
+        return;
+      }
+
+      if (age > 120) {
+        setError("Please enter a valid date of birth.");
+        return;
+      }
+    }
+
+    // Validate gender
+    if (!gender) {
+      setError("Please select a gender identity.");
+      return;
+    }
+
+    if (gender === "other" && !otherInput.trim()) {
+      setError("Please specify your gender identity.");
+      return;
+    }
+
+    // Validate phone number if provided
+    if (formData.phoneNumber) {
+      const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+      const digitsOnly = formData.phoneNumber.replace(/\D/g, '');
+      
+      if (!phoneRegex.test(formData.phoneNumber)) {
+        setError("Please enter a valid phone number.");
+        return;
+      }
+
+      if (digitsOnly.length < 10 || digitsOnly.length > 15) {
+        setError("Phone number must be between 10 and 15 digits.");
+        return;
+      }
+    }
+
+    // Validate zip code if provided
+    if (formData.zipCode) {
+      const zipCodeStr = formData.zipCode.toString().trim();
+      if (zipCodeStr.length < 5 || zipCodeStr.length > 10) {
+        setError("Zip code must be between 5 and 10 characters.");
+        return;
+      }
+    }
+
+    // Validate city if provided
+    if (formData.city && formData.city.trim().length < 2) {
+      setError("City name must be at least 2 characters long.");
+      return;
+    }
+
+    // Validate state if provided
+    if (formData.state && formData.state.trim().length < 2) {
+      setError("State name must be at least 2 characters long.");
       return;
     }
 
@@ -139,40 +315,47 @@ function Registration() {
 
       await setDoc(doc(db, "users", uid), {
         email: auth.currentUser.email,
-        firstName: formData.firstName,
-        middleName: formData.middleName,
-        lastName: formData.lastName,
-        dateOfBirth: formData.dateOfBirth,
-        gender: gender === "other" ? otherInput : gender,
-        phoneNumber: formData.phoneNumber,
-        houseNumber: formData.houseNumber,
-        city: formData.city,
-        state: formData.state,
-        zipCode: formData.zipCode,
+        firstName: firstName,
+        middleName: formData.middleName.trim(),
+        lastName: formData.lastName.trim(),
+        dateOfBirth: formData.dateOfBirth || null,
+        gender: gender === "other" ? otherInput.trim() : gender,
+        phoneNumber: formData.phoneNumber.trim() || null,
+        houseNumber: formData.houseNumber || null,
+        city: formData.city.trim() || null,
+        state: formData.state.trim() || null,
+        zipCode: formData.zipCode || null,
+        accType: formData.accType,
         createdAt: new Date(),
       });
 
-      alert("🎉 Registration complete! Welcome to Expora.");
-      setStep(1);
-      setVerificationSent(false);
-      setFormData({
-        email: "",
-        firstName: "",
-        middleName: "",
-        lastName: "",
-        dateOfBirth: "",
-        gender: "",
-        phoneNumber: "",
-        city: "",
-        state: "",
-        zipCode: "",
-        password: "",
-        confirmPassword: "",
-      });
-      navigate("/login");
+      setSuccessMessage("🎉 Registration complete! Welcome to Expora.");
+      setTimeout(() => {
+        setStep(1);
+        setVerificationSent(false);
+        setGender('');
+        setOtherInput('');
+        setFormData({
+          email: "",
+          firstName: "",
+          middleName: "",
+          lastName: "",
+          dateOfBirth: "",
+          gender: "",
+          phoneNumber: "",
+          houseNumber: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          password: "",
+          confirmPassword: "",
+          accType: "guest",
+        });
+        navigate("/login");
+      }, 1500);
     } catch (error) {
       console.error("Error saving data:", error);
-      alert("Error saving user data.");
+      setError("Error saving user data. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -181,10 +364,41 @@ function Registration() {
   return (
     <div className="registration-container">
       <div className="registration-card">
-        <div className="div-logIn-logo">
-          <img src={logo} alt="expora logo" className="img-login-logo" />
-          <h2>Expora</h2>
+        {/* Header */}
+        <div className="reg-header">
+          <div className="div-logIn-logo">
+            <img src={logo} alt="expora logo" className="img-login-logo" />
+            <h2>Expora</h2>
+          </div>
+          
+          {/* Step Indicator */}
+          <div className="step-indicator">
+            <div className={`step ${step === 1 ? 'active' : 'completed'}`}>
+              <div className="step-circle">1</div>
+              <div className="step-label">Verify Email</div>
+            </div>
+            <div className="step-line"></div>
+            <div className={`step ${step === 2 ? 'active' : ''}`}>
+              <div className="step-circle">2</div>
+              <div className="step-label">Complete Profile</div>
+            </div>
+          </div>
         </div>
+
+        {/* Error and Success Messages */}
+        {error && (
+          <div className="alert alert-error">
+            <AlertCircle size={18} />
+            <span>{error}</span>
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="alert alert-success">
+            <CheckCircle size={18} />
+            <span>{successMessage}</span>
+          </div>
+        )}
 
         {step === 2 ? (
           <>
@@ -337,10 +551,24 @@ function Registration() {
                 <div className="form-group">
                   <label className="form-label" htmlFor="zipcode">Zipcode</label>
                   <input
-                    type="number"
+                    type="text"
                     name="zipCode"
                     value={formData.zipCode}
                     onChange={handleInputChange}
+                    placeholder="12345"
+                    className="form-input"
+                    maxLength={10}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="phoneNumber">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleInputChange}
+                    placeholder="+1 (555) 123-4567"
                     className="form-input"
                   />
                 </div>
@@ -361,86 +589,124 @@ function Registration() {
               </p>
             </div>
 
-            <form className="form-group" onSubmit={handleSendVerification}>
+            <form className="form-group reg-form" onSubmit={handleSendVerification}>
               
-              <label className="form-label">Email address</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="Enter your email"
-                className="form-input"
-                required
-              />
-
-              <label className="form-label">Password</label>
-              <div className="password-container">
+              <div className="form-group">
+                <label className="form-label">
+                  <Mail size={16} className="label-icon" />
+                  Email address
+                </label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
+                  type="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="Create a password"
-                  className="form-input password-input"
+                  placeholder="Enter your email"
+                  className="form-input"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="eye-btn"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
 
-              <label className="form-label">Confirm Password</label>
-              <div className="password-container">
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm your password"
-                  className="form-input password-input"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="eye-btn"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={18} />
-                  ) : (
-                    <Eye size={18} />
-                  )}
-                </button>
+              <div className="form-group">
+                <label className="form-label">
+                  <Lock size={16} className="label-icon" />
+                  Password
+                </label>
+                <div className="password-container">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Min. 6 chars, 1 uppercase, 1 number, 1 special char"
+                    className="form-input password-input"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="eye-btn"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Lock size={16} className="label-icon" />
+                  Confirm Password
+                </label>
+                <div className="password-container">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm your password"
+                    className="form-input password-input"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="eye-btn"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" className="submit-btn" disabled={isLoading}>
-                {isLoading ? "Processing..." : "Send Verification Email"}
+                {isLoading ? (
+                  <span className="btn-loading">
+                    <span className="spinner"></span>
+                    Processing...
+                  </span>
+                ) : (
+                  "Send Verification Email"
+                )}
               </button>
             </form>
 
             {verificationSent && (
-              <div className="verification-actions">
-                <p>✅ Verification email sent. Once verified, click below:</p>
-                <button onClick={handleCheckVerification} className="check-btn">
-                  Check Verification
-                </button>
-                <button
-                  onClick={handleResendVerification}
-                  className="resend-btn"
-                >
-                  Resend Email
-                </button>
+              <div className="verification-section">
+                <div className="verification-box">
+                  <div className="verification-icon">✅</div>
+                  <p className="verification-text">Verification email sent. Once verified, click below:</p>
+                </div>
+                <div className="verification-actions">
+                  <button 
+                    onClick={handleCheckVerification} 
+                    className="check-btn"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Checking..." : "Check Verification"}
+                  </button>
+                  <button
+                    onClick={handleResendVerification}
+                    className="resend-btn"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Resending..." : "Resend Email"}
+                  </button>
+                </div>
               </div>
             )}
 
+            <div className="divider">
+              <span>or</span>
+            </div>
+
             <div className="signup-text">
               Already have an account?{" "}
-              <Link to="/LogIn">Sign In</Link>
+              <Link to="/LogIn" className="auth-link">Sign In</Link>
             </div>
           </>
         )}
