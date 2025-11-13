@@ -199,17 +199,11 @@ function Header() {
                                 ) : (
                                     <p className="user-email">Not signed in</p>
                                 )}
-                                <Link to="/Profile" className="user-menu-item" role="menuitem">
-                                    My Profile
-                                </Link>
                                 <Link to="/HostPage" id="becomeHostBtn" className="user-menu-item" role="menuitem">
                                     Become a host
                                 </Link>
                                 <Link to="/Settings" className="user-menu-item" role="menuitem">
                                     Settings
-                                </Link>
-                                <Link to="/MyBooking" className="user-menu-item" role="menuitem">
-                                    My booking
                                 </Link>
                                 <button className="user-menu-item" onClick={openFavorites}>
                                     Favorites
@@ -217,9 +211,6 @@ function Header() {
                                 <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
                                     Coupons
                                 </button>
-                                <Link to="/WalletPage" className="user-menu-item" role="menuitem">
-                                    E-Wallet
-                                </Link>
                                 <button className="user-menu-item" onClick={openSuggestions}>
                                     Suggestions
                                 </button>

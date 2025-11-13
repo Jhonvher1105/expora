@@ -1,4 +1,4 @@
-import { User, Calendar, Users, Gift, Sparkles, MapPin, DollarSign, X, CheckCircle, Clock, XCircle, Wallet, TrendingUp, TrendingDown, Filter } from "lucide-react";
+import { User, Calendar, Wallet, TrendingUp, TrendingDown, Filter, MapPin, DollarSign, X, CheckCircle, Clock, XCircle, Users } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../firebase";
@@ -16,10 +16,9 @@ import {
     setDoc, 
     serverTimestamp 
 } from "firebase/firestore";
-import { usePoints } from "../../context/PointsContext";
 import { useWallet } from "../../context/WalletContext";
 
-import Header from './Header';
+import Header from './Hheader';
 import Footer from '../generalFile/Footer';
 
 import '../cssFile/temp.css';
@@ -28,12 +27,11 @@ import '../cssFile/temp.css';
 const CLOUD_NAME = "dv42rw8m7";
 const UPLOAD_PRESET = "unsigned_preset";
 
-export default function Settings() {
+export default function HostSettings() {
     const [currentUser, setCurrentUser] = useState(null);
-    const [activeTab, setActiveTab] = useState("profile"); // "profile", "bookings", "wallet"
+    const [activeTab, setActiveTab] = useState("profile"); // "profile", "bookings", "earnings"
 
     // Profile state
-    const { points, loading: pointsLoading } = usePoints();
     const [profileLoading, setProfileLoading] = useState(true);
     const [profileImage, setProfileImage] = useState(null);
     const [profileImageUrl, setProfileImageUrl] = useState(null);
@@ -60,12 +58,15 @@ export default function Settings() {
     const [bookings, setBookings] = useState([]);
     const [bookingsLoading, setBookingsLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState("all");
+    const [guestInfo, setGuestInfo] = useState({});
 
-    // Wallet state
+    // Earnings state
     const { balance } = useWallet();
-    const [walletActiveTab, setWalletActiveTab] = useState("balance");
-    const [isHost, setIsHost] = useState(false);
-    const [walletLoading, setWalletLoading] = useState(true);
+    const [earningsActiveTab, setEarningsActiveTab] = useState("overview");
+    const [earningsLoading, setEarningsLoading] = useState(true);
+    const [earnings, setEarnings] = useState(0);
+    const [pendingEarnings, setPendingEarnings] = useState(0);
+    const [totalEarnings, setTotalEarnings] = useState(0);
     const [transactions, setTransactions] = useState([]);
     const [filteredTransactions, setFilteredTransactions] = useState([]);
     const [filterType, setFilterType] = useState("all");
@@ -73,9 +74,6 @@ export default function Settings() {
     const [filterDateFrom, setFilterDateFrom] = useState("");
     const [filterDateTo, setFilterDateTo] = useState("");
     const [showFilters, setShowFilters] = useState(false);
-    const [hostEarnings, setHostEarnings] = useState(0);
-    const [monthlyEarnings, setMonthlyEarnings] = useState(0);
-    const [pendingEarnings, setPendingEarnings] = useState(0);
 
     // Track current user
     useEffect(() => {
@@ -146,7 +144,7 @@ export default function Settings() {
         fetchUserData();
     }, [currentUser]);
 
-    // Fetch bookings
+    // Fetch host bookings
     useEffect(() => {
         const fetchBookings = async () => {
             if (!currentUser) {
@@ -158,7 +156,7 @@ export default function Settings() {
                 setBookingsLoading(true);
                 const q = query(
                     collection(db, "bookings"),
-                    where("guestId", "==", currentUser.uid)
+                    where("hostId", "==", currentUser.uid)
                 );
                 const querySnapshot = await getDocs(q);
                 const bookingsData = querySnapshot.docs.map((doc) => ({
@@ -173,6 +171,13 @@ export default function Settings() {
                 });
 
                 setBookings(bookingsData);
+
+                // Fetch guest info for all bookings
+                bookingsData.forEach(booking => {
+                    if (booking.guestId && !guestInfo[booking.guestId]) {
+                        fetchGuestInfo(booking.guestId);
+                    }
+                });
             } catch (error) {
                 console.error("Error fetching bookings:", error);
             } finally {
@@ -183,93 +188,66 @@ export default function Settings() {
         fetchBookings();
     }, [currentUser]);
 
-    // Check if user is host and load wallet data
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                try {
-                    const propertiesQuery = query(
-                        collection(db, "properties"),
-                        where("ownerId", "==", user.uid)
-                    );
-                    const propertiesSnap = await getDocs(propertiesQuery);
-                    setIsHost(!propertiesSnap.empty);
-                    
-                    if (!propertiesSnap.empty) {
-                        await loadHostEarnings(user.uid);
-                    }
-                } catch (error) {
-                    console.error("Error checking host status:", error);
-                }
-            }
-            setWalletLoading(false);
-        });
-        return unsubscribe;
-    }, []);
-
-    // Load host earnings
-    const loadHostEarnings = async (hostId) => {
+    // Fetch guest information
+    const fetchGuestInfo = async (guestId) => {
+        if (!guestId || guestInfo[guestId]) return;
+        
         try {
-            const walletRef = doc(db, "wallets", hostId);
-            const walletSnap = await getDoc(walletRef);
-            
-            if (walletSnap.exists()) {
-                const data = walletSnap.data();
-                setHostEarnings(data.earnings || 0);
-                setPendingEarnings(data.pendingEarnings || 0);
-            } else {
-                setHostEarnings(0);
-                setPendingEarnings(0);
+            const guestDoc = await getDoc(doc(db, "users", guestId));
+            if (guestDoc.exists()) {
+                setGuestInfo(prev => ({
+                    ...prev,
+                    [guestId]: guestDoc.data()
+                }));
             }
-
-            const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            
-            const earningsQuery = query(
-                collection(db, "transactions"),
-                where("hostId", "==", hostId),
-                where("type", "==", "earnings"),
-                where("status", "==", "completed")
-            );
-            const earningsSnap = await getDocs(earningsQuery);
-            
-            let monthlyTotal = 0;
-            earningsSnap.forEach((doc) => {
-                const data = doc.data();
-                const createdAt = data.createdAt?.toDate() || new Date(data.createdAt);
-                if (createdAt >= startOfMonth) {
-                    monthlyTotal += data.amount || 0;
-                }
-            });
-            setMonthlyEarnings(monthlyTotal);
         } catch (error) {
-            console.error("Error loading host earnings:", error);
+            console.error("Error fetching guest info:", error);
         }
     };
 
-    // Load transactions
+    // Load earnings
     useEffect(() => {
-        if (!currentUser) return;
+        const loadEarnings = async () => {
+            if (!currentUser) {
+                setEarningsLoading(false);
+                return;
+            }
 
-        const loadTransactions = async () => {
             try {
-                setWalletLoading(true);
-                let transactionsQuery;
-
-                if (isHost) {
-                    transactionsQuery = query(
-                        collection(db, "transactions"),
-                        where("hostId", "==", currentUser.uid)
-                    );
-                } else {
-                    transactionsQuery = query(
-                        collection(db, "transactions"),
-                        where("userId", "==", currentUser.uid)
-                    );
+                setEarningsLoading(true);
+                const userId = currentUser.uid;
+                
+                const walletRef = doc(db, "wallets", userId);
+                const walletSnap = await getDoc(walletRef);
+                
+                if (walletSnap.exists()) {
+                    const walletData = walletSnap.data();
+                    setEarnings(walletData.earnings || 0);
+                    setPendingEarnings(walletData.pendingEarnings || 0);
                 }
 
-                const snapshot = await getDocs(transactionsQuery);
-                const transactionsData = snapshot.docs.map((doc) => ({
+                const transactionsRef = collection(db, "transactions");
+                const earningsQuery = query(
+                    transactionsRef,
+                    where("hostId", "==", userId),
+                    where("type", "==", "earnings"),
+                    where("status", "==", "completed")
+                );
+                const earningsSnap = await getDocs(earningsQuery);
+                
+                const total = earningsSnap.docs.reduce((sum, doc) => {
+                    return sum + (doc.data().amount || 0);
+                }, 0);
+                
+                setTotalEarnings(total);
+
+                // Load all transactions
+                const allTransactionsQuery = query(
+                    collection(db, "transactions"),
+                    where("hostId", "==", userId)
+                );
+                const allTransactionsSnap = await getDocs(allTransactionsQuery);
+                const transactionsData = allTransactionsSnap.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
                 })).sort((a, b) => {
@@ -281,27 +259,21 @@ export default function Settings() {
                 setTransactions(transactionsData);
                 setFilteredTransactions(transactionsData);
             } catch (error) {
-                console.error("Error loading transactions:", error);
+                console.error("Error loading earnings:", error);
             } finally {
-                setWalletLoading(false);
+                setEarningsLoading(false);
             }
         };
 
-        loadTransactions();
-    }, [currentUser, isHost]);
+        loadEarnings();
+    }, [currentUser]);
 
-    // Apply wallet filters
+    // Apply earnings filters
     useEffect(() => {
         let filtered = [...transactions];
 
         if (filterType !== "all") {
-            filtered = filtered.filter((t) => {
-                if (isHost) {
-                    return t.type === filterType;
-                } else {
-                    return t.type === filterType || (filterType === "payment" && (t.type === "payment" || t.type === "paypal_payment"));
-                }
-            });
+            filtered = filtered.filter((t) => t.type === filterType);
         }
 
         if (filterStatus !== "all") {
@@ -327,8 +299,7 @@ export default function Settings() {
         }
 
         setFilteredTransactions(filtered);
-    }, [filterType, filterStatus, filterDateFrom, filterDateTo, transactions, isHost]);
-
+    }, [filterType, filterStatus, filterDateFrom, filterDateTo, transactions]);
 
     // Profile handlers
     const handleProfileChange = (e) => {
@@ -488,27 +459,25 @@ export default function Settings() {
         });
     };
 
-    const handleCancelBooking = async (bookingId) => {
-        if (!window.confirm("Are you sure you want to cancel this booking?")) return;
-
+    const handleUpdateBookingStatus = async (bookingId, newStatus) => {
         try {
             const bookingRef = doc(db, "bookings", bookingId);
             await updateDoc(bookingRef, {
-                status: "cancelled",
-                updatedAt: new Date()
+                status: newStatus,
+                updatedAt: serverTimestamp()
             });
 
             setBookings(bookings.map(b => 
-                b.id === bookingId ? { ...b, status: "cancelled" } : b
+                b.id === bookingId ? { ...b, status: newStatus } : b
             ));
-            alert("Booking cancelled successfully");
+            alert(`Booking ${newStatus} successfully`);
         } catch (error) {
-            console.error("Error cancelling booking:", error);
-            alert("Failed to cancel booking. Please try again.");
+            console.error("Error updating booking:", error);
+            alert("Failed to update booking. Please try again.");
         }
     };
 
-    // Wallet helpers
+    // Earnings helpers
     const formatWalletDate = (timestamp) => {
         if (!timestamp) return "N/A";
         const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -527,11 +496,9 @@ export default function Settings() {
 
     const getTransactionTypeLabel = (type) => {
         const labels = {
-            payment: "Payment",
-            paypal_payment: "PayPal Payment",
             earnings: "Earnings",
             refund: "Refund",
-            topup: "Top-up",
+            payout: "Payout",
         };
         return labels[type] || type;
     };
@@ -584,14 +551,14 @@ export default function Settings() {
                                 onClick={() => setActiveTab("bookings")}
                             >
                                 <Calendar className="sett_nav_icon" size={26} />
-                                <span>My Bookings</span>
+                                <span>Bookings</span>
                             </button>
                             <button 
-                                className={`nav_btn_group ${activeTab === "wallet" ? "active" : ""}`}
-                                onClick={() => setActiveTab("wallet")}
+                                className={`nav_btn_group ${activeTab === "earnings" ? "active" : ""}`}
+                                onClick={() => setActiveTab("earnings")}
                             >
-                                <Wallet className="sett_nav_icon" size={26} />
-                                <span>E-Wallet</span>
+                                <TrendingUp className="sett_nav_icon" size={26} />
+                                <span>Earnings</span>
                             </button>
                         </nav>
                     </div>
@@ -607,7 +574,6 @@ export default function Settings() {
                                 </div>
                             ) : (
                                 <>
-                                    {/* Profile Card */}
                                     <div className="profile-card" style={{ marginTop: "2rem" }}>
                                         <div className="profile-header">
                                             <div className="overlay"></div>
@@ -631,10 +597,10 @@ export default function Settings() {
                                                         </div>
                                                     )}
                                                     {showImageUpload && (
-                                                        <label htmlFor="profile-image-upload" className="edit-img" style={{ cursor: "pointer" }}>
+                                                        <label htmlFor="host-profile-image-upload" className="edit-img" style={{ cursor: "pointer" }}>
                                                             📷
                                                             <input
-                                                                id="profile-image-upload"
+                                                                id="host-profile-image-upload"
                                                                 type="file"
                                                                 accept="image/*"
                                                                 onChange={handleImageChange}
@@ -659,77 +625,6 @@ export default function Settings() {
                                             </div>
                                         </div>
 
-                                        {/* Points Display */}
-                                        <div style={{
-                                            padding: "1.5rem",
-                                            background: "rgba(255,255,255,0.05)",
-                                            borderBottom: "1px solid rgba(255,255,255,0.1)",
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            gap: "1rem"
-                                        }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                                <div style={{
-                                                    width: "50px",
-                                                    height: "50px",
-                                                    borderRadius: "50%",
-                                                    background: "var(--primary-gradient)",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center"
-                                                }}>
-                                                    <Sparkles size={24} color="#fff" />
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", marginBottom: "0.3rem" }}>
-                                                        Points Balance
-                                                    </div>
-                                                    {pointsLoading ? (
-                                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Loading...</div>
-                                                    ) : (
-                                                        <div style={{ fontSize: "1.8rem", fontWeight: "bold" }}>
-                                                            {points.toLocaleString()} points
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                                                <Link to="/Rewards" style={{
-                                                    padding: "0.75rem 1.5rem",
-                                                    background: "rgba(255,255,255,0.1)",
-                                                    border: "1px solid rgba(255,255,255,0.2)",
-                                                    borderRadius: "12px",
-                                                    color: "var(--text)",
-                                                    textDecoration: "none",
-                                                    fontSize: "0.9rem",
-                                                    fontWeight: "600",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.5rem"
-                                                }}>
-                                                    <Gift size={18} />
-                                                    Rewards
-                                                </Link>
-                                                <Link to="/PointsHistory" style={{
-                                                    padding: "0.75rem 1.5rem",
-                                                    background: "rgba(255,255,255,0.1)",
-                                                    border: "1px solid rgba(255,255,255,0.2)",
-                                                    borderRadius: "12px",
-                                                    color: "var(--text)",
-                                                    textDecoration: "none",
-                                                    fontSize: "0.9rem",
-                                                    fontWeight: "600",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.5rem"
-                                                }}>
-                                                    History
-                                                </Link>
-                                            </div>
-                                        </div>
-
-                                        {/* Form */}
                                         <div className="form-section">
                                             <h3>Personal Details</h3>
                                             <div className="form-grid">
@@ -961,12 +856,11 @@ export default function Settings() {
                         </article>
                     )}
 
-                    {/* My Bookings Tab */}
+                    {/* Bookings Tab */}
                     {activeTab === "bookings" && (
                         <article className="settings_Pass_Arti">
-                            <h2>My Bookings</h2>
+                            <h2>Host Bookings</h2>
                             
-                            {/* Tabs */}
                             <div className="tabs" style={{ marginTop: "2rem", marginBottom: "2rem", borderBottom: "2px solid rgba(255, 255, 255, 0.1)" }}>
                                 <button
                                     className={`tab ${selectedTab === "all" ? "tab-active" : ""}`}
@@ -994,7 +888,6 @@ export default function Settings() {
                                 </button>
                             </div>
 
-                            {/* Bookings List */}
                             {bookingsLoading ? (
                                 <div style={{ textAlign: "center", padding: "4rem", color: "var(--text)" }}>
                                     <p>Loading bookings...</p>
@@ -1011,7 +904,7 @@ export default function Settings() {
                                     <h3 style={{ color: "var(--text)", marginBottom: "0.5rem" }}>No bookings found</h3>
                                     <p style={{ color: "rgba(255, 255, 255, 0.7)" }}>
                                         {selectedTab === "all" 
-                                            ? "You haven't made any bookings yet."
+                                            ? "You don't have any bookings yet."
                                             : `You don't have any ${selectedTab} bookings.`
                                         }
                                     </p>
@@ -1020,6 +913,7 @@ export default function Settings() {
                                 <div style={{ display: "grid", gap: "1.5rem" }}>
                                     {filteredBookings.map((booking) => {
                                         const statusBadge = getStatusBadge(booking.status);
+                                        const guest = guestInfo[booking.guestId];
                                         return (
                                             <div
                                                 key={booking.id}
@@ -1036,11 +930,12 @@ export default function Settings() {
                                                         <h3 style={{ color: "var(--text)", marginBottom: "0.5rem", fontSize: "1.25rem" }}>
                                                             {booking.listingTitle || "Unknown Property"}
                                                         </h3>
-                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginTop: "0.5rem" }}>
-                                                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255, 255, 255, 0.7)" }}>
-                                                                <MapPin size={16} />
-                                                                <span>{booking.listingType || "Property"}</span>
+                                                        {guest && (
+                                                            <div style={{ marginBottom: "0.5rem", color: "rgba(255, 255, 255, 0.7)" }}>
+                                                                Guest: {guest.firstName} {guest.lastName} ({booking.guestId?.substring(0, 8)}...)
                                                             </div>
+                                                        )}
+                                                        <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginTop: "0.5rem" }}>
                                                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "rgba(255, 255, 255, 0.7)" }}>
                                                                 <Calendar size={16} />
                                                                 <span>{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</span>
@@ -1078,57 +973,27 @@ export default function Settings() {
                                                     </div>
                                                 </div>
 
-                                                <div style={{ 
-                                                    display: "grid", 
-                                                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                                                    gap: "1rem",
-                                                    padding: "1rem",
-                                                    background: "rgba(255, 255, 255, 0.02)",
-                                                    borderRadius: "8px",
-                                                    marginTop: "1rem"
-                                                }}>
-                                                    <div>
-                                                        <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.5)", marginBottom: "0.25rem" }}>
-                                                            Price per Night
-                                                        </div>
-                                                        <div style={{ color: "var(--text)", fontWeight: "600" }}>
-                                                            ₱{booking.pricePerNight?.toLocaleString() || "0"}
-                                                        </div>
-                                                    </div>
-                                                    {booking.discountAmount > 0 && (
-                                                        <div>
-                                                            <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.5)", marginBottom: "0.25rem" }}>
-                                                                Discount
-                                                            </div>
-                                                            <div style={{ color: "#10b981", fontWeight: "600" }}>
-                                                                -₱{booking.discountAmount?.toFixed(2) || "0.00"}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {booking.couponCode && (
-                                                        <div>
-                                                            <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.5)", marginBottom: "0.25rem" }}>
-                                                                Coupon Code
-                                                            </div>
-                                                            <div style={{ color: "var(--text)", fontWeight: "600" }}>
-                                                                {booking.couponCode}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <div style={{ fontSize: "0.75rem", color: "rgba(255, 255, 255, 0.5)", marginBottom: "0.25rem" }}>
-                                                            Booking Date
-                                                        </div>
-                                                        <div style={{ color: "var(--text)", fontWeight: "600" }}>
-                                                            {formatDate(booking.createdAt)}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
                                                 {booking.status === "pending" && (
                                                     <div style={{ marginTop: "1rem", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
                                                         <button
-                                                            onClick={() => handleCancelBooking(booking.id)}
+                                                            onClick={() => handleUpdateBookingStatus(booking.id, "confirmed")}
+                                                            style={{
+                                                                padding: "0.5rem 1.5rem",
+                                                                background: "var(--primary-gradient)",
+                                                                color: "white",
+                                                                border: "none",
+                                                                borderRadius: "8px",
+                                                                cursor: "pointer",
+                                                                fontWeight: "600",
+                                                                fontSize: "0.875rem",
+                                                                transition: "all 0.2s ease"
+                                                            }}
+                                                        >
+                                                            <CheckCircle size={16} style={{ marginRight: "0.5rem", display: "inline" }} />
+                                                            Confirm Booking
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleUpdateBookingStatus(booking.id, "cancelled")}
                                                             style={{
                                                                 padding: "0.5rem 1.5rem",
                                                                 background: "transparent",
@@ -1138,22 +1003,11 @@ export default function Settings() {
                                                                 cursor: "pointer",
                                                                 fontWeight: "600",
                                                                 fontSize: "0.875rem",
-                                                                transition: "all 0.2s ease",
-                                                                display: "flex",
-                                                                alignItems: "center",
-                                                                gap: "0.5rem"
-                                                            }}
-                                                            onMouseOver={(e) => {
-                                                                e.target.style.background = "#ef4444";
-                                                                e.target.style.color = "white";
-                                                            }}
-                                                            onMouseOut={(e) => {
-                                                                e.target.style.background = "transparent";
-                                                                e.target.style.color = "#ef4444";
+                                                                transition: "all 0.2s ease"
                                                             }}
                                                         >
-                                                            <X size={16} />
-                                                            Cancel Booking
+                                                            <X size={16} style={{ marginRight: "0.5rem", display: "inline" }} />
+                                                            Cancel
                                                         </button>
                                                     </div>
                                                 )}
@@ -1165,70 +1019,73 @@ export default function Settings() {
                         </article>
                     )}
 
-                    {/* Wallet Tab */}
-                    {activeTab === "wallet" && (
+                    {/* Earnings Tab */}
+                    {activeTab === "earnings" && (
                         <article className="settings_Pass_Arti">
                             <h2 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                                <Wallet size={28} />
-                                E-Wallet
+                                <TrendingUp size={28} />
+                                Earnings
                             </h2>
 
-                            {/* Wallet Tabs */}
                             <div className="wallet-tabs" style={{ marginTop: "2rem", marginBottom: "2rem" }}>
                                 <button
-                                    className={`wallet-tab ${walletActiveTab === "balance" ? "active" : ""}`}
-                                    onClick={() => setWalletActiveTab("balance")}
+                                    className={`wallet-tab ${earningsActiveTab === "overview" ? "active" : ""}`}
+                                    onClick={() => setEarningsActiveTab("overview")}
                                 >
-                                    Balance
+                                    Overview
                                 </button>
                                 <button
-                                    className={`wallet-tab ${walletActiveTab === "transactions" ? "active" : ""}`}
-                                    onClick={() => setWalletActiveTab("transactions")}
+                                    className={`wallet-tab ${earningsActiveTab === "transactions" ? "active" : ""}`}
+                                    onClick={() => setEarningsActiveTab("transactions")}
                                 >
                                     Transactions
                                 </button>
                             </div>
 
-                            {/* Balance Tab */}
-                            {walletActiveTab === "balance" && (
+                            {earningsActiveTab === "overview" && (
                                 <div className="wallet-balance-content">
-                                    {isHost ? (
-                                        <>
-                                            <div className="balance-card earnings-card">
-                                                <div className="balance-card-header">
-                                                    <TrendingUp size={24} color="#10b981" />
-                                                    <h3>Total Earnings</h3>
-                                                </div>
-                                                <div className="balance-amount">{formatAmount(hostEarnings)}</div>
-                                                <p className="balance-label">All-time earnings from bookings</p>
-                                            </div>
-
-                                            <div className="balance-stats">
-                                                <div className="balance-stat-card">
-                                                    <div className="stat-label">This Month</div>
-                                                    <div className="stat-value">{formatAmount(monthlyEarnings)}</div>
-                                                </div>
-                                                <div className="balance-stat-card">
-                                                    <div className="stat-label">Pending</div>
-                                                    <div className="stat-value">{formatAmount(pendingEarnings)}</div>
-                                                </div>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="balance-card">
-                                            <div className="balance-card-header">
-                                                <Wallet size={24} color="#f97316" />
-                                                <h3>Current Balance</h3>
-                                            </div>
-                                            <div className="balance-amount">{formatAmount(balance)}</div>
-                                            <p className="balance-label">Available for bookings</p>
+                                    <div className="balance-card earnings-card">
+                                        <div className="balance-card-header">
+                                            <TrendingUp size={24} color="#10b981" />
+                                            <h3>Total Earnings</h3>
                                         </div>
-                                    )}
+                                        <div className="balance-amount">{formatAmount(totalEarnings)}</div>
+                                        <p className="balance-label">All-time earnings from bookings</p>
+                                    </div>
+
+                                    <div className="balance-stats">
+                                        <div className="balance-stat-card">
+                                            <div className="stat-label">Available</div>
+                                            <div className="stat-value">{formatAmount(earnings)}</div>
+                                        </div>
+                                        <div className="balance-stat-card">
+                                            <div className="stat-label">Pending</div>
+                                            <div className="stat-value">{formatAmount(pendingEarnings)}</div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginTop: "2rem" }}>
+                                        <Link to="/HostEarnings" style={{
+                                            padding: "0.75rem 1.5rem",
+                                            background: "var(--primary-gradient)",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "12px",
+                                            textDecoration: "none",
+                                            fontSize: "0.9rem",
+                                            fontWeight: "600",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: "0.5rem"
+                                        }}>
+                                            <DollarSign size={18} />
+                                            View Full Earnings Dashboard
+                                        </Link>
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Transactions Tab */}
-                            {walletActiveTab === "transactions" && (
+                            {earningsActiveTab === "transactions" && (
                                 <div className="wallet-transactions-content">
                                     <div className="transactions-header">
                                         <h2>Transaction History</h2>
@@ -1250,18 +1107,9 @@ export default function Settings() {
                                                     onChange={(e) => setFilterType(e.target.value)}
                                                 >
                                                     <option value="all">All Types</option>
-                                                    {isHost ? (
-                                                        <>
-                                                            <option value="earnings">Earnings</option>
-                                                            <option value="refund">Refund</option>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <option value="payment">Payment</option>
-                                                            <option value="refund">Refund</option>
-                                                            <option value="topup">Top-up</option>
-                                                        </>
-                                                    )}
+                                                    <option value="earnings">Earnings</option>
+                                                    <option value="refund">Refund</option>
+                                                    <option value="payout">Payout</option>
                                                 </select>
                                             </div>
 
@@ -1312,11 +1160,7 @@ export default function Settings() {
                                             filteredTransactions.map((transaction) => (
                                                 <div key={transaction.id} className="transaction-item">
                                                     <div className="transaction-icon">
-                                                        {isHost && transaction.type === "earnings" ? (
-                                                            <TrendingUp size={20} color="#10b981" />
-                                                        ) : (
-                                                            <TrendingDown size={20} color="#ef4444" />
-                                                        )}
+                                                        <TrendingUp size={20} color="#10b981" />
                                                     </div>
                                                     <div className="transaction-details">
                                                         <div className="transaction-type">
@@ -1332,11 +1176,8 @@ export default function Settings() {
                                                         </div>
                                                     </div>
                                                     <div className="transaction-amount">
-                                                        <div
-                                                            className={`amount ${isHost && transaction.type === "earnings" ? "positive" : "negative"}`}
-                                                        >
-                                                            {isHost && transaction.type === "earnings" ? "+" : "-"}
-                                                            {formatAmount(transaction.amount)}
+                                                        <div className="amount positive">
+                                                            +{formatAmount(transaction.amount)}
                                                         </div>
                                                         <div
                                                             className="transaction-status"
@@ -1353,10 +1194,10 @@ export default function Settings() {
                             )}
                         </article>
                     )}
-
                 </main>
             </div>
             <Footer />
         </>
     );
 }
+

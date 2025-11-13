@@ -263,29 +263,24 @@ textarea {
     }
 
     .host-modal::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
     }
 
     .host-modal::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
+        background: var(--border-strong);
+        border-radius: var(--radius-sm);
     }
 
     .host-modal::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: var(--primary);
     }
 }
 
 .host-modal .modal {
-    /* background: var(--bg-800);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.04);
-    padding: 20px; */
-
-    background: rgba(26, 26, 46, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    background: var(--bg-800);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     padding: 2rem;
     width: 90%;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
@@ -317,11 +312,11 @@ textarea {
 .host-modal select,
 .host-modal textarea {
     width: 100%;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
     color: var(--text);
     padding: 0.75rem 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     transition: all 0.3s ease;
 }
 
@@ -331,6 +326,7 @@ textarea {
     border-color: var(--primary);
     outline: none;
     box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    background: var(--bg-surface-hover);
 }
 
 .host-modal label {
@@ -442,12 +438,13 @@ textarea {
 
 .host-modal-form-wrapper {
     position: relative;
-    background: rgba(26, 26, 46, 0.98);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    background: var(--bg-800);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     padding: 2rem;
     max-height: calc(90vh - 4rem);
     overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     /* Hide scrollbar on large screens */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* IE and Edge */
@@ -471,17 +468,17 @@ textarea {
     }
 
     .host-modal-form-wrapper::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
     }
 
     .host-modal-form-wrapper::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 4px;
+        background: var(--border-strong);
+        border-radius: var(--radius-sm);
     }
 
     .host-modal-form-wrapper::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.3);
+        background: var(--primary);
     }
 }
 
@@ -492,8 +489,8 @@ textarea {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
     color: var(--text);
     cursor: pointer;
     display: flex;
@@ -504,7 +501,9 @@ textarea {
 }
 
 .host-modal-close-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--primary);
+    color: var(--primary);
     transform: rotate(90deg);
 }
 
@@ -1923,9 +1922,9 @@ header.scrolled {
 .destination-card:hover,
 .feature-card:hover {
     transform: translateY(-10px);
-    background: rgba(255, 255, 255, 0.08);
-    border-color: #667eea;
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--primary);
+    box-shadow: 0 20px 40px rgba(255, 107, 53, 0.3);
 }
 
 .feature-icon {
@@ -2785,11 +2784,11 @@ header.scrolled {
 .destination-card {
     min-width: 360px;
     height: fit-content;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--bg-800);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border);
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     transition: transform 0.3s, box-shadow 0.3s;
     cursor: pointer;
     display: flex;
@@ -3089,8 +3088,9 @@ header.scrolled {
 
 .profile-container {
     min-height: 100vh;
-    background-color: #1a1a2e;
+    background: var(--bg-900);
     padding: 105px 1.5rem 1.5rem 1.5rem;
+    color: var(--text);
 }
 
 .logo-circle {
@@ -3126,9 +3126,10 @@ header.scrolled {
 .profile-card {
     max-width: 64rem;
     margin: 0 auto;
-    background: white;
-    border-radius: 1.5rem;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    background: var(--bg-800);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
     overflow: hidden;
 }
 
@@ -3185,22 +3186,24 @@ header.scrolled {
 
 .edit-profile-btn {
     margin-top: 1.5rem;
-    background: white;
-    color: #f97316;
-    border: none;
+    background: var(--bg-surface);
+    color: var(--primary);
+    border: 1px solid var(--border);
     padding: 0.75rem 2rem;
-    border-radius: 9999px;
+    border-radius: var(--radius-full);
     font-weight: 600;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: all 0.2s ease;
 }
 
 .edit-profile-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
 }
 
 /* Form Section */
@@ -3229,15 +3232,18 @@ header.scrolled {
 }
 
 .field_input {
-    background-color: white;
-    border-radius: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
 }
 
 .field_input legend {
     font-weight: 600;
-    color: #374151;
+    color: var(--text);
     margin-left: .5rem;
     display: block;
+    padding: 0 0.5rem;
 }
 
 .input-group {
@@ -3247,22 +3253,26 @@ header.scrolled {
 .input-group input {
     border: none;
     margin-bottom: none;
-    color: #333;
+    color: var(--text);
+    background: var(--bg-surface);
 }
 
 .input-group input:disabled,
 .input-group input[readonly] {
-    color: #666;
-    background-color: #f5f5f5;
+    color: var(--text-tertiary);
+    background-color: var(--bg-surface);
+    opacity: 0.6;
 }
 
 .input-group select {
-    color: #333;
+    color: var(--text);
+    background: var(--bg-surface);
 }
 
 .input-group select:disabled {
-    color: #666;
-    background-color: #f5f5f5;
+    color: var(--text-tertiary);
+    background-color: var(--bg-surface);
+    opacity: 0.6;
 }
 
 .input-icon {
@@ -3270,7 +3280,7 @@ header.scrolled {
     left: 1rem;
     top: 50%;
     transform: translateY(-50%);
-    color: #9ca3af;
+    color: var(--text-secondary);
     width: 1.25rem;
     height: 1.25rem;
 }
@@ -3304,13 +3314,17 @@ select:focus {
 /* Profile form specific input colors */
 .profile-container input,
 .profile-container select {
-    color: #333 !important;
+    color: var(--text) !important;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border) !important;
 }
 
 .profile-container input:disabled,
 .profile-container input[readonly],
 .profile-container select:disabled {
-    color: #666 !important;
+    color: var(--text-tertiary) !important;
+    background: var(--bg-surface) !important;
+    opacity: 0.6;
 }
 
 select {
@@ -3365,13 +3379,20 @@ select {
 
 .setting_aside {
     display: block;
-    background-color: rgb(139, 139, 139);
+    background: var(--bg-800);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--border);
     height: 80vh;
     width: 20vw;
     padding: 2rem;
+    color: var(--text);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
 
     h3 {
         margin: 1rem .5rem 1rem;
+        color: var(--text);
+        font-size: 1.5rem;
+        font-weight: 600;
     }
 }
 
@@ -3389,20 +3410,74 @@ select {
 .nav_btn_group {
     display: flex;
     align-items: center;
-    background-color: transparent;
-    border: none;
+    gap: 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 1rem;
+    font-weight: 500;
 
+    .sett_nav_icon {
+        color: var(--text-secondary);
+        transition: color 0.2s ease;
+    }
 
-}
+    span {
+        color: var(--text);
+    }
 
-.nav_btn_group :hover {
-    background-color: #ca3333;
+    &:hover {
+        background: var(--bg-surface-hover);
+        border-color: var(--border-strong);
+        transform: translateX(4px);
+
+        .sett_nav_icon {
+            color: var(--primary);
+        }
+    }
+
+    &.active {
+        background: var(--primary-gradient);
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+
+        .sett_nav_icon,
+        span {
+            color: #fff;
+        }
+
+        &:hover {
+            transform: translateX(0);
+            box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+        }
+    }
 }
 
 .settings_main {
     width: 80vw;
     padding: 5rem;
     padding-bottom: 0;
+    background: var(--bg-900);
+    min-height: 80vh;
+}
+
+.settings_Pass_Arti {
+    background: var(--bg-800);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    h2 {
+        color: var(--text);
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 2rem;
+    }
 }
 
 .Change_Pass_Form {
@@ -3415,6 +3490,213 @@ select {
 
     .btn-group {
         margin-top: 0;
+    }
+}
+
+/* Responsive Settings */
+@media (max-width: 1024px) {
+    .setting_container {
+        flex-direction: column;
+    }
+
+    .setting_aside {
+        width: 100%;
+        height: auto;
+        padding: 1.5rem;
+    }
+
+    .setting_nav_container {
+        margin-left: 0;
+        
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-right: 0;
+        }
+    }
+
+    .nav_btn_group {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius-md);
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        transition: all 0.2s ease;
+
+        &:hover {
+            background: var(--bg-surface-hover);
+            border-color: var(--border-strong);
+        }
+
+        &.active {
+            background: var(--primary-gradient);
+            border-color: transparent;
+        }
+
+        .sett_nav_icon {
+            margin-right: 0.5rem;
+        }
+    }
+
+    .settings_main {
+        width: 100%;
+        padding: 2rem 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .setting_aside {
+        padding: 1rem;
+        
+        h3 {
+            margin: 0.5rem 0;
+            font-size: 1.25rem;
+        }
+    }
+
+    .setting_nav_container {
+        padding-top: 0.5rem;
+        
+        nav {
+            gap: 0.5rem;
+        }
+    }
+
+    .nav_btn_group {
+        min-width: 100px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+
+        .sett_nav_icon {
+            size: 20;
+            margin-right: 0.25rem;
+        }
+
+        span {
+            font-size: 0.875rem;
+        }
+    }
+
+    .settings_main {
+        padding: 1.5rem 1rem;
+    }
+
+    .settings_Pass_Arti {
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+    }
+
+    .Change_Pass_Form {
+        padding: 1.5rem 1rem;
+        gap: 1.5rem;
+    }
+
+    /* Profile responsive */
+    .profile-card {
+        margin-top: 1rem !important;
+    }
+
+    .profile-header-content {
+        padding: 1.5rem 1rem !important;
+    }
+
+    .form-section {
+        padding: 1.5rem 1rem !important;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    /* Bookings responsive */
+    .tabs {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        
+        button {
+            flex: 1;
+            min-width: 80px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+    }
+
+    /* Wallet responsive */
+    .wallet-tabs {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        
+        button {
+            flex: 1;
+            min-width: 120px;
+        }
+    }
+
+    .balance-card,
+    .balance-stats {
+        padding: 1.5rem 1rem;
+    }
+
+    .transactions-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .transactions-filters {
+        flex-direction: column;
+        
+        .filter-group {
+            width: 100%;
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .setting_aside {
+        padding: 0.75rem;
+    }
+
+    .nav_btn_group {
+        flex: 1 1 100%;
+        min-width: auto;
+        
+        span {
+            display: none;
+        }
+
+        .sett_nav_icon {
+            margin-right: 0;
+        }
+    }
+
+    .settings_main {
+        padding: 1rem 0.75rem;
+    }
+
+    .settings_Pass_Arti {
+        h2 {
+            font-size: 1.25rem;
+        }
+    }
+
+    .profile-img-wrapper {
+        width: 120px !important;
+        height: 120px !important;
+    }
+
+    .form-grid-section2,
+    .form-grid-section3 {
+        div {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
     }
 }
 
@@ -3775,7 +4057,7 @@ img {
     display: flex;
     gap: 1rem;
     margin-bottom: 2rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 2px solid var(--border);
 }
 
 .wallet-tab {
@@ -3809,12 +4091,13 @@ img {
 }
 
 .balance-card {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 2rem;
     text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .balance-card-header {
@@ -3858,12 +4141,13 @@ img {
 }
 
 .balance-stat-card {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .stat-label {
@@ -3901,16 +4185,16 @@ img {
     align-items: center;
     gap: 0.5rem;
     padding: 0.75rem 1.5rem;
-    background: var(--glass);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     color: var(--text);
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .filter-toggle-btn:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface-hover);
     border-color: var(--primary);
 }
 
@@ -3919,11 +4203,12 @@ img {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     padding: 1.5rem;
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .filter-group {
@@ -3941,11 +4226,12 @@ img {
 .filter-group select,
 .filter-group input[type="date"] {
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     color: var(--text);
     font-size: 0.9rem;
+    transition: all 0.2s ease;
 }
 
 .filter-group select:focus,
@@ -3961,8 +4247,8 @@ img {
     padding: 0.75rem 1.5rem;
     background: rgba(239, 68, 68, 0.1);
     border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 8px;
-    color: #ef4444;
+    border-radius: var(--radius-md);
+    color: var(--error);
     cursor: pointer;
     transition: all 0.3s ease;
     align-self: flex-end;
@@ -3985,17 +4271,19 @@ img {
     align-items: center;
     gap: 1rem;
     padding: 1.5rem;
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .transaction-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
     transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .transaction-icon {
@@ -4005,7 +4293,7 @@ img {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
 }
 
 .transaction-details {
@@ -4283,7 +4571,9 @@ img {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem;
+    background: var(--bg-900);
     color: var(--text);
+    min-height: 100vh;
 }
 
 .earnings-header {
@@ -4309,7 +4599,7 @@ img {
     display: flex;
     gap: 0.5rem;
     margin-bottom: 2rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 2px solid var(--border);
 }
 
 .earnings-tabs button {
@@ -4346,20 +4636,22 @@ img {
 }
 
 .earnings-card {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
     display: flex;
     gap: 1rem;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .earnings-card:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .earnings-card-icon {
@@ -4397,11 +4689,12 @@ img {
 }
 
 .recent-payouts {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .recent-payouts h2 {
@@ -4414,7 +4707,14 @@ img {
 .no-data {
     text-align: center;
     padding: 2rem;
-    color: var(--muted);
+    color: var(--text-secondary);
+}
+
+.loading {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text);
+    font-size: 1.1rem;
 }
 
 .payout-requests-list {
@@ -4428,9 +4728,15 @@ img {
     justify-content: space-between;
     align-items: center;
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+}
+
+.payout-request-item:hover {
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
 }
 
 .payout-request-info {
@@ -4483,11 +4789,12 @@ img {
 }
 
 .payout-form-card {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .payout-form-card h2 {
@@ -4499,13 +4806,12 @@ img {
 
 .available-earnings {
     font-size: 1.1rem;
-    color: var(--muted);
     margin-bottom: 1.5rem;
     padding: 1rem;
     background: rgba(16, 185, 129, 0.1);
     border: 1px solid rgba(16, 185, 129, 0.3);
-    border-radius: 8px;
-    color: #10b981;
+    border-radius: var(--radius-md);
+    color: var(--success);
     font-weight: 600;
 }
 
@@ -4524,9 +4830,9 @@ img {
 .form-group select {
     width: 100%;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     color: var(--text);
     font-size: 1rem;
     transition: all 0.3s ease;
@@ -4536,23 +4842,27 @@ img {
 .form-group select:focus {
     outline: none;
     border-color: var(--primary);
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--bg-surface-hover);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
 }
 
 .btn-max {
     margin-top: 0.5rem;
     padding: 0.5rem 1rem;
-    background: rgba(255, 107, 53, 0.2);
-    border: 1px solid rgba(255, 107, 53, 0.4);
-    border-radius: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--primary);
+    border-radius: var(--radius-md);
     color: var(--primary);
     font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-weight: 500;
 }
 
 .btn-max:hover {
-    background: rgba(255, 107, 53, 0.3);
+    background: var(--bg-surface-hover);
+    border-color: var(--primary);
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
 }
 
 .btn-request-payout {
@@ -4581,10 +4891,11 @@ img {
 
 .payout-info {
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     font-size: 0.9rem;
-    color: var(--muted);
+    color: var(--text-secondary);
 }
 
 .payout-info p {
@@ -4597,11 +4908,12 @@ img {
 
 /* ==================== Payment History ==================== */
 .payment-history {
-    background: var(--glass);
+    background: var(--bg-800);
     backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .payment-history-header {
@@ -4626,24 +4938,27 @@ img {
 
 .payment-history-filters button {
     padding: 0.5rem 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    color: var(--muted);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
     font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-weight: 500;
 }
 
 .payment-history-filters button:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
     color: var(--text);
 }
 
 .payment-history-filters button.active {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: var(--primary-gradient);
+    border-color: transparent;
     color: white;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
 }
 
 .no-transactions {
@@ -4663,16 +4978,17 @@ img {
     grid-template-columns: auto 1fr auto auto;
     gap: 1rem;
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     align-items: center;
     transition: all 0.3s ease;
 }
 
 .transaction-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: var(--bg-surface-hover);
+    border-color: var(--border-strong);
+    transform: translateX(4px);
 }
 
 .transaction-icon {
@@ -4682,7 +4998,8 @@ img {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
 }
 
 .icon-earnings {
@@ -4715,8 +5032,10 @@ img {
 .transaction-listing,
 .transaction-method {
     padding: 0.25rem 0.5rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
 }
 
 .transaction-date {
@@ -4764,7 +5083,7 @@ img {
 .transaction-summary {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--border);
     text-align: center;
     color: var(--text);
     font-size: 1.1rem;

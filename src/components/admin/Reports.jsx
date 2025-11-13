@@ -198,62 +198,69 @@ export default function Reports({ bookings, users, listings }) {
   };
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Generate Reports</h2>
+    <div className="admin-content" style={{ padding: "24px" }}>
+      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold", color: "#ffffff" }}>Generate Reports</h2>
 
       {/* Report Options */}
-      <div style={{
-        background: "#fff",
+      <div className="admin-card" style={{
         padding: "24px",
         borderRadius: "8px",
-        marginBottom: "24px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+        marginBottom: "24px"
       }}>
         <div style={{ display: "grid", gap: "16px", marginBottom: "24px" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Report Type</label>
+            <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>Report Type</label>
             <select
               value={reportType}
               onChange={(e) => setReportType(e.target.value)}
+              className="admin-form-select"
               style={{
                 width: "100%",
                 padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "4px"
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "4px",
+                background: "rgba(255, 255, 255, 0.05)",
+                color: "#ffffff"
               }}
             >
-              <option value="bookings">Bookings Report</option>
-              <option value="users">Users Report</option>
-              <option value="listings">Listings Report</option>
+              <option value="bookings" style={{ background: "#1a1a2e", color: "#ffffff" }}>Bookings Report</option>
+              <option value="users" style={{ background: "#1a1a2e", color: "#ffffff" }}>Users Report</option>
+              <option value="listings" style={{ background: "#1a1a2e", color: "#ffffff" }}>Listings Report</option>
             </select>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Start Date</label>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>Start Date</label>
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                className="admin-form-input"
                 style={{
                   width: "100%",
                   padding: "10px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px"
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "4px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  color: "#ffffff"
                 }}
               />
             </div>
             <div>
-              <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>End Date</label>
+              <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>End Date</label>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                className="admin-form-input"
                 style={{
                   width: "100%",
                   padding: "10px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px"
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "4px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  color: "#ffffff"
                 }}
               />
             </div>
@@ -263,14 +270,15 @@ export default function Reports({ bookings, users, listings }) {
         {/* Summary */}
         <div style={{
           padding: "16px",
-          background: "#f8f9fa",
+          background: "rgba(255, 255, 255, 0.05)",
           borderRadius: "4px",
-          marginBottom: "24px"
+          marginBottom: "24px",
+          border: "1px solid rgba(255, 255, 255, 0.1)"
         }}>
-          <div style={{ fontWeight: "bold", marginBottom: "8px" }}>Report Summary</div>
-          <div>Total Records: <strong>{filteredData.length}</strong></div>
+          <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#ffffff" }}>Report Summary</div>
+          <div style={{ color: "#ffffff" }}>Total Records: <strong>{filteredData.length}</strong></div>
           {dateRange.start && dateRange.end && (
-            <div style={{ fontSize: "14px", color: "#666", marginTop: "4px" }}>
+            <div style={{ fontSize: "14px", color: "rgba(255, 255, 255, 0.6)", marginTop: "4px" }}>
               Date Range: {dateRange.start} to {dateRange.end}
             </div>
           )}
@@ -281,9 +289,10 @@ export default function Reports({ bookings, users, listings }) {
           <button
             onClick={exportToCSV}
             disabled={filteredData.length === 0}
+            className="admin-btn admin-btn-success"
             style={{
               padding: "12px 24px",
-              background: "#28a745",
+              background: "#10b981",
               color: "#fff",
               border: "none",
               borderRadius: "4px",
@@ -300,9 +309,10 @@ export default function Reports({ bookings, users, listings }) {
           <button
             onClick={generatePDFReport}
             disabled={filteredData.length === 0}
+            className="admin-btn admin-btn-danger"
             style={{
               padding: "12px 24px",
-              background: "#dc3545",
+              background: "#ef4444",
               color: "#fff",
               border: "none",
               borderRadius: "4px",
@@ -320,28 +330,26 @@ export default function Reports({ bookings, users, listings }) {
       </div>
 
       {/* Preview */}
-      <div style={{
-        background: "#fff",
+      <div className="admin-card" style={{
         padding: "24px",
         borderRadius: "8px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
         maxHeight: "500px",
         overflow: "auto"
       }}>
-        <h3 style={{ marginBottom: "16px" }}>Preview ({filteredData.length} records)</h3>
+        <h3 style={{ marginBottom: "16px", color: "#ffffff" }}>Preview ({filteredData.length} records)</h3>
         {filteredData.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
+          <div className="admin-empty-state" style={{ textAlign: "center", padding: "40px", color: "rgba(255, 255, 255, 0.6)" }}>
             No data available for the selected criteria.
           </div>
         ) : (
           <div style={{ fontSize: "12px", fontFamily: "monospace" }}>
             {filteredData.slice(0, 50).map((item, index) => (
-              <div key={item.id || index} style={{ padding: "8px", borderBottom: "1px solid #eee" }}>
+              <div key={item.id || index} style={{ padding: "8px", borderBottom: "1px solid rgba(255, 255, 255, 0.1)", color: "rgba(255, 255, 255, 0.8)" }}>
                 {JSON.stringify(item, null, 2).substring(0, 200)}...
               </div>
             ))}
             {filteredData.length > 50 && (
-              <div style={{ padding: "8px", color: "#666", fontStyle: "italic" }}>
+              <div style={{ padding: "8px", color: "rgba(255, 255, 255, 0.5)", fontStyle: "italic" }}>
                 ... and {filteredData.length - 50} more records
               </div>
             )}

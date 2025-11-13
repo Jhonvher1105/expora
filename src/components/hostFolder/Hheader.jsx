@@ -144,7 +144,7 @@ function Header() {
                                 <Link to="/Home" id="becomeHostBtn" className="user-menu-item" role="menuitem">
                                     Switch Account
                                 </Link>
-                                <Link to="/Settings" className="user-menu-item" role="menuitem">
+                                <Link to="/HostSettings" className="user-menu-item" role="menuitem">
                                     Settings
                                 </Link>
                                 <Link to="/HostBooking" className="user-menu-item" role="menuitem">

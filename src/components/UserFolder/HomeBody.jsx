@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, Copy, Facebook, Twitter, Instagram, MessageCircle } from "lucide-react";
+import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, MessageCircle } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
 
@@ -26,6 +26,7 @@ import ReviewForm from "../ui/ReviewForm";
 import ChatModal from "../ui/ChatModal";
 import MapViewer from "../ui/MapViewer";
 import AvailabilityCalendar from "../ui/AvailabilityCalendar";
+import ShareMenu from "../ui/ShareMenu";
 
 function Body() {
     const [activeTab, setActiveTab] = useState("all");
@@ -128,33 +129,35 @@ function Body() {
             errors.numGuests = "Maximum 20 guests allowed";
         }
 
-            // Price calculation validation
-            if (startDate && endDate && selectedDest?.price) {
-                const start = new Date(startDate);
-                const end = new Date(endDate);
-                const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                
-                if (nights <= 0) {
-                    errors.dates = "Invalid date range";
-                }
-                
-                const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
-                const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
-                const priceAfterListingDiscount = basePrice - listingDiscount;
-                // Total price includes service fee (coupon discount applied in payment)
-                const totalPrice = priceAfterListingDiscount + serviceFee;
-                // Final price after coupon discount (what guest actually pays)
-                const finalPrice = totalPrice - couponDiscount;
-                
-                if (finalPrice <= 0) {
-                    errors.price = "Invalid price calculation";
-                }
-
-                // Balance validation for wallet payment
-                if (paymentMethod === "wallet" && balance < finalPrice) {
-                    errors.balance = `Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`;
-                }
+        // Price calculation validation
+        if (startDate && endDate && selectedDest?.price) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            
+            if (nights <= 0) {
+                errors.dates = "Invalid date range";
             }
+            
+            const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
+            
+            // Validate base price is valid
+            if (basePrice <= 0) {
+                errors.price = "Invalid price calculation";
+            }
+            
+            const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
+            const priceAfterListingDiscount = basePrice - listingDiscount;
+            // Total price includes service fee (coupon discount applied in payment)
+            const totalPrice = priceAfterListingDiscount + serviceFee;
+            // Final price after coupon discount (what guest actually pays)
+            const finalPrice = totalPrice - couponDiscount;
+            
+            // Balance validation for wallet payment (only check if payment method is wallet)
+            if (paymentMethod === "wallet" && finalPrice > 0 && balance < finalPrice) {
+                errors.balance = `Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`;
+            }
+        }
 
         setValidationErrors(errors);
         return Object.keys(errors).length === 0;
@@ -960,104 +963,12 @@ function Body() {
                                                 <Share2 size={20} />
                                             </button>
                                             {showShareMenu && (
-                                                <div style={{
-                                                    position: "absolute",
-                                                    right: 0,
-                                                    top: 40,
-                                                    background: "var(--bg-modal, rgba(15, 15, 30, 0.95))",
-                                                    border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
-                                                    borderRadius: "var(--radius-md, 8px)",
-                                                    padding: "8px",
-                                                    zIndex: 1000,
-                                                    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
-                                                    minWidth: 180,
-                                                    backdropFilter: "blur(10px)"
-                                                }}>
-                                                    <button
-                                                        onClick={() => handleCopyLink(selectedDest.id)}
-                                                        style={{ 
-                                                            width: "100%", 
-                                                            padding: "8px", 
-                                                            textAlign: "left", 
-                                                            display: "flex", 
-                                                            alignItems: "center", 
-                                                            gap: 8, 
-                                                            border: "none", 
-                                                            background: "transparent", 
-                                                            cursor: "pointer",
-                                                            color: "var(--text, #ffffff)",
-                                                            borderRadius: "var(--radius-sm, 4px)",
-                                                            transition: "background 0.2s ease"
-                                                        }}
-                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
-                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
-                                                    >
-                                                        <Copy size={16} /> Copy Link
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleShareSocial("facebook", selectedDest.id)}
-                                                        style={{ 
-                                                            width: "100%", 
-                                                            padding: "8px", 
-                                                            textAlign: "left", 
-                                                            display: "flex", 
-                                                            alignItems: "center", 
-                                                            gap: 8, 
-                                                            border: "none", 
-                                                            background: "transparent", 
-                                                            cursor: "pointer",
-                                                            color: "var(--text, #ffffff)",
-                                                            borderRadius: "var(--radius-sm, 4px)",
-                                                            transition: "background 0.2s ease"
-                                                        }}
-                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
-                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
-                                                    >
-                                                        <Facebook size={16} /> Facebook
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleShareSocial("twitter", selectedDest.id)}
-                                                        style={{ 
-                                                            width: "100%", 
-                                                            padding: "8px", 
-                                                            textAlign: "left", 
-                                                            display: "flex", 
-                                                            alignItems: "center", 
-                                                            gap: 8, 
-                                                            border: "none", 
-                                                            background: "transparent", 
-                                                            cursor: "pointer",
-                                                            color: "var(--text, #ffffff)",
-                                                            borderRadius: "var(--radius-sm, 4px)",
-                                                            transition: "background 0.2s ease"
-                                                        }}
-                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
-                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
-                                                    >
-                                                        <Twitter size={16} /> Twitter
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleShareSocial("instagram", selectedDest.id)}
-                                                        style={{ 
-                                                            width: "100%", 
-                                                            padding: "8px", 
-                                                            textAlign: "left", 
-                                                            display: "flex", 
-                                                            alignItems: "center", 
-                                                            gap: 8, 
-                                                            border: "none", 
-                                                            background: "transparent", 
-                                                            cursor: "pointer",
-                                                            color: "var(--text, #ffffff)",
-                                                            borderRadius: "var(--radius-sm, 4px)",
-                                                            transition: "background 0.2s ease"
-                                                        }}
-                                                        onMouseEnter={(e) => e.target.style.background = "var(--bg-surface, rgba(255, 255, 255, 0.05))"}
-                                                        onMouseLeave={(e) => e.target.style.background = "transparent"}
-                                                    >
-                                                        <Instagram size={16} /> Instagram
-                                                    </button>
-                                                </div>
+                                                <ShareMenu
+                                                    listingId={selectedDest.id}
+                                                    onCopyLink={handleCopyLink}
+                                                    onShareSocial={handleShareSocial}
+                                                    position={{ right: 0, top: 40 }}
+                                                />
                                             )}
                                         </div>
                                     </div>
@@ -1113,11 +1024,13 @@ function Body() {
                                                 onDateSelect={(dates) => {
                                                     if (dates.start) {
                                                         setStartDate(dates.start.toISOString().split('T')[0]);
-                                                        setValidationErrors({ ...validationErrors, startDate: "" });
+                                                        const { startDate: _, ...rest } = validationErrors;
+                                                        setValidationErrors(rest);
                                                     }
                                                     if (dates.end) {
                                                         setEndDate(dates.end.toISOString().split('T')[0]);
-                                                        setValidationErrors({ ...validationErrors, endDate: "" });
+                                                        const { endDate: _, ...rest } = validationErrors;
+                                                        setValidationErrors(rest);
                                                     }
                                                 }}
                                             />
@@ -1133,10 +1046,13 @@ function Body() {
                                                 value={startDate} 
                                                 onChange={(e) => {
                                                     setStartDate(e.target.value);
-                                                    setValidationErrors({ ...validationErrors, startDate: "" });
+                                                    const { startDate: _, ...rest } = validationErrors;
+                                                    setValidationErrors(rest);
                                                     // Reset end date if it's before new check-in
                                                     if (endDate && e.target.value && new Date(e.target.value) >= new Date(endDate)) {
                                                         setEndDate("");
+                                                        const { endDate: __, ...rest2 } = rest;
+                                                        setValidationErrors(rest2);
                                                     }
                                                 }}
                                                 min={new Date().toISOString().split('T')[0]}
@@ -1157,7 +1073,8 @@ function Body() {
                                                 value={endDate} 
                                                 onChange={(e) => {
                                                     setEndDate(e.target.value);
-                                                    setValidationErrors({ ...validationErrors, endDate: "" });
+                                                    const { endDate: _, ...rest } = validationErrors;
+                                                    setValidationErrors(rest);
                                                 }} 
                                                 min={startDate || new Date().toISOString().split('T')[0]}
                                                 style={{ 
@@ -1180,7 +1097,8 @@ function Body() {
                                                 onChange={(e) => {
                                                     const value = parseInt(e.target.value) || "";
                                                     setNumGuests(value);
-                                                    setValidationErrors({ ...validationErrors, numGuests: "" });
+                                                    const { numGuests: _, ...rest } = validationErrors;
+                                                    setValidationErrors(rest);
                                                 }}
                                                 style={{ 
                                                     borderColor: validationErrors.numGuests ? "var(--error, #ef4444)" : undefined 
@@ -1212,6 +1130,9 @@ function Body() {
                                                             const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
                                                             const discount = await applyCoupon(couponCode, basePrice);
                                                             setCouponDiscount(discount);
+                                                            // Clear price and balance errors when coupon is applied
+                                                            const { price: _, balance: __, ...rest } = validationErrors;
+                                                            setValidationErrors(rest);
                                                             alert(`Coupon applied! Discount: ₱${discount.toFixed(2)}`);
                                                         } catch (e) {
                                                             alert(e.message || "Invalid coupon");
@@ -1358,7 +1279,12 @@ function Body() {
                                                         name="paymentMethod"
                                                         value="wallet"
                                                         checked={paymentMethod === "wallet"}
-                                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                                        onChange={(e) => {
+                                                            setPaymentMethod(e.target.value);
+                                                            // Clear balance error when switching payment methods
+                                                            const { balance: _, ...rest } = validationErrors;
+                                                            setValidationErrors(rest);
+                                                        }}
                                                     />
                                                     <span>E-Wallet (Balance: ₱{balance.toLocaleString()})</span>
                                                 </label>
@@ -1368,7 +1294,12 @@ function Body() {
                                                         name="paymentMethod"
                                                         value="paypal"
                                                         checked={paymentMethod === "paypal"}
-                                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                                        onChange={(e) => {
+                                                            setPaymentMethod(e.target.value);
+                                                            // Clear balance error when switching payment methods
+                                                            const { balance: _, ...rest } = validationErrors;
+                                                            setValidationErrors(rest);
+                                                        }}
                                                     />
                                                     <span>PayPal</span>
                                                 </label>

@@ -6,6 +6,7 @@ import ForgotPassword from "./login2/ForgotPassword";
 import UserHomePage from "./components/UserFolder/UserMain";
 import Profile from './components/UserFolder/Profile';
 import Settings from './components/UserFolder/Settings';
+import HostSettings from './components/hostFolder/HostSettings';
 import HostBody from './components/hostFolder/HBody';
 import HostBooking from './components/hostFolder/HostBooking';
 import Earnings from './components/hostFolder/Earnings';
@@ -32,6 +33,7 @@ function App() {
                 <Route path="/Home" element={<UserHomePage />} />
                 <Route path="/Profile" element={<Profile/>}/>
                 <Route path="/Settings" element={<Settings/>}/>
+                <Route path="/HostSettings" element={<HostSettings/>}/>
                 <Route path="/HostPage" element={<HostBody/>}/>
                 <Route path="/HostBooking" element={<HostBooking/>}/>
                 <Route path="/HostEarnings" element={<Earnings/>}/>

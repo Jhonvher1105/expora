@@ -77,25 +77,31 @@ export default function PolicyCompliance() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="admin-loading-container">
+        <div className="admin-loading-spinner"></div>
+        <div>Loading...</div>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: "24px" }}>
-      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold" }}>Policy & Compliance</h2>
+    <div className="admin-content" style={{ padding: "24px" }}>
+      <h2 style={{ marginBottom: "24px", fontSize: "28px", fontWeight: "bold", color: "#ffffff" }}>Policy & Compliance</h2>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "24px", borderBottom: "2px solid #ddd" }}>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "24px", borderBottom: "2px solid rgba(255, 255, 255, 0.1)" }}>
         <button
           onClick={() => setActiveTab("policies")}
           style={{
             padding: "12px 24px",
             border: "none",
-            background: activeTab === "policies" ? "#007bff" : "transparent",
-            color: activeTab === "policies" ? "#fff" : "#333",
+            background: activeTab === "policies" ? "rgba(255, 107, 53, 0.2)" : "transparent",
+            color: activeTab === "policies" ? "#ff6b35" : "rgba(255, 255, 255, 0.7)",
             cursor: "pointer",
-            borderBottom: activeTab === "policies" ? "2px solid #007bff" : "none",
-            marginBottom: "-2px"
+            borderBottom: activeTab === "policies" ? "2px solid #ff6b35" : "none",
+            marginBottom: "-2px",
+            transition: "all 0.2s"
           }}
         >
           Policies
@@ -105,11 +111,12 @@ export default function PolicyCompliance() {
           style={{
             padding: "12px 24px",
             border: "none",
-            background: activeTab === "reports" ? "#007bff" : "transparent",
-            color: activeTab === "reports" ? "#fff" : "#333",
+            background: activeTab === "reports" ? "rgba(255, 107, 53, 0.2)" : "transparent",
+            color: activeTab === "reports" ? "#ff6b35" : "rgba(255, 255, 255, 0.7)",
             cursor: "pointer",
-            borderBottom: activeTab === "reports" ? "2px solid #007bff" : "none",
-            marginBottom: "-2px"
+            borderBottom: activeTab === "reports" ? "2px solid #ff6b35" : "none",
+            marginBottom: "-2px",
+            transition: "all 0.2s"
           }}
         >
           Reports ({reports.length})
@@ -119,72 +126,80 @@ export default function PolicyCompliance() {
       {activeTab === "policies" && (
         <div>
           {/* Add/Edit Policy Form */}
-          <div style={{
-            background: "#fff",
+          <div className="admin-card" style={{
             padding: "24px",
             borderRadius: "8px",
-            marginBottom: "24px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+            marginBottom: "24px"
           }}>
-            <h3 style={{ marginBottom: "16px" }}>
+            <h3 style={{ marginBottom: "16px", color: "#ffffff" }}>
               {editingPolicy ? "Edit Policy" : "Add New Policy"}
             </h3>
             <div style={{ display: "grid", gap: "16px" }}>
               <div>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Title</label>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>Title</label>
                 <input
                   type="text"
                   value={newPolicy.title}
                   onChange={(e) => setNewPolicy({ ...newPolicy, title: e.target.value })}
                   placeholder="Policy title"
+                  className="admin-form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px"
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "4px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    color: "#ffffff"
                   }}
                 />
               </div>
               <div>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Type</label>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>Type</label>
                 <select
                   value={newPolicy.type}
                   onChange={(e) => setNewPolicy({ ...newPolicy, type: e.target.value })}
+                  className="admin-form-select"
                   style={{
                     width: "100%",
                     padding: "10px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px"
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: "4px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    color: "#ffffff"
                   }}
                 >
-                  <option value="terms">Terms of Service</option>
-                  <option value="privacy">Privacy Policy</option>
-                  <option value="rules">Community Rules</option>
-                  <option value="other">Other</option>
+                  <option value="terms" style={{ background: "#1a1a2e", color: "#ffffff" }}>Terms of Service</option>
+                  <option value="privacy" style={{ background: "#1a1a2e", color: "#ffffff" }}>Privacy Policy</option>
+                  <option value="rules" style={{ background: "#1a1a2e", color: "#ffffff" }}>Community Rules</option>
+                  <option value="other" style={{ background: "#1a1a2e", color: "#ffffff" }}>Other</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}>Content</label>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#ffffff" }}>Content</label>
                 <textarea
                   value={newPolicy.content}
                   onChange={(e) => setNewPolicy({ ...newPolicy, content: e.target.value })}
                   placeholder="Policy content..."
                   rows={10}
+                  className="admin-form-textarea"
                   style={{
                     width: "100%",
                     padding: "10px",
-                    border: "1px solid #ddd",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
                     borderRadius: "4px",
-                    fontFamily: "inherit"
+                    fontFamily: "inherit",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    color: "#ffffff"
                   }}
                 />
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   onClick={handleSavePolicy}
+                  className="admin-btn admin-btn-primary"
                   style={{
                     padding: "10px 20px",
-                    background: "#007bff",
+                    background: "linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)",
                     color: "#fff",
                     border: "none",
                     borderRadius: "4px",
@@ -203,11 +218,12 @@ export default function PolicyCompliance() {
                       setEditingPolicy(null);
                       setNewPolicy({ title: "", content: "", type: "terms" });
                     }}
+                    className="admin-btn admin-btn-secondary"
                     style={{
                       padding: "10px 20px",
-                      background: "#6c757d",
+                      background: "rgba(255, 255, 255, 0.1)",
                       color: "#fff",
-                      border: "none",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
                       borderRadius: "4px",
                       cursor: "pointer"
                     }}
@@ -224,24 +240,24 @@ export default function PolicyCompliance() {
             {policies.map((policy) => (
               <div
                 key={policy.id}
+                className="admin-card"
                 style={{
-                  background: "#fff",
                   padding: "20px",
-                  borderRadius: "8px",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+                  borderRadius: "8px"
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: "12px" }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "bold" }}>{policy.title}</h4>
+                    <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "bold", color: "#ffffff" }}>{policy.title}</h4>
                     <span style={{
                       padding: "4px 8px",
-                      background: "#e7f3ff",
-                      color: "#007bff",
+                      background: "rgba(255, 107, 53, 0.2)",
+                      color: "#ff6b35",
                       borderRadius: "4px",
                       fontSize: "12px",
                       marginTop: "4px",
-                      display: "inline-block"
+                      display: "inline-block",
+                      border: "1px solid rgba(255, 107, 53, 0.3)"
                     }}>
                       {policy.type}
                     </span>
@@ -252,11 +268,12 @@ export default function PolicyCompliance() {
                         setEditingPolicy(policy);
                         setNewPolicy({ title: policy.title, content: policy.content, type: policy.type });
                       }}
+                      className="admin-btn admin-btn-primary"
                       style={{
                         padding: "6px 12px",
-                        background: "#007bff",
-                        color: "#fff",
-                        border: "none",
+                        background: "rgba(255, 107, 53, 0.2)",
+                        color: "#ff6b35",
+                        border: "1px solid rgba(255, 107, 53, 0.3)",
                         borderRadius: "4px",
                         cursor: "pointer",
                         display: "flex",
@@ -269,11 +286,12 @@ export default function PolicyCompliance() {
                     </button>
                     <button
                       onClick={() => handleDeletePolicy(policy.id)}
+                      className="admin-btn admin-btn-danger"
                       style={{
                         padding: "6px 12px",
-                        background: "#dc3545",
-                        color: "#fff",
-                        border: "none",
+                        background: "rgba(239, 68, 68, 0.2)",
+                        color: "#ef4444",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
                         borderRadius: "4px",
                         cursor: "pointer",
                         display: "flex",
@@ -286,11 +304,11 @@ export default function PolicyCompliance() {
                     </button>
                   </div>
                 </div>
-                <div style={{ color: "#666", whiteSpace: "pre-wrap" }}>{policy.content}</div>
+                <div style={{ color: "rgba(255, 255, 255, 0.7)", whiteSpace: "pre-wrap" }}>{policy.content}</div>
               </div>
             ))}
             {policies.length === 0 && (
-              <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
+              <div className="admin-empty-state" style={{ textAlign: "center", padding: "40px", color: "rgba(255, 255, 255, 0.6)" }}>
                 No policies found. Add your first policy above.
               </div>
             )}
@@ -300,15 +318,13 @@ export default function PolicyCompliance() {
 
       {activeTab === "reports" && (
         <div>
-          <div style={{
-            background: "#fff",
+          <div className="admin-card" style={{
             padding: "24px",
-            borderRadius: "8px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+            borderRadius: "8px"
           }}>
-            <h3 style={{ marginBottom: "16px" }}>User Reports</h3>
+            <h3 style={{ marginBottom: "16px", color: "#ffffff" }}>User Reports</h3>
             {reports.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
+              <div className="admin-empty-state" style={{ textAlign: "center", padding: "40px", color: "rgba(255, 255, 255, 0.6)" }}>
                 No reports found.
               </div>
             ) : (
@@ -318,25 +334,26 @@ export default function PolicyCompliance() {
                     key={report.id}
                     style={{
                       padding: "16px",
-                      background: "#f8f9fa",
+                      background: "rgba(255, 255, 255, 0.05)",
                       borderRadius: "4px",
-                      border: "1px solid #ddd"
+                      border: "1px solid rgba(255, 255, 255, 0.1)"
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                      <div style={{ fontWeight: "bold" }}>{report.type || "General Report"}</div>
+                      <div style={{ fontWeight: "bold", color: "#ffffff" }}>{report.type || "General Report"}</div>
                       <span style={{
                         padding: "4px 8px",
-                        background: report.status === "resolved" ? "#d4edda" : "#fff3cd",
-                        color: report.status === "resolved" ? "#155724" : "#856404",
+                        background: report.status === "resolved" ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                        color: report.status === "resolved" ? "#10b981" : "#f59e0b",
                         borderRadius: "4px",
-                        fontSize: "12px"
+                        fontSize: "12px",
+                        border: `1px solid ${report.status === "resolved" ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)"}`
                       }}>
                         {report.status || "pending"}
                       </span>
                     </div>
-                    <div style={{ color: "#666", marginBottom: "8px" }}>{report.description || "No description"}</div>
-                    <div style={{ fontSize: "12px", color: "#999" }}>
+                    <div style={{ color: "rgba(255, 255, 255, 0.7)", marginBottom: "8px" }}>{report.description || "No description"}</div>
+                    <div style={{ fontSize: "12px", color: "rgba(255, 255, 255, 0.5)" }}>
                       Reported by: {report.reportedBy || "Unknown"} • {report.createdAt?.toDate ? report.createdAt.toDate().toLocaleString() : "N/A"}
                     </div>
                   </div>
