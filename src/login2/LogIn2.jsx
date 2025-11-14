@@ -14,7 +14,7 @@ import {
 import { auth } from "../firebase";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 function LogIn2() {
     const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +23,10 @@ function LogIn2() {
     const [rememberMe, setRememberMe] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Get the previous location from state, or default to /Home
+    const from = location.state?.from || "/Home";
 
     // 🔁 Check if already signed in
     useEffect(() => {
@@ -34,7 +38,8 @@ function LogIn2() {
                     if (userData?.role === "admin") {
                         navigate("/Admin");
                     } else {
-                        navigate("/Home");
+                        // Redirect to previous page or default to /Home
+                        navigate(from, { replace: true });
                     }
                 } catch (err) {
                     console.error("Error fetching user data:", err);
@@ -43,7 +48,7 @@ function LogIn2() {
         });
 
         return () => unsubscribe();
-    }, [navigate]);
+    }, [navigate, from]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -75,7 +80,8 @@ function LogIn2() {
             if (userData?.role === "admin") {
                 navigate("/Admin");
             } else {
-                navigate("/Home");
+                // Redirect to previous page or default to /Home
+                navigate(from, { replace: true });
             }
         } catch (error) {
             console.error("Login failed:", error);

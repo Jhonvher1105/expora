@@ -57,6 +57,22 @@ export function BookingProvider({ children }) {
     return dateObj.getTime();
   };
 
+  // Helper function to format date as YYYY-MM-DD in local time (no timezone conversion)
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to format date as MM/DD/YYYY for display
+  const formatDateDisplay = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${month}/${day}/${year}`;
+  };
+
   const isOverlapping = (startA, endA, startB, endB) => {
     const aStart = toTimestamp(startA);
     const aEnd = toTimestamp(endA);
@@ -93,9 +109,14 @@ export function BookingProvider({ children }) {
       // Find the conflicting booking dates for better error message
       const conflictingDates = conflictingBookings.map(b => {
         // Handle Firestore Timestamps
-        const bStart = b.startDate?.toDate ? b.startDate.toDate() : new Date(b.startDate);
-        const bEnd = b.endDate?.toDate ? b.endDate.toDate() : new Date(b.endDate);
-        return `${bStart.toLocaleDateString()} - ${bEnd.toLocaleDateString()}`;
+        let bStart = b.startDate?.toDate ? b.startDate.toDate() : new Date(b.startDate);
+        let bEnd = b.endDate?.toDate ? b.endDate.toDate() : new Date(b.endDate);
+        
+        // Normalize dates to local midnight to avoid timezone issues
+        bStart = new Date(bStart.getFullYear(), bStart.getMonth(), bStart.getDate());
+        bEnd = new Date(bEnd.getFullYear(), bEnd.getMonth(), bEnd.getDate());
+        
+        return `${formatDateDisplay(bStart)} - ${formatDateDisplay(bEnd)}`;
       }).join(", ");
       
       return { 

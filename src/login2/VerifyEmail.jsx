@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { auth } from "../firebase";
-import { applyActionCode, verifyBeforeUpdateEmail, reload } from "firebase/auth";
+import { reload } from "firebase/auth";
+import { verifyToken, markTokenAsUsed, deleteToken, markEmailAsVerified, isEmailVerified } from "../utils/verificationUtils";
 import { CheckCircle, AlertCircle, Loader } from "lucide-react";
 import logo from "../components/pic/logo.png";
 import "./index.css";
@@ -11,59 +12,90 @@ function VerifyEmail() {
   const navigate = useNavigate();
   const [status, setStatus] = useState("verifying"); // verifying, success, error
   const [message, setMessage] = useState("");
+  const token = searchParams.get("token");
   const uid = searchParams.get("uid");
   const email = searchParams.get("email");
-  const oobCode = searchParams.get("oobCode"); // Firebase action code
 
   useEffect(() => {
     const verifyEmail = async () => {
       try {
-        // If we have a Firebase action code, use it
-        if (oobCode) {
-          await applyActionCode(auth, oobCode);
-          setStatus("success");
-          setMessage("Email verified successfully! You can now sign in.");
+        // If we have a verification token (EmailJS flow)
+        if (token) {
+          // Verify the token
+          const tokenData = await verifyToken(token);
           
-          // Reload user to update emailVerified status
-          if (auth.currentUser) {
-            await reload(auth.currentUser);
+          if (!tokenData) {
+            setStatus("error");
+            setMessage("Invalid verification link. Please request a new verification email.");
+            return;
           }
-          
-          setTimeout(() => {
-            navigate("/LogIn");
-          }, 3000);
+
+          if (tokenData.error) {
+            setStatus("error");
+            setMessage(tokenData.error === "Token has expired" 
+              ? "This verification link has expired. Please request a new verification email."
+              : "This verification link has already been used. Please request a new one.");
+            return;
+          }
+
+          // Check if user is logged in
+          if (!auth.currentUser) {
+            setStatus("error");
+            setMessage("Please sign in first to verify your email.");
+            
+            return;
+          }
+
+          // Verify the token matches the current user
+          if (auth.currentUser.uid !== tokenData.uid) {
+            setStatus("error");
+            setMessage("This verification link is not for your account.");
+            return;
+          }
+
+          // Mark token as used
+          await markTokenAsUsed(token);
+
+          // Mark email as verified in Firestore
+          await markEmailAsVerified(tokenData.uid);
+
+          // Reload user to get latest status
+          await reload(auth.currentUser);
+
+          setStatus("success");
+          setMessage("Email verified successfully! You can now continue with your registration.");
+          // Clean up token
+          await deleteToken(token);
           return;
         }
 
-        // If we have UID and email, verify manually
+        // Fallback: If we have UID and email but no token, check if already verified
         if (uid && email) {
-          // Check if user is logged in
           if (auth.currentUser && auth.currentUser.uid === uid) {
-            // Reload user to check verification status
             await reload(auth.currentUser);
             
-            if (auth.currentUser.emailVerified) {
+            // Check Firestore for email verification status
+            const verified = await isEmailVerified(uid);
+            
+            if (verified) {
               setStatus("success");
               setMessage("Email verified successfully! You can now continue with your registration.");
-              setTimeout(() => {
-                navigate("/Registration");
-              }, 2000);
+              
             } else {
               setStatus("error");
-              setMessage("Email verification failed. Please try again or request a new verification email.");
+              setMessage("Email verification failed. Please use the verification link from your email.");
             }
           } else {
-            // User not logged in, redirect to login
             setStatus("error");
             setMessage("Please sign in first, then verify your email.");
-            setTimeout(() => {
-              navigate("/LogIn");
-            }, 3000);
+            
           }
-        } else {
-          setStatus("error");
-          setMessage("Invalid verification link. Please request a new verification email.");
+          return;
         }
+
+        // No valid parameters
+        setStatus("error");
+        setMessage("Invalid verification link. Please request a new verification email.");
       } catch (error) {
         console.error("Verification error:", error);
         setStatus("error");
@@ -79,7 +111,7 @@ function VerifyEmail() {
     };
 
     verifyEmail();
-  }, [uid, email, oobCode, navigate]);
+  }, [token, uid, email, navigate]);
 
   return (
     <div className="landing-page">
@@ -103,9 +135,7 @@ function VerifyEmail() {
               <CheckCircle size={48} style={{ margin: "0 auto 20px", color: "#10b981" }} />
               <h1 style={{ marginBottom: "16px", color: "#10b981" }}>Email Verified!</h1>
               <p style={{ color: "#666", marginBottom: "24px" }}>{message}</p>
-              <Link to="/LogIn" className="signin-btn landing-signin" style={{ display: "inline-block", textDecoration: "none" }}>
-                Go to Sign In
-              </Link>
+              
             </>
           )}
 

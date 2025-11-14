@@ -28,6 +28,7 @@ import MapViewer from "../ui/MapViewer";
 import AvailabilityCalendar from "../ui/AvailabilityCalendar";
 import ShareMenu from "../ui/ShareMenu";
 import SharedListing from "../ui/SharedListing";
+import DateRangePicker from "../ui/DateRangePicker";
 
 function Body() {
     const [activeTab, setActiveTab] = useState("all");
@@ -429,7 +430,6 @@ function Body() {
                 await deleteDoc(favDocRef);
                 // Update local state immediately
                 setFavorites((prev) => prev.filter((id) => id !== property.id));
-                alert("Removed from favorites 💔");
             } else {
                 await setDoc(favDocRef, {
                     userId: currentUser.uid,
@@ -440,7 +440,6 @@ function Body() {
                 });
                 // Update local state immediately
                 setFavorites((prev) => [...prev, property.id]);
-                alert("Added to favorites ❤️");
             }
         } catch (error) {
             console.error("Error toggling favorite:", error);
@@ -736,34 +735,16 @@ function Body() {
                                 )}
                             </div>
 
-                            {/* Check-in Date Section with Input */}
-                            <div className="search-section search-section-input">
-                                <div className="search-section-label">Check in</div>
-                                <input
-                                    type="date"
-                                    className="search-section-input-field search-section-date-input"
-                                    value={checkInDate}
-                                    onChange={(e) => {
-                                        setCheckInDate(e.target.value);
-                                        if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
-                                            setCheckOutDate("");
-                                        }
-                                    }}
-                                    min={new Date().toISOString().split('T')[0]}
-                                />
-                            </div>
-
-                            {/* Check-out Date Section with Input */}
-                            <div className="search-section search-section-input">
-                                <div className="search-section-label">Check out</div>
-                                <input
-                                    type="date"
-                                    className="search-section-input-field search-section-date-input"
-                                    value={checkOutDate}
-                                    onChange={(e) => setCheckOutDate(e.target.value)}
-                                    min={checkInDate || new Date().toISOString().split('T')[0]}
-                                />
-                            </div>
+                            {/* Date Range Picker - Combined Check-in and Check-out */}
+                            <DateRangePicker
+                                checkInDate={checkInDate}
+                                checkOutDate={checkOutDate}
+                                onDateChange={(dates) => {
+                                    setCheckInDate(dates.checkIn || "");
+                                    setCheckOutDate(dates.checkOut || "");
+                                }}
+                                minDate={new Date().toISOString().split('T')[0]}
+                            />
 
                             {/* Guests Section with Input */}
                             <div className="search-section search-section-guests search-section-input">
@@ -1029,12 +1010,12 @@ function Body() {
                                                 initialEndDate={endDate}
                                                 onDateSelect={(dates) => {
                                                     if (dates.start) {
-                                                        setStartDate(dates.start.toISOString().split('T')[0]);
+                                                        setStartDate(dates.start);
                                                         const { startDate: _, ...rest } = validationErrors;
                                                         setValidationErrors(rest);
                                                     }
                                                     if (dates.end) {
-                                                        setEndDate(dates.end.toISOString().split('T')[0]);
+                                                        setEndDate(dates.end);
                                                         const { endDate: _, ...rest } = validationErrors;
                                                         setValidationErrors(rest);
                                                     }

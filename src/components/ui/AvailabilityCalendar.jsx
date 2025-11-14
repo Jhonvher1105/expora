@@ -4,13 +4,28 @@ import { db } from "../../firebase";
 import { useBooking } from "../../context/BookingContext";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// Helper function to format date as YYYY-MM-DD in local time (no timezone conversion)
+const formatDateLocal = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Helper function to parse date string to Date object at local midnight
+const parseDateString = (dateString) => {
+  if (!dateString) return null;
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
 export default function AvailabilityCalendar({ listingId, onDateSelect, initialStartDate, initialEndDate }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [bookedDates, setBookedDates] = useState([]);
-  const [selectedDates, setSelectedDates] = useState({ 
-    start: initialStartDate ? new Date(initialStartDate) : null, 
-    end: initialEndDate ? new Date(initialEndDate) : null 
-  });
+  const [selectedDates, setSelectedDates] = useState(() => ({ 
+    start: initialStartDate ? parseDateString(initialStartDate) : null, 
+    end: initialEndDate ? parseDateString(initialEndDate) : null 
+  }));
   const [loading, setLoading] = useState(true);
   const { getListingBookings } = useBooking();
 
@@ -45,7 +60,7 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
           // Add all dates in the booking range (excluding checkout date)
           const current = new Date(start);
           while (current < end) {
-            booked.push(new Date(current).toISOString().split('T')[0]);
+            booked.push(formatDateLocal(new Date(current)));
             current.setDate(current.getDate() + 1);
           }
         }
@@ -69,8 +84,8 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
   // Sync with parent component dates
   useEffect(() => {
     setSelectedDates({
-      start: initialStartDate ? new Date(initialStartDate) : null,
-      end: initialEndDate ? new Date(initialEndDate) : null
+      start: initialStartDate ? parseDateString(initialStartDate) : null,
+      end: initialEndDate ? parseDateString(initialEndDate) : null
     });
   }, [initialStartDate, initialEndDate]);
 
@@ -83,7 +98,7 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
   };
 
   const isDateBooked = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateLocal(date);
     return bookedDates.includes(dateStr);
   };
 
@@ -95,9 +110,9 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
 
   const isDateInRange = (date) => {
     if (!selectedDates.start || !selectedDates.end) return false;
-    const dateStr = date.toISOString().split('T')[0];
-    const startStr = selectedDates.start.toISOString().split('T')[0];
-    const endStr = selectedDates.end.toISOString().split('T')[0];
+    const dateStr = formatDateLocal(date);
+    const startStr = formatDateLocal(selectedDates.start);
+    const endStr = formatDateLocal(selectedDates.end);
     return dateStr >= startStr && dateStr <= endStr;
   };
 
@@ -106,17 +121,22 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
 
     if (!selectedDates.start || (selectedDates.start && selectedDates.end)) {
       // Start new selection
+      const dateStr = formatDateLocal(date);
       setSelectedDates({ start: date, end: null });
-      if (onDateSelect) onDateSelect({ start: date, end: null });
+      if (onDateSelect) onDateSelect({ start: dateStr, end: null });
     } else if (selectedDates.start && !selectedDates.end) {
       // Complete selection
       if (date < selectedDates.start) {
         // If clicked date is before start, make it the new start
+        const startStr = formatDateLocal(date);
+        const endStr = formatDateLocal(selectedDates.start);
         setSelectedDates({ start: date, end: selectedDates.start });
-        if (onDateSelect) onDateSelect({ start: date, end: selectedDates.start });
+        if (onDateSelect) onDateSelect({ start: startStr, end: endStr });
       } else {
+        const startStr = formatDateLocal(selectedDates.start);
+        const endStr = formatDateLocal(date);
         setSelectedDates({ start: selectedDates.start, end: date });
-        if (onDateSelect) onDateSelect({ start: selectedDates.start, end: date });
+        if (onDateSelect) onDateSelect({ start: startStr, end: endStr });
       }
     }
   };
@@ -143,12 +163,12 @@ export default function AvailabilityCalendar({ listingId, onDateSelect, initialS
   // Add cells for each day of the month
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateLocal(date);
     const isBooked = isDateBooked(date);
     const isPast = isDatePast(date);
     const inRange = isDateInRange(date);
-    const isStart = selectedDates.start && dateStr === selectedDates.start.toISOString().split('T')[0];
-    const isEnd = selectedDates.end && dateStr === selectedDates.end.toISOString().split('T')[0];
+    const isStart = selectedDates.start && dateStr === formatDateLocal(selectedDates.start);
+    const isEnd = selectedDates.end && dateStr === formatDateLocal(selectedDates.end);
 
     let dayClass = "calendar-day";
     if (isPast) dayClass += " past";

@@ -5,6 +5,7 @@ import { MessageCircleMore, Heart, MapPin, Star, Plus, X, Search } from "lucide-
 import "../../components/cssFile/temp.css";
 import { useChat } from "../../context/ChatContext";
 import ChatModal from "../ui/ChatModal";
+import DateRangePicker from "../ui/DateRangePicker";
 
 import {
     collection,
@@ -424,34 +425,16 @@ export default function HostBody() {
                             )}
                         </div>
 
-                        {/* Check-in Date Section with Input */}
-                        <div className="search-section search-section-input">
-                            <div className="search-section-label">Check in</div>
-                            <input
-                                type="date"
-                                className="search-section-input-field search-section-date-input"
-                                value={checkInDate}
-                                onChange={(e) => {
-                                    setCheckInDate(e.target.value);
-                                    if (checkOutDate && e.target.value && new Date(e.target.value) >= new Date(checkOutDate)) {
-                                        setCheckOutDate("");
-                                    }
-                                }}
-                                min={new Date().toISOString().split('T')[0]}
-                            />
-                        </div>
-
-                        {/* Check-out Date Section with Input */}
-                        <div className="search-section search-section-input">
-                            <div className="search-section-label">Check out</div>
-                            <input
-                                type="date"
-                                className="search-section-input-field search-section-date-input"
-                                value={checkOutDate}
-                                onChange={(e) => setCheckOutDate(e.target.value)}
-                                min={checkInDate || new Date().toISOString().split('T')[0]}
-                            />
-                        </div>
+                        {/* Date Range Picker - Combined Check-in and Check-out */}
+                        <DateRangePicker
+                            checkInDate={checkInDate}
+                            checkOutDate={checkOutDate}
+                            onDateChange={(dates) => {
+                                setCheckInDate(dates.checkIn || "");
+                                setCheckOutDate(dates.checkOut || "");
+                            }}
+                            minDate={new Date().toISOString().split('T')[0]}
+                        />
 
                         {/* Guests Section with Input */}
                         <div className="search-section search-section-guests search-section-input">

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Bell, User, Menu, Copy, MessageCircleMore } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, User, Menu, Copy, MessageCircleMore, Settings, Heart, Ticket, Lightbulb, HelpCircle, LogOut, Home, ChevronRight, UserCircle, Building2, Sparkles } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useChat } from "../../context/ChatContext";
@@ -11,6 +11,8 @@ import {
     getDocs,
     serverTimestamp,
     addDoc,
+    doc,
+    updateDoc,
 } from "firebase/firestore";
 
 import logo from "../pic/logo.png";
@@ -22,6 +24,7 @@ import HostingType from "../ui/HostingType";
 
 function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -33,14 +36,32 @@ function Header() {
     const [copied, setCopied] = useState(false);
 
     const [showHostForm, setShowForm] = useState(false);
+    const userMenuRef = useRef(null);
 
     // ---------------------------
     // 🔹 AUTH STATE
     // ---------------------------
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (user) => setCurrentUser(user));
+        const unsub = onAuthStateChanged(auth, (users) => setCurrentUser(users));
         return unsub;
     }, []);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setUserMenuOpen(false);
+            }
+        };
+
+        if (userMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [userMenuOpen]);
 
     // ---------------------------
     // 🔹 VOUCHER SYSTEM
@@ -153,15 +174,53 @@ function Header() {
         setUserMenuOpen(false);
     };
 
+    const handleBecomeHost = async (e) => {
+        e.preventDefault();
+        if (!currentUser) {
+            alert("Please log in to become a host.");
+            navigate("/LogIn", { state: { from: location.pathname } });
+            return;
+        }
+
+        try {
+            const userRef = doc(db, "users", currentUser.uid);
+            await updateDoc(userRef, {
+                role: "host",
+                accType: "host",
+            });
+            setUserMenuOpen(false);
+            navigate("/HostPage");
+        } catch (error) {
+            console.error("Error updating user role:", error);
+            alert("Failed to update role. Please try again.");
+        }
+    };
+
     // Chat system - use context
     const { openChat } = useChat();
 
     const handleOpenChat = () => {
         if (!currentUser) {
             alert("Please log in to use chat.");
+            // Navigate to login page with current location preserved
+            setTimeout(() => {
+                navigate("/LogIn", { state: { from: location.pathname } });
+            }, 500);
             return;
         }
         openChat();
+    };
+
+    const handleUserMenuClick = () => {
+        if (!currentUser) {
+            alert("Please log in to access your account.");
+            // Navigate to login page with current location preserved
+            setTimeout(() => {
+                navigate("/LogIn", { state: { from: location.pathname } });
+            }, 500);
+            return;
+        }
+        setUserMenuOpen((s) => !s);
     };
 
     // ---------------------------
@@ -185,7 +244,7 @@ function Header() {
                     <div style={{ position: "relative" }}>
                         <button
                             className="icon-btn"
-                            onClick={() => setUserMenuOpen((s) => !s)}
+                            onClick={handleUserMenuClick}
                             aria-haspopup="menu"
                             aria-expanded={userMenuOpen}
                         >
@@ -194,34 +253,114 @@ function Header() {
 
                         {userMenuOpen && (
                             <div className="user-menu" role="menu" aria-label="User menu">
-                                {currentUser ? (
-                                    <p className="user-menu-item" aria-hidden>{currentUser.email}</p>
-                                ) : (
-                                    <p className="user-email">Not signed in</p>
-                                )}
-                                <Link to="/HostPage" id="becomeHostBtn" className="user-menu-item" role="menuitem">
-                                    Become a host
-                                </Link>
-                                <Link to="/Settings" className="user-menu-item" role="menuitem">
-                                    Settings
-                                </Link>
-                                <button className="user-menu-item" onClick={openFavorites}>
-                                    Favorites
-                                </button>
-                                <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
-                                    Coupons
-                                </button>
-                                <button className="user-menu-item" onClick={openSuggestions}>
-                                    Suggestions
-                                </button>
+                                {/* User Profile Section */}
+                                <div className="user-menu-header">
+                                    <div className="user-avatar">
+                                        <UserCircle size={40} />
+                                    </div>
+                                    <div className="user-info">
+                                        {currentUser ? (
+                                            <>
+                                                <div className="user-name">
+                                                    {currentUser.displayName || currentUser.email?.split('@')[0] || 'User'}
+                                                </div>
+                                                <div className="user-email-text">{currentUser.email}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="user-name">Guest</div>
+                                                <div className="user-email-text">Not signed in</div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="user-menu-divider" />
-                                <Link to="/help" className="user-menu-item" role="menuitem">
-                                    Help & Support
-                                </Link>
+                                
+                                {/* Menu Items */}
+                                <div className="user-menu-items">
+                                    <Link 
+                                        to="/HostPage" 
+                                        id="becomeHostBtn" 
+                                        className="user-menu-item" 
+                                        role="menuitem"
+                                        onClick={handleBecomeHost}
+                                    >
+                                        <Building2 size={18} />
+                                        <span>Become a host</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </Link>
+                                    <Link 
+                                        to="/Settings" 
+                                        className="user-menu-item" 
+                                        role="menuitem"
+                                        onClick={() => setUserMenuOpen(false)}
+                                    >
+                                        <Settings size={18} />
+                                        <span>Settings</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </Link>
+                                    <button 
+                                        className="user-menu-item" 
+                                        onClick={() => { openFavorites(); setUserMenuOpen(false); }}
+                                        type="button" 
+                                        role="menuitem"
+                                    >
+                                        <Heart size={18} />
+                                        <span>Favorites</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                    <button 
+                                        className="user-menu-item" 
+                                        onClick={() => { setCoupon(true); setUserMenuOpen(false); }} 
+                                        type="button" 
+                                        role="menuitem"
+                                    >
+                                        <Ticket size={18} />
+                                        <span>Coupons</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                    <button 
+                                        className="user-menu-item" 
+                                        onClick={() => { openSuggestions(); setUserMenuOpen(false); }}
+                                        type="button" 
+                                        role="menuitem"
+                                    >
+                                        <Lightbulb size={18} />
+                                        <span>Suggestions</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                </div>
+                                
                                 <div className="user-menu-divider" />
-                                <button className="user-menu-item logout" onClick={() => setShowLogoutConfirm(true)}>
-                                    Logout
-                                </button>
+                                
+                                {/* Support Section */}
+                                <div className="user-menu-items">
+                                    <Link 
+                                        to="/help" 
+                                        className="user-menu-item" 
+                                        role="menuitem"
+                                        onClick={() => setUserMenuOpen(false)}
+                                    >
+                                        <HelpCircle size={18} />
+                                        <span>Help & Support</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </Link>
+                                </div>
+                                
+                                <div className="user-menu-divider" />
+                                
+                                {/* Logout */}
+                                <div className="user-menu-items">
+                                    <button 
+                                        className="user-menu-item logout" 
+                                        onClick={() => { setShowLogoutConfirm(true); setUserMenuOpen(false); }}
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        <LogOut size={18} />
+                                        <span>Logout</span>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

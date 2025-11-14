@@ -694,39 +694,7 @@ export default function Settings() {
                                                     )}
                                                 </div>
                                             </div>
-                                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                                                <Link to="/Rewards" style={{
-                                                    padding: "0.75rem 1.5rem",
-                                                    background: "rgba(255,255,255,0.1)",
-                                                    border: "1px solid rgba(255,255,255,0.2)",
-                                                    borderRadius: "12px",
-                                                    color: "var(--text)",
-                                                    textDecoration: "none",
-                                                    fontSize: "0.9rem",
-                                                    fontWeight: "600",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.5rem"
-                                                }}>
-                                                    <Gift size={18} />
-                                                    Rewards
-                                                </Link>
-                                                <Link to="/PointsHistory" style={{
-                                                    padding: "0.75rem 1.5rem",
-                                                    background: "rgba(255,255,255,0.1)",
-                                                    border: "1px solid rgba(255,255,255,0.2)",
-                                                    borderRadius: "12px",
-                                                    color: "var(--text)",
-                                                    textDecoration: "none",
-                                                    fontSize: "0.9rem",
-                                                    fontWeight: "600",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.5rem"
-                                                }}>
-                                                    History
-                                                </Link>
-                                            </div>
+                                            
                                         </div>
 
                                         {/* Form */}

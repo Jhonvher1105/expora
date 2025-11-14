@@ -23,7 +23,7 @@ export default function LandingPage() {
         
             <header ref={headerRef} id="header" className="landing-header">
                 <div className="header-left">
-                    <img src={Logo} alt="Expora / StayHub logo" width={40} height={40}/>
+                    <img src={Logo} alt="Expora" width={40} height={40}/>
                     <span className="logo-text" style={{ marginLeft: 8 }}>Explora</span>
                 </div>
 

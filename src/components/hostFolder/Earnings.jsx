@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, setDoc, deleteDoc, collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit } from "firebase/firestore";
 import { db, auth } from "../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { DollarSign, TrendingUp, Clock, CheckCircle, XCircle, Download, Calendar } from "lucide-react";
 import Header from "./Hheader";
 import PaymentHistory from "./PaymentHistory";
@@ -15,17 +16,17 @@ export default function Earnings({ showHeader = true }) {
   const [payoutAmount, setPayoutAmount] = useState("");
   const [payoutMethod, setPayoutMethod] = useState("bank");
   const [requestingPayout, setRequestingPayout] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    loadEarnings();
-    loadPayoutRequests();
-  }, []);
-
-  const loadEarnings = async () => {
-    if (!auth.currentUser) return;
+  const loadEarnings = async (userId) => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setError(null);
     try {
-      const userId = auth.currentUser.uid;
       
       // Get wallet earnings
       const walletRef = doc(db, "wallets", userId);
@@ -54,15 +55,15 @@ export default function Earnings({ showHeader = true }) {
       setTotalEarnings(total);
     } catch (error) {
       console.error("Error loading earnings:", error);
+      setError("Failed to load earnings. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPayoutRequests = async () => {
-    if (!auth.currentUser) return;
+  const loadPayoutRequests = async (userId) => {
+    if (!userId) return;
     try {
-      const userId = auth.currentUser.uid;
       const payoutRef = collection(db, "payoutRequests");
       const payoutQuery = query(
         payoutRef,
@@ -77,8 +78,26 @@ export default function Earnings({ showHeader = true }) {
     }
   };
 
+  // Listen to auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      if (user) {
+        loadEarnings(user.uid);
+        loadPayoutRequests(user.uid);
+      } else {
+        setLoading(false);
+        setError("Please log in to view your earnings");
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   const handleRequestPayout = async () => {
-    if (!auth.currentUser) return;
+    if (!currentUser) {
+      alert("Please log in to request a payout");
+      return;
+    }
     if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
       alert("Please enter a valid payout amount");
       return;
@@ -98,10 +117,11 @@ export default function Earnings({ showHeader = true }) {
     }
 
     setRequestingPayout(true);
+    setError(null);
     let payoutRequestId = null;
     
     try {
-      const userId = auth.currentUser.uid;
+      const userId = currentUser.uid;
       
       // Get current wallet state first
       const walletRef = doc(db, "wallets", userId);
@@ -112,7 +132,7 @@ export default function Earnings({ showHeader = true }) {
       // Double-check earnings before proceeding
       if (amount > currentEarnings) {
         alert("Insufficient earnings. Please refresh and try again.");
-        await loadEarnings(); // Reload to get latest data
+        await loadEarnings(userId); // Reload to get latest data
         return;
       }
 
@@ -138,8 +158,8 @@ export default function Earnings({ showHeader = true }) {
 
       alert("Payout request submitted successfully! It will be processed within 3-5 business days.");
       setPayoutAmount("");
-      await loadEarnings();
-      await loadPayoutRequests();
+      await loadEarnings(userId);
+      await loadPayoutRequests(userId);
     } catch (error) {
       console.error("Error requesting payout:", error);
       
@@ -169,10 +189,42 @@ export default function Earnings({ showHeader = true }) {
     );
   }
 
+  if (error && !currentUser) {
+    return (
+      <div>
+        {showHeader && <Header />}
+        <div className="earnings-container">
+          <div className="error-message" style={{ 
+            textAlign: "center", 
+            padding: "2rem", 
+            color: "var(--error)",
+            background: "var(--bg-800)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--border)"
+          }}>
+            {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       {showHeader && <Header />}
       <div className="earnings-container">
+        {error && (
+          <div className="error-banner" style={{
+            padding: "1rem",
+            background: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            borderRadius: "var(--radius-md)",
+            marginBottom: "1rem",
+            color: "var(--error)"
+          }}>
+            {error}
+          </div>
+        )}
         <div className="earnings-header">
           <h1>Earnings & Payouts</h1>
           <p>Manage your earnings and request payouts</p>

@@ -9,11 +9,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase";
 import {
   createUserWithEmailAndPassword,
-  sendEmailVerification,
   reload,
 } from "firebase/auth";
-import { setDoc, doc } from "firebase/firestore";
+import { setDoc, doc, getDoc } from "firebase/firestore";
 import { sendVerificationEmail } from "../utils/emailService";
+import { generateVerificationToken, storeVerificationToken } from "../utils/verificationUtils";
 
 function Registration() {
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +37,7 @@ function Registration() {
     gender: "",
     phoneNumber: "",
     houseNumber: "",
-    accType: "guest",
+    role: "guest",
     city: "",
     state: "",
     zipCode: "",
@@ -67,188 +67,12 @@ function Registration() {
   };
 
   // =======================
-  // Handle Send Verification (Step 1)
+  // Handle Profile Submission (Step 1) - Validate and move to step 2
   // =======================
-  const handleSendVerification = async (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
-
-    // Trim inputs before validation
-    const email = formData.email.trim();
-    const password = formData.password;
-    const confirmPassword = formData.confirmPassword;
-
-    // Basic input validations
-    if (!email) {
-      setError("Please enter your email address.");
-      return;
-    }
-
-    if (!password) {
-      setError("Please enter a password.");
-      return;
-    }
-
-    if (!confirmPassword) {
-      setError("Please confirm your password.");
-      return;
-    }
-
-    // Email format validation (more robust)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-
-    // Password length validation (check first)
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.");
-      return;
-    }
-
-    if (password.length > 128) {
-      setError("Password must be less than 128 characters.");
-      return;
-    }
-
-    // Password match validation
-    if (password !== confirmPassword) {
-      setError("Passwords do not match!");
-      return;
-    }
-
-    // Password strength validation
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
-
-    if (!hasUpperCase || !hasNumber || !hasSpecialChar) {
-      setError("Password must include at least one uppercase letter, one number, and one special character (!@#$%^&*).");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      setUser(userCredential.user);
-
-      // Generate verification link using Firebase
-      // Note: Firebase's sendEmailVerification generates the link internally
-      // For EmailJS, we'll use Firebase's verification link generation
-      // First, send Firebase verification to get the link structure
-      await sendEmailVerification(userCredential.user);
-      
-      // Generate a custom verification link for EmailJS
-      // Using Firebase's action code settings to generate a proper verification link
-      const actionCodeSettings = {
-        url: `${window.location.origin}/verify-email?uid=${userCredential.user.uid}`,
-        handleCodeInApp: true,
-      };
-      
-      // For EmailJS, create a verification link that will work with your verification handler
-      const verificationLink = `${window.location.origin}/verify-email?uid=${userCredential.user.uid}&email=${encodeURIComponent(email)}`;
-      
-      // Send custom EmailJS email
-      try {
-        await sendVerificationEmail(
-          email,
-          formData.firstName || 'User',
-          verificationLink
-        );
-        setVerificationSent(true);
-        setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
-      } catch (emailError) {
-        console.error("EmailJS error:", emailError);
-        // Fallback to Firebase email if EmailJS fails
-        setVerificationSent(true);
-        setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
-      }
-    } catch (error) {
-      console.error("Error creating user:", error);
-      // Handle specific Firebase errors
-      if (error.code === 'auth/email-already-in-use') {
-        setError("This email is already registered. Please use a different email or sign in.");
-      } else if (error.code === 'auth/invalid-email') {
-        setError("Invalid email address. Please check and try again.");
-      } else if (error.code === 'auth/weak-password') {
-        setError("Password is too weak. Please use a stronger password.");
-      } else {
-        setError(error.message || "An error occurred. Please try again.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleCheckVerification = async () => {
-    if (!auth.currentUser) {
-      setError("Please create an account first.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      await reload(auth.currentUser);
-      if (auth.currentUser.emailVerified) {
-        setSuccessMessage("✅ Email verified successfully!");
-        setTimeout(() => setStep(2), 500);
-      } else {
-        setError("❌ Email not verified yet. Please check your inbox again.");
-      }
-    } catch (err) {
-      setError("Error checking verification status.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendVerification = async () => {
-    if (!auth.currentUser) {
-      setError("Please create an account first.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      
-      // Generate verification link
-      const verificationLink = `${window.location.origin}/verify-email?uid=${auth.currentUser.uid}&email=${encodeURIComponent(auth.currentUser.email)}`;
-      
-      // Send EmailJS email
-      try {
-        await sendVerificationEmail(
-          auth.currentUser.email,
-          formData.firstName || 'User',
-          verificationLink
-        );
-        setSuccessMessage("📨 Verification email resent! Check your inbox.");
-      } catch (emailError) {
-        console.error("EmailJS error:", emailError);
-        // Fallback to Firebase email
-        await sendEmailVerification(auth.currentUser);
-        setSuccessMessage("📨 Verification email resent! Check your inbox.");
-      }
-    } catch (error) {
-      console.error(error);
-      setError("Failed to resend email. Try again later.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccessMessage('');
-
-    if (!auth.currentUser || !auth.currentUser.emailVerified) {
-      setError("Please verify your email before submitting your profile.");
-      return;
-    }
 
     // Validate required fields
     const firstName = formData.firstName.trim();
@@ -354,12 +178,78 @@ function Registration() {
       return;
     }
 
+    // All personal info validations passed, move to step 2
+    setStep(2);
+  };
+
+  // =======================
+  // Handle Send Verification (Step 2) - Create account and send verification
+  // =======================
+  const handleSendVerification = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMessage('');
+
+    // Validate email and password
+    const email = formData.email.trim();
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!formData.password) {
+      setError("Please enter a password.");
+      return;
+    }
+
+    if (!formData.confirmPassword) {
+      setError("Please confirm your password.");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (formData.password.length > 128) {
+      setError("Password must be less than 128 characters.");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match!");
+      return;
+    }
+
+    const hasUpperCase = /[A-Z]/.test(formData.password);
+    const hasNumber = /\d/.test(formData.password);
+    const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password);
+
+    if (!hasUpperCase || !hasNumber || !hasSpecialChar) {
+      setError("Password must include at least one uppercase letter, one number, and one special character (!@#$%^&*).");
+      return;
+    }
+
+    const password = formData.password;
+
     try {
       setIsLoading(true);
-      const uid = auth.currentUser.uid;
 
-      await setDoc(doc(db, "users", uid), {
-        email: auth.currentUser.email,
+      // Create user account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      setUser(userCredential.user);
+
+      // Save profile data to Firestore
+      const firstName = formData.firstName.trim();
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: email,
         firstName: firstName,
         middleName: formData.middleName.trim(),
         lastName: formData.lastName.trim(),
@@ -370,41 +260,136 @@ function Registration() {
         city: formData.city.trim() || null,
         state: formData.state.trim() || null,
         zipCode: formData.zipCode || null,
-        accType: formData.accType,
+        accType: formData.accType || "guest",
         createdAt: new Date(),
       });
 
-      setSuccessMessage("🎉 Registration complete! Welcome to Expora.");
-      setTimeout(() => {
-        setStep(1);
-        setVerificationSent(false);
-        setGender('');
-        setOtherInput('');
-        setFormData({
-          email: "",
-          firstName: "",
-          middleName: "",
-          lastName: "",
-          dateOfBirth: "",
-          gender: "",
-          phoneNumber: "",
-          houseNumber: "",
-          city: "",
-          state: "",
-          zipCode: "",
-          password: "",
-          confirmPassword: "",
-          accType: "guest",
-        });
-        navigate("/login");
-      }, 1500);
+      // Generate secure verification token
+      const verificationToken = generateVerificationToken();
+      
+      // Store token in Firestore with expiration
+      await storeVerificationToken(userCredential.user.uid, verificationToken, email);
+      
+      // Create verification link with token
+      const verificationLink = `${window.location.origin}/verify-email?token=${verificationToken}&uid=${userCredential.user.uid}&email=${encodeURIComponent(email)}`;
+      
+      // Send EmailJS email with verification link
+      try {
+        await sendVerificationEmail(
+          email,
+          firstName || 'User',
+          verificationLink
+        );
+        setVerificationSent(true);
+        setSuccessMessage("📩 Verification email sent! Please check your inbox or spam folder.");
+      } catch (emailError) {
+        console.error("EmailJS error:", emailError);
+        // Check if it's a configuration error
+        if (emailError.message && emailError.message.includes('EmailJS is not configured')) {
+          setError("⚠️ EmailJS is not configured. Please set up your EmailJS credentials in the .env file. See EMAILJS_SETUP.md for instructions.");
+          // Still allow user to continue - they can verify later
+          setVerificationSent(true);
+          setSuccessMessage("⚠️ Account created, but email verification is not configured. Please contact support or set up EmailJS.");
+        } else {
+          // Other EmailJS errors
+          setError(`Failed to send verification email: ${emailError.message}. Please try again or contact support.`);
+          setVerificationSent(true);
+          setSuccessMessage("⚠️ Account created, but verification email failed to send. Please try resending.");
+        }
+      }
     } catch (error) {
-      console.error("Error saving data:", error);
-      setError("Error saving user data. Please try again.");
+      console.error("Error creating user:", error);
+      // Handle specific Firebase errors
+      if (error.code === 'auth/email-already-in-use') {
+        setError("This email is already registered. Please use a different email or sign in.");
+      } else if (error.code === 'auth/invalid-email') {
+        setError("Invalid email address. Please check and try again.");
+      } else if (error.code === 'auth/weak-password') {
+        setError("Password is too weak. Please use a stronger password.");
+      } else {
+        setError(error.message || "An error occurred. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+
+  const handleCheckVerification = async () => {
+    if (!auth.currentUser) {
+      setError("Please create an account first.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Reload to get latest verification status
+      await reload(auth.currentUser);
+      
+      // Check Firestore for email verification status
+      const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
+      const userData = userDoc.data();
+      const isEmailVerified = auth.currentUser.emailVerified || userData?.emailVerified === true;
+      
+      if (isEmailVerified) {
+        setSuccessMessage("✅ Email verified successfully! Redirecting to login...");
+        setTimeout(() => {
+          navigate("/login");
+        }, 1500);
+      } else {
+        setError("❌ Email not verified yet. Please check your inbox and click the verification link.");
+      }
+    } catch (err) {
+      console.error("Error checking verification status:", err);
+      setError("Error checking verification status. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!auth.currentUser) {
+      setError("Please create an account first.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Generate new verification token
+      const verificationToken = generateVerificationToken();
+      
+      // Store token in Firestore
+      await storeVerificationToken(auth.currentUser.uid, verificationToken, auth.currentUser.email);
+      
+      // Create verification link with token
+      const verificationLink = `${window.location.origin}/verify-email?token=${verificationToken}&uid=${auth.currentUser.uid}&email=${encodeURIComponent(auth.currentUser.email)}`;
+      
+      // Send EmailJS email
+      try {
+        await sendVerificationEmail(
+          auth.currentUser.email,
+          formData.firstName || 'User',
+          verificationLink
+        );
+        setSuccessMessage("📨 Verification email resent! Check your inbox.");
+      } catch (emailError) {
+        console.error("EmailJS error:", emailError);
+        if (emailError.message && emailError.message.includes('EmailJS is not configured')) {
+          setError("⚠️ EmailJS is not configured. Please set up your EmailJS credentials in the .env file. See EMAILJS_SETUP.md for instructions.");
+        } else {
+          setError(`Failed to resend email: ${emailError.message}. Please try again later.`);
+        }
+      }
+    } catch (error) {
+      console.error("Error resending verification email:", error);
+      setError("Failed to resend email. Try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   return (
     <div className="registration-container">
@@ -420,12 +405,12 @@ function Registration() {
           <div className="step-indicator">
             <div className={`step ${step === 1 ? 'active' : 'completed'}`}>
               <div className="step-circle">1</div>
-              <div className="step-label">Verify Email</div>
+              <div className="step-label">Complete Profile</div>
             </div>
             <div className="step-line"></div>
             <div className={`step ${step === 2 ? 'active' : ''}`}>
               <div className="step-circle">2</div>
-              <div className="step-label">Complete Profile</div>
+              <div className="step-label">Verify Email</div>
             </div>
           </div>
         </div>
@@ -445,16 +430,16 @@ function Registration() {
           </div>
         )}
 
-        {step === 2 ? (
+        {step === 1 ? (
           <>
             <div className="welcome-section">
               <h1 className="main-heading">Complete your profile</h1>
               <p className="sub-heading">
-                Fill in your personal details to finish registration
+                Fill in your personal details to begin registration
               </p>
             </div>
 
-            <form className="form-scroll" onSubmit={handleSubmit}>
+            <form className="form-scroll" onSubmit={handleProfileSubmit}>
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label" htmlFor="firstName">First Name *</label>
@@ -619,27 +604,34 @@ function Registration() {
                 </div>
 
               </div>
-              {/* ... keep the rest of your form fields ... */}
               <button type="submit" className="submit-btn" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Create Account"}
+                {isLoading ? "Processing..." : "Next"}
               </button>
             </form>
+
+            <div className="divider">
+              <span>or</span>
+            </div>
+
+            <div className="signup-text">
+              Already have an account?{" "}
+              <Link to="/LogIn" className="auth-link">Sign In</Link>
+            </div>
           </>
         ) : (
           <>
             <div className="welcome-section">
               <h1 className="main-heading">Create your account</h1>
               <p className="sub-heading">
-                Enter your email and password to begin
+                We'll create your account and send a verification email
               </p>
             </div>
 
             <form className="form-group reg-form" onSubmit={handleSendVerification}>
-              
               <div className="form-group">
                 <label className="form-label">
                   <Mail size={16} className="label-icon" />
-                  Email address
+                  Email address *
                 </label>
                 <input
                   type="email"
@@ -655,7 +647,7 @@ function Registration() {
               <div className="form-group">
                 <label className="form-label">
                   <Lock size={16} className="label-icon" />
-                  Password
+                  Password *
                 </label>
                 <div className="password-container">
                   <input
@@ -681,7 +673,7 @@ function Registration() {
               <div className="form-group">
                 <label className="form-label">
                   <Lock size={16} className="label-icon" />
-                  Confirm Password
+                  Confirm Password *
                 </label>
                 <div className="password-container">
                   <input
@@ -708,16 +700,27 @@ function Registration() {
                 </div>
               </div>
 
-              <button type="submit" className="submit-btn" disabled={isLoading}>
-                {isLoading ? (
-                  <span className="btn-loading">
-                    <span className="spinner"></span>
-                    Processing...
-                  </span>
-                ) : (
-                  "Send Verification Email"
-                )}
-              </button>
+              <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
+                <button type="submit" className="submit-btn" disabled={isLoading}>
+                  {isLoading ? (
+                    <span className="btn-loading">
+                      <span className="spinner"></span>
+                      Creating Account...
+                    </span>
+                  ) : (
+                    "Create Account & Send Verification Email"
+                  )}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setStep(1)} 
+                  className="submit-btn" 
+                  style={{ backgroundColor: 'transparent', color: '#666', border: '1px solid #ddd' }}
+                  disabled={isLoading}
+                >
+                  Back to Profile
+                </button>
+              </div>
             </form>
 
             {verificationSent && (

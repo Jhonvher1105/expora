@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Bell, User, Menu, Copy, MessageCircleMore } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Bell, User, Menu, X, Copy, MessageCircleMore, ChevronDown, ChevronRight, UserCircle, Settings, Ticket, Lightbulb, HelpCircle, LogOut, Home } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
+import { doc, updateDoc } from "firebase/firestore";
 import logo from "../pic/logo.png";
 import "../cssFile/temp.css";
 
@@ -20,6 +21,8 @@ function Header() {
     const [showCoupon, setCoupon] = useState(false);
     const [showChat, setShowChat] = useState(false);
     const [showHostForm, setShowForm] = useState(false);
+    const [settingsSubmenuOpen, setSettingsSubmenuOpen] = useState(false);
+    const userMenuRef = useRef(null);
 
     // coupon/voucher state
     const [voucher, setVoucher] = useState(null);
@@ -31,6 +34,23 @@ function Header() {
         });
         return unsubscribe;
     }, []);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setUserMenuOpen(false);
+            }
+        };
+
+        if (userMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [userMenuOpen]);
 
     // generate a voucher when coupon modal opens
     useEffect(() => {
@@ -106,6 +126,28 @@ function Header() {
             console.log('Current user UID:', currentUser.uid);
         }
     }, [currentUser]);
+
+    const handleSwitchAccount = async (e) => {
+        e.preventDefault();
+        if (!currentUser) {
+            alert("Please log in to switch account.");
+            navigate("/LogIn");
+            return;
+        }
+
+        try {
+            const userRef = doc(db, "users", currentUser.uid);
+            await updateDoc(userRef, {
+                role: "guest",
+                accType: "guest",
+            });
+            setUserMenuOpen(false);
+            navigate("/Home");
+        } catch (error) {
+            console.error("Error updating user role:", error);
+            alert("Failed to update role. Please try again.");
+        }
+    };
     
     return (
         <header className="header" role="banner">
@@ -119,7 +161,7 @@ function Header() {
                 {/* ✅ Right Section */}
                 <div className="header-right">
                     {/* User Menu */}
-                    <div style={{ position: "relative" }}>
+                    <div style={{ position: "relative" }} ref={userMenuRef}>
                         <button
                             className="icon-btn"
                             onClick={() => setUserMenuOpen((s) => !s)}
@@ -133,45 +175,154 @@ function Header() {
 
                         {userMenuOpen && (
                             <div className="user-menu" role="menu" aria-label="User menu">
-                                {currentUser ? (
-                                    <p className="user-menu-item" aria-hidden>{currentUser.email}</p>
-                                ) : (
-                                    <p className="user-email">Not signed in</p>
-                                )}
-                                <Link to="/Profile" className="user-menu-item" role="menuitem">
-                                    My Profile
-                                </Link>
-                                <Link to="/Home" id="becomeHostBtn" className="user-menu-item" role="menuitem">
-                                    Switch Account
-                                </Link>
-                                <Link to="/HostSettings" className="user-menu-item" role="menuitem">
-                                    Settings
-                                </Link>
-                                <Link to="/HostBooking" className="user-menu-item" role="menuitem">
-                                    Bookings
-                                </Link>
-                                <button className="user-menu-item" onClick={() => setCoupon(true)} type="button" role="menuitem">
-                                    Coupons
-                                </button>
-                                <Link to="/WalletPage" className="user-menu-item" role="menuitem">
-                                    E-Wallet
-                                </Link>
-                                <button className="user-menu-item" type="button" role="menuitem">
-                                    Suggestion and Recommendation
-                                </button>
+                                {/* User Profile Section */}
+                                <div className="user-menu-header">
+                                    <div className="user-avatar">
+                                        <UserCircle size={40} />
+                                    </div>
+                                    <div className="user-info">
+                                        {currentUser ? (
+                                            <>
+                                                <div className="user-name">
+                                                    {currentUser.displayName || currentUser.email?.split('@')[0] || 'User'}
+                                                </div>
+                                                <div className="user-email-text">{currentUser.email}</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="user-name">Guest</div>
+                                                <div className="user-email-text">Not signed in</div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
                                 <div className="user-menu-divider" />
-                                <Link to="/help" className="user-menu-item" role="menuitem">
-                                    Help & Support
-                                </Link>
+                                
+                                {/* Menu Items */}
+                                <div className="user-menu-items">
+                                    <Link 
+                                        to="/Home" 
+                                        id="becomeHostBtn" 
+                                        className="user-menu-item" 
+                                        role="menuitem"
+                                        onClick={handleSwitchAccount}
+                                    >
+                                        <Home size={18} />
+                                        <span>Switch Account</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </Link>
+                                    <div style={{ position: "relative" }}>
+                                        <button
+                                            className="user-menu-item"
+                                            onClick={() => setSettingsSubmenuOpen(!settingsSubmenuOpen)}
+                                            role="menuitem"
+                                            type="button"
+                                        >
+                                            <Settings size={18} />
+                                            <span>Settings</span>
+                                            {settingsSubmenuOpen ? (
+                                                <ChevronDown size={16} className="menu-arrow" />
+                                            ) : (
+                                                <ChevronRight size={16} className="menu-arrow" />
+                                            )}
+                                        </button>
+                                        {settingsSubmenuOpen && (
+                                            <div className="user-submenu" style={{ marginLeft: "1rem", paddingLeft: "0.5rem", borderLeft: "2px solid rgba(255, 255, 255, 0.2)" }}>
+                                                <Link
+                                                    to="/HostSettings"
+                                                    className="user-menu-item"
+                                                    role="menuitem"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    style={{ fontSize: "0.9rem", padding: "0.75rem 1rem" }}
+                                                >
+                                                    <Settings size={16} />
+                                                    <span>Settings</span>
+                                                </Link>
+                                                <Link
+                                                    to="/Profile"
+                                                    className="user-menu-item"
+                                                    role="menuitem"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    style={{ fontSize: "0.9rem", padding: "0.75rem 1rem" }}
+                                                >
+                                                    <UserCircle size={16} />
+                                                    <span>My Profile</span>
+                                                </Link>
+                                                <Link
+                                                    to="/HostBooking"
+                                                    className="user-menu-item"
+                                                    role="menuitem"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    style={{ fontSize: "0.9rem", padding: "0.75rem 1rem" }}
+                                                >
+                                                    <ChevronRight size={16} />
+                                                    <span>Bookings</span>
+                                                </Link>
+                                                <Link
+                                                    to="/WalletPage"
+                                                    className="user-menu-item"
+                                                    role="menuitem"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                    style={{ fontSize: "0.9rem", padding: "0.75rem 1rem" }}
+                                                >
+                                                    <ChevronRight size={16} />
+                                                    <span>E-Wallet</span>
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button 
+                                        className="user-menu-item" 
+                                        onClick={() => { setCoupon(true); setUserMenuOpen(false); }} 
+                                        type="button" 
+                                        role="menuitem"
+                                    >
+                                        <Ticket size={18} />
+                                        <span>Coupons</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                    <button 
+                                        className="user-menu-item" 
+                                        type="button" 
+                                        role="menuitem"
+                                        onClick={() => setUserMenuOpen(false)}
+                                    >
+                                        <Lightbulb size={18} />
+                                        <span>Suggestions</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                </div>
+                                
                                 <div className="user-menu-divider" />
-                                <button
-                                    className="user-menu-item logout"
-                                    onClick={() => setShowLogoutConfirm(true)}
-                                    role="menuitem"
-                                    type="button"
-                                >
-                                    Logout
-                                </button>
+                                
+                                {/* Support Section */}
+                                <div className="user-menu-items">
+                                    <Link 
+                                        to="/help" 
+                                        className="user-menu-item" 
+                                        role="menuitem"
+                                        onClick={() => setUserMenuOpen(false)}
+                                    >
+                                        <HelpCircle size={18} />
+                                        <span>Help & Support</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </Link>
+                                </div>
+                                
+                                <div className="user-menu-divider" />
+                                
+                                {/* Logout */}
+                                <div className="user-menu-items">
+                                    <button 
+                                        className="user-menu-item logout" 
+                                        onClick={() => { setShowLogoutConfirm(true); setUserMenuOpen(false); }} 
+                                        type="button"
+                                        role="menuitem"
+                                    >
+                                        <LogOut size={18} />
+                                        <span>Logout</span>
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

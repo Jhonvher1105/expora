@@ -38,12 +38,18 @@ export default function SharedListing({ listing: propListing }) {
     const [showValidationErrors, setShowValidationErrors] = useState(false);
     const [serviceFee, setServiceFee] = useState(0);
     const [favorites, setFavorites] = useState([]);
+    const [suggestedListings, setSuggestedListings] = useState([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const { checkAvailability, createBooking, creating, calculateServiceFee } = useBooking();
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
     const { openChat } = useChat();
     const { awardPoints } = usePoints();
+    // const { show}
 
     // Fetch listing from Firestore if ID is provided
+
+
+
     useEffect(() => {
         if (propListing) {
             setListing(propListing);
@@ -150,6 +156,49 @@ export default function SharedListing({ listing: propListing }) {
         
         fetchFavorites();
     }, [currentUser, listing?.id]);
+
+    // Fetch suggested listings based on category
+    useEffect(() => {
+        if (!listing?.id || !listing?.category) {
+            setSuggestedListings([]);
+            return;
+        }
+
+        const fetchSuggestedListings = async () => {
+            try {
+                setLoadingSuggestions(true);
+                const category = listing.category;
+                
+                // Fetch all listings from the same category, then filter in memory
+                // This avoids Firestore index requirements and handles missing status fields
+                const querySnapshot = await getDocs(collection(db, category));
+                
+                const allListings = querySnapshot.docs
+                    .map((doc) => ({
+                        id: doc.id,
+                        category: category,
+                        ...doc.data()
+                    }))
+                    .filter((item) => {
+                        // Exclude current listing and only include published (or listings without status field for backward compatibility)
+                        return item.id !== listing.id && (item.status === "published" || !item.status);
+                    });
+                
+                // Shuffle and take up to 6 suggestions
+                const shuffled = allListings.sort(() => 0.5 - Math.random());
+                const suggestions = shuffled.slice(0, 6);
+                
+                setSuggestedListings(suggestions);
+            } catch (error) {
+                console.error("Error fetching suggested listings:", error);
+                setSuggestedListings([]);
+            } finally {
+                setLoadingSuggestions(false);
+            }
+        };
+
+        fetchSuggestedListings();
+    }, [listing?.id, listing?.category]);
 
     // Auto-check availability when dates change
     useEffect(() => {
@@ -464,33 +513,246 @@ export default function SharedListing({ listing: propListing }) {
 
     return (
         <>
+            <style>{`
+                .shared-listing-container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                    padding: 20px;
+                }
+                
+                .shared-listing-grid {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 24px;
+                    margin-bottom: 40px;
+                }
+                
+                .booking-sidebar {
+                    position: relative;
+                    height: fit-content;
+                    background: var(--bg-surface, rgba(255, 255, 255, 0.05));
+                    padding: 20px;
+                    border-radius: 12px;
+                    border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+                    width: 100%;
+                }
+                
+                .listing-image-container {
+                    width: 100%;
+                    overflow: hidden;
+                    border-radius: 12px;
+                }
+                
+                .listing-image-container img {
+                    width: 100%;
+                    height: auto;
+                    min-height: 200px;
+                    max-height: 500px;
+                    object-fit: cover;
+                    border-radius: 12px;
+                }
+                
+                .icon-btn {
+                    min-width: 40px;
+                    min-height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                @media (min-width: 768px) {
+                    .shared-listing-container {
+                        padding: 30px 20px;
+                    }
+                    .shared-listing-grid {
+                        grid-template-columns: 1fr 400px;
+                    }
+                    .booking-sidebar {
+                        position: sticky;
+                        top: 20px;
+                    }
+                    .listing-image-container img {
+                        max-height: 600px;
+                    }
+                }
+                
+                @media (min-width: 1024px) {
+                    .shared-listing-container {
+                        padding: 40px 20px;
+                    }
+                    .shared-listing-grid {
+                        grid-template-columns: 1fr 450px;
+                    }
+                }
+                
+                @media (max-width: 767px) {
+                    .shared-listing-container {
+                        padding: 16px 12px;
+                    }
+                    .shared-listing-grid {
+                        gap: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .booking-sidebar {
+                        padding: 16px;
+                        order: -1;
+                    }
+                    .listing-header {
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 12px;
+                    }
+                    .listing-header h1 {
+                        font-size: clamp(20px, 6vw, 28px) !important;
+                        line-height: 1.2;
+                    }
+                    .listing-header-actions {
+                        width: 100%;
+                        justify-content: flex-start;
+                        flex-wrap: wrap;
+                    }
+                    .amenities-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 6px !important;
+                    }
+                    .property-details {
+                        flex-direction: column;
+                        gap: 12px !important;
+                    }
+                    .price-display {
+                        font-size: 20px !important;
+                    }
+                    .booking-input {
+                        font-size: 16px !important;
+                        padding: 12px !important;
+                    }
+                    .book-btn {
+                        font-size: 14px !important;
+                        padding: 14px !important;
+                        min-height: 48px;
+                    }
+                    .price-breakdown {
+                        font-size: 0.9rem;
+                    }
+                    .listing-image-container img {
+                        min-height: 250px;
+                        max-height: 400px;
+                    }
+                    .icon-btn {
+                        min-width: 44px;
+                        min-height: 44px;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .shared-listing-container {
+                        padding: 12px 8px;
+                    }
+                    .shared-listing-grid {
+                        gap: 16px;
+                        margin-bottom: 24px;
+                    }
+                    .booking-sidebar {
+                        padding: 12px;
+                    }
+                    .listing-header h1 {
+                        font-size: clamp(18px, 7vw, 24px) !important;
+                    }
+                    .listing-header-actions {
+                        gap: 6px;
+                    }
+                    .icon-btn {
+                        min-width: 40px;
+                        min-height: 40px;
+                        padding: 6px !important;
+                    }
+                    .listing-image-container img {
+                        min-height: 200px;
+                        max-height: 300px;
+                    }
+                    .price-display {
+                        font-size: 18px !important;
+                    }
+                    .booking-input {
+                        font-size: 16px !important;
+                        padding: 12px !important;
+                    }
+                    .book-btn {
+                        font-size: 14px !important;
+                        padding: 14px 12px !important;
+                    }
+                    .price-breakdown {
+                        font-size: 0.85rem;
+                        padding: 10px !important;
+                    }
+                    .property-details {
+                        font-size: 0.9rem;
+                    }
+                }
+                
+                @media (max-width: 360px) {
+                    .shared-listing-container {
+                        padding: 10px 6px;
+                    }
+                    .booking-sidebar {
+                        padding: 10px;
+                    }
+                    .listing-header h1 {
+                        font-size: clamp(16px, 8vw, 20px) !important;
+                    }
+                }
+                
+                /* Touch-friendly improvements */
+                @media (hover: none) and (pointer: coarse) {
+                    .book-btn,
+                    .icon-btn,
+                    button {
+                        min-height: 44px;
+                    }
+                    input[type="date"],
+                    input[type="number"],
+                    input[type="text"] {
+                        min-height: 44px;
+                        font-size: 16px;
+                    }
+                }
+                
+                /* Suggested listings responsive styles */
+                @media (max-width: 767px) {
+                    .destinations-grid {
+                        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+                        gap: 16px !important;
+                    }
+                }
+                
+                @media (max-width: 480px) {
+                    .destinations-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 16px !important;
+                    }
+                }
+            `}</style>
             {!propListing && <Header />}
             <div className="homepage">
-                <div className="container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 20px" }}>
+                <div className="shared-listing-container">
                     {/* Image Gallery */}
                     {images.length > 0 && (
-                        <div style={{ marginBottom: "32px" }}>
+                        <div className="listing-image-container" style={{ marginBottom: "24px" }}>
                             <img
                                 src={images[0]}
                                 alt={listing.title}
-                                style={{
-                                    width: "100%",
-                                    height: "500px",
-                                    objectFit: "cover",
-                                    borderRadius: "12px"
-                                }}
                             />
                         </div>
                     )}
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 400px", gap: "40px", marginBottom: "40px" }}>
+                    <div className="shared-listing-grid">
                         {/* Main Content */}
                         <div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                                <h1 style={{ fontSize: "32px", fontWeight: "bold", color: "var(--text, #ffffff)", margin: 0 }}>
+                            <div className="listing-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                                <h1 style={{ fontSize: "clamp(20px, 5vw, 32px)", fontWeight: "bold", color: "var(--text, #ffffff)", margin: 0, flex: "1 1 auto", minWidth: "200px" }}>
                                     {listing.title}
                                 </h1>
-                                <div style={{ display: "flex", gap: "8px", position: "relative" }}>
+                                <div className="listing-header-actions" style={{ display: "flex", gap: "8px", position: "relative", flexShrink: 0 }}>
                                     <button
                                         onClick={handleFavBtn}
                                         className="icon-btn"
@@ -532,8 +794,8 @@ export default function SharedListing({ listing: propListing }) {
                                 </div>
                             </div>
 
-                            <p style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                                <MapPin size={16} /> {locationStr}
+                            <p style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", fontSize: "clamp(14px, 3vw, 16px)", flexWrap: "wrap" }}>
+                                <MapPin size={16} style={{ flexShrink: 0 }} /> <span>{locationStr}</span>
                             </p>
 
                             {/* Map Viewer */}
@@ -549,13 +811,13 @@ export default function SharedListing({ listing: propListing }) {
                                 <div style={{ 
                                     background: "var(--primary-gradient, linear-gradient(135deg, #ff6b35 0%, #f7931e 100%))", 
                                     color: "var(--text, #ffffff)", 
-                                    padding: "8px 12px", 
+                                    padding: "clamp(6px, 1.5vw, 8px) clamp(10px, 2.5vw, 12px)", 
                                     borderRadius: "var(--radius-sm, 4px)", 
                                     marginTop: "8px", 
                                     marginBottom: "16px",
                                     display: "inline-block",
                                     fontWeight: "600",
-                                    fontSize: "0.9rem",
+                                    fontSize: "clamp(0.8rem, 2vw, 0.9rem)",
                                     boxShadow: "0 2px 8px rgba(255, 107, 53, 0.3)"
                                 }}>
                                     {listing.discountPercentage}% OFF
@@ -563,40 +825,40 @@ export default function SharedListing({ listing: propListing }) {
                                 </div>
                             )}
 
-                            <p style={{ color: "var(--text, #ffffff)", lineHeight: "1.6", marginBottom: "16px" }}>
+                            <p style={{ color: "var(--text, #ffffff)", lineHeight: "1.6", marginBottom: "16px", fontSize: "clamp(14px, 3vw, 16px)" }}>
                                 {listing.description}
                             </p>
 
                             {/* Amenities */}
                             {amenities.length > 0 && (
-                                <div style={{ marginBottom: "24px" }}>
-                                    <h3 style={{ fontSize: "20px", fontWeight: "600", marginBottom: "12px", color: "var(--text, #ffffff)" }}>
+                                <div style={{ marginBottom: "clamp(16px, 4vw, 24px)" }}>
+                                    <h3 style={{ fontSize: "clamp(18px, 4vw, 20px)", fontWeight: "600", marginBottom: "12px", color: "var(--text, #ffffff)" }}>
                                         Amenities
                                     </h3>
-                                    <ul style={{ listStyle: "none", padding: 0, display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "8px" }}>
+                                    <ul className="amenities-grid" style={{ listStyle: "none", padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px" }}>
                                         {amenities.map((item, i) => (
-                                            <li key={i} style={{ color: "var(--text, #ffffff)" }}>• {item}</li>
+                                            <li key={i} style={{ color: "var(--text, #ffffff)", fontSize: "clamp(14px, 3vw, 16px)", lineHeight: "1.5" }}>• {item}</li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
 
                             {/* Property Details */}
-                            <div style={{ display: "flex", gap: "24px", marginBottom: "24px", flexWrap: "wrap" }}>
+                            <div className="property-details" style={{ display: "flex", gap: "clamp(12px, 3vw, 24px)", marginBottom: "clamp(16px, 4vw, 24px)", flexWrap: "wrap" }}>
                                 {listing.maxGuests && (
-                                    <div>
+                                    <div style={{ fontSize: "clamp(14px, 3vw, 16px)" }}>
                                         <strong style={{ color: "var(--text, #ffffff)" }}>Max Guests:</strong>{" "}
                                         <span style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))" }}>{listing.maxGuests}</span>
                                     </div>
                                 )}
                                 {listing.bedrooms && (
-                                    <div>
+                                    <div style={{ fontSize: "clamp(14px, 3vw, 16px)" }}>
                                         <strong style={{ color: "var(--text, #ffffff)" }}>Bedrooms:</strong>{" "}
                                         <span style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))" }}>{listing.bedrooms}</span>
                                     </div>
                                 )}
                                 {listing.bathrooms && (
-                                    <div>
+                                    <div style={{ fontSize: "clamp(14px, 3vw, 16px)" }}>
                                         <strong style={{ color: "var(--text, #ffffff)" }}>Bathrooms:</strong>{" "}
                                         <span style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))" }}>{listing.bathrooms}</span>
                                     </div>
@@ -605,8 +867,8 @@ export default function SharedListing({ listing: propListing }) {
 
                             {/* Availability Calendar */}
                             {listing?.id && (
-                                <div style={{ marginTop: 24, marginBottom: 24 }}>
-                                    <h3 style={{ marginBottom: 12, fontSize: "1.1rem", fontWeight: 600, color: "var(--text, #ffffff)" }}>
+                                <div style={{ marginTop: "clamp(16px, 4vw, 24px)", marginBottom: "clamp(16px, 4vw, 24px)" }}>
+                                    <h3 style={{ marginBottom: 12, fontSize: "clamp(16px, 4vw, 1.1rem)", fontWeight: 600, color: "var(--text, #ffffff)" }}>
                                         Availability Calendar
                                     </h3>
                                     <AvailabilityCalendar 
@@ -615,12 +877,12 @@ export default function SharedListing({ listing: propListing }) {
                                         initialEndDate={endDate}
                                         onDateSelect={(dates) => {
                                             if (dates.start) {
-                                                setStartDate(dates.start.toISOString().split('T')[0]);
+                                                setStartDate(dates.start);
                                                 const { startDate: _, ...rest } = validationErrors;
                                                 setValidationErrors(rest);
                                             }
                                             if (dates.end) {
-                                                setEndDate(dates.end.toISOString().split('T')[0]);
+                                                setEndDate(dates.end);
                                                 const { endDate: _, ...rest } = validationErrors;
                                                 setValidationErrors(rest);
                                             }
@@ -630,20 +892,21 @@ export default function SharedListing({ listing: propListing }) {
                             )}
 
                             {/* Reviews Section */}
-                            <div style={{ marginTop: 40, paddingTop: 24, borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                                    <h3 style={{ margin: 0, color: "var(--text, #ffffff)" }}>Reviews</h3>
+                            <div style={{ marginTop: "clamp(24px, 5vw, 40px)", paddingTop: "clamp(16px, 4vw, 24px)", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: "12px" }}>
+                                    <h3 style={{ margin: 0, color: "var(--text, #ffffff)", fontSize: "clamp(18px, 4vw, 20px)" }}>Reviews</h3>
                                     {currentUser && (
                                         <button
                                             onClick={() => setShowReviewForm(true)}
                                             style={{
-                                                padding: "8px 16px",
+                                                padding: "clamp(8px, 2vw, 10px) clamp(12px, 3vw, 16px)",
                                                 background: "#007bff",
                                                 color: "#fff",
                                                 border: "none",
                                                 borderRadius: "4px",
                                                 cursor: "pointer",
-                                                fontSize: "14px"
+                                                fontSize: "clamp(12px, 3vw, 14px)",
+                                                minHeight: "44px"
                                             }}
                                         >
                                             Write a Review
@@ -655,21 +918,13 @@ export default function SharedListing({ listing: propListing }) {
                         </div>
 
                         {/* Booking Sidebar */}
-                        <div style={{
-                            position: "sticky",
-                            top: "20px",
-                            height: "fit-content",
-                            background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
-                            padding: "24px",
-                            borderRadius: "12px",
-                            border: "1px solid var(--border, rgba(255, 255, 255, 0.1))"
-                        }}>
+                        <div className="booking-sidebar">
                             <div style={{ marginBottom: "24px" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                                    <span style={{ fontSize: "24px", fontWeight: "bold", color: "var(--text, #ffffff)" }}>
+                                    <span className="price-display" style={{ fontSize: "clamp(20px, 5vw, 24px)", fontWeight: "bold", color: "var(--text, #ffffff)" }}>
                                         ₱{listing.price?.toLocaleString()}
                                     </span>
-                                    <span style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))" }}>
+                                    <span style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))", fontSize: "clamp(12px, 3vw, 14px)" }}>
                                         {listing.day_night || "/ night"}
                                     </span>
                                 </div>
@@ -699,6 +954,7 @@ export default function SharedListing({ listing: propListing }) {
                                             }
                                         }}
                                         min={new Date().toISOString().split('T')[0]}
+                                        className="booking-input"
                                         style={{ 
                                             width: "100%",
                                             padding: "10px",
@@ -727,6 +983,7 @@ export default function SharedListing({ listing: propListing }) {
                                             setValidationErrors(rest);
                                         }} 
                                         min={startDate || new Date().toISOString().split('T')[0]}
+                                        className="booking-input"
                                         style={{ 
                                             width: "100%",
                                             padding: "10px",
@@ -757,6 +1014,7 @@ export default function SharedListing({ listing: propListing }) {
                                             const { numGuests: _, ...rest } = validationErrors;
                                             setValidationErrors(rest);
                                         }}
+                                        className="booking-input"
                                         style={{ 
                                             width: "100%",
                                             padding: "10px",
@@ -782,6 +1040,7 @@ export default function SharedListing({ listing: propListing }) {
                                             placeholder="Enter code"
                                             value={couponCode}
                                             onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            className="booking-input"
                                             style={{ 
                                                 flex: 1,
                                                 padding: "10px",
@@ -811,13 +1070,16 @@ export default function SharedListing({ listing: propListing }) {
                                             }}
                                             disabled={!startDate || !endDate}
                                             style={{
-                                                padding: "10px 16px",
+                                                padding: "clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px)",
                                                 background: "var(--primary-gradient)",
                                                 color: "#fff",
                                                 border: "none",
                                                 borderRadius: "8px",
                                                 cursor: "pointer",
-                                                fontWeight: "500"
+                                                fontWeight: "500",
+                                                fontSize: "clamp(12px, 3vw, 14px)",
+                                                minHeight: "44px",
+                                                whiteSpace: "nowrap"
                                             }}
                                         >
                                             Apply
@@ -828,7 +1090,7 @@ export default function SharedListing({ listing: propListing }) {
 
                             {/* Price breakdown */}
                             {startDate && endDate && listing.price && (
-                                <div style={{ 
+                                <div className="price-breakdown" style={{ 
                                     border: "1px solid var(--border, rgba(255, 255, 255, 0.1))", 
                                     padding: "12px", 
                                     borderRadius: "var(--radius-md, 8px)", 
@@ -836,7 +1098,7 @@ export default function SharedListing({ listing: propListing }) {
                                     color: "var(--text, #ffffff)",
                                     marginBottom: "16px"
                                 }}>
-                                    <h4 style={{ margin: "0 0 12px 0", color: "var(--text, #ffffff)", fontSize: "1.1rem", fontWeight: "600" }}>
+                                    <h4 style={{ margin: "0 0 12px 0", color: "var(--text, #ffffff)", fontSize: "clamp(16px, 4vw, 1.1rem)", fontWeight: "600" }}>
                                         Price Breakdown
                                     </h4>
                                     {(() => {
@@ -893,10 +1155,10 @@ export default function SharedListing({ listing: propListing }) {
 
                             {/* Payment Method Selection */}
                             {startDate && endDate && listing.price && (
-                                <div style={{ marginBottom: 16, padding: 12, border: "1px solid var(--border, rgba(255, 255, 255, 0.1))", borderRadius: 8 }}>
-                                    <h4 style={{ marginBottom: 12, color: "var(--text, #ffffff)" }}>Payment Method</h4>
+                                <div style={{ marginBottom: 16, padding: "clamp(10px, 2vw, 12px)", border: "1px solid var(--border, rgba(255, 255, 255, 0.1))", borderRadius: 8 }}>
+                                    <h4 style={{ marginBottom: 12, color: "var(--text, #ffffff)", fontSize: "clamp(14px, 3vw, 16px)" }}>Payment Method</h4>
                                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                                        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text, #ffffff)" }}>
+                                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text, #ffffff)", fontSize: "clamp(14px, 3vw, 16px)", minHeight: "44px", padding: "4px 0" }}>
                                             <input
                                                 type="radio"
                                                 name="paymentMethod"
@@ -907,10 +1169,11 @@ export default function SharedListing({ listing: propListing }) {
                                                     const { balance: _, ...rest } = validationErrors;
                                                     setValidationErrors(rest);
                                                 }}
+                                                style={{ width: "18px", height: "18px", cursor: "pointer" }}
                                             />
                                             <span>E-Wallet (Balance: ₱{balance.toLocaleString()})</span>
                                         </label>
-                                        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text, #ffffff)" }}>
+                                        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", color: "var(--text, #ffffff)", fontSize: "clamp(14px, 3vw, 16px)", minHeight: "44px", padding: "4px 0" }}>
                                             <input
                                                 type="radio"
                                                 name="paymentMethod"
@@ -921,6 +1184,7 @@ export default function SharedListing({ listing: propListing }) {
                                                     const { balance: _, ...rest } = validationErrors;
                                                     setValidationErrors(rest);
                                                 }}
+                                                style={{ width: "18px", height: "18px", cursor: "pointer" }}
                                             />
                                             <span>PayPal</span>
                                         </label>
@@ -1138,6 +1402,83 @@ export default function SharedListing({ listing: propListing }) {
                             )}
                         </div>
                     </div>
+
+                    {/* Suggested Listings Section */}
+                    {suggestedListings.length > 0 && (
+                        <div style={{ marginTop: "60px", paddingTop: "40px", borderTop: "1px solid rgba(255, 255, 255, 0.1)" }}>
+                            <h2 style={{ 
+                                fontSize: "clamp(24px, 5vw, 32px)", 
+                                fontWeight: "bold", 
+                                color: "var(--text, #ffffff)", 
+                                marginBottom: "24px" 
+                            }}>
+                                Suggested {listing.category === "properties" ? "Properties" : listing.category === "services" ? "Services" : "Experiences"}
+                            </h2>
+                            {loadingSuggestions ? (
+                                <p style={{ color: "var(--text-muted, rgba(255, 255, 255, 0.7))", textAlign: "center", padding: "40px" }}>
+                                    Loading suggestions...
+                                </p>
+                            ) : (
+                                <div className="destinations-grid" style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                                    gap: "24px",
+                                    marginTop: "24px"
+                                }}>
+                                    {suggestedListings.map((suggested) => (
+                                        <div 
+                                            key={suggested.id} 
+                                            className="destination-card"
+                                            onClick={() => {
+                                                const category = suggested.category || "properties";
+                                                navigate(`/listing/${category}/${suggested.id}`);
+                                            }}
+                                            style={{ cursor: "pointer" }}
+                                        >
+                                            <div className="destination-image">
+                                                {suggested.images && suggested.images.length > 0 ? (
+                                                    <img
+                                                        src={suggested.images[0]}
+                                                        alt={suggested.title}
+                                                        className="property-img"
+                                                    />
+                                                ) : (
+                                                    <div className="no-image">No Image</div>
+                                                )}
+                                            </div>
+                                            <div className="destination-content">
+                                                <div className="destination-header">
+                                                    <h3 className="destination-name">{suggested.title}</h3>
+                                                    <span className="destination-price">
+                                                        ₱{suggested.price?.toLocaleString()} {suggested.day_night || (suggested.category === "services" ? "/ Head" : "/ night")}
+                                                    </span>
+                                                </div>
+                                                <p className="destination-location">
+                                                    <MapPin size={14} /> {suggested.location?.address || suggested.location || "Location not specified"}
+                                                </p>
+                                                <div className="destination-footer">
+                                                    <div className="rating">
+                                                        <Star size={16} fill="#fbbf24" color="#fbbf24" />
+                                                        <span>4.8</span>
+                                                    </div>
+                                                    <button
+                                                        className="explore-btn"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const category = suggested.category || "properties";
+                                                            navigate(`/listing/${category}/${suggested.id}`);
+                                                        }}
+                                                    >
+                                                        Explore
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

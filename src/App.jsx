@@ -13,7 +13,7 @@ import HostBooking from './components/hostFolder/HostBooking';
 import Earnings from './components/hostFolder/Earnings';
 import FavPage from './components/UserFolder/FavPage';
 import SuggestionsPage from './components/UserFolder/SuggestionsPage';
-import Rewards from './components/UserFolder/Rewards';
+// import Rewards from './components/UserFolder/Rewards';
 import PointsHistory from './components/UserFolder/PointsHistory';
 import MyBooking from './components/UserFolder/MyBooking';
 import WalletPage from './components/UserFolder/WalletPage';
@@ -42,7 +42,7 @@ function App() {
                 <Route path="/HostEarnings" element={<Earnings/>}/>
                 <Route path="/FavPage" element={<FavPage/>}/>
                 <Route path="/SuggestionsPage" element={<SuggestionsPage/>}/>
-                <Route path="/Rewards" element={<Rewards/>}/>
+                {/* <Route path="/Rewards" element={<Rewards/>}/> */}
                 <Route path="/PointsHistory" element={<PointsHistory/>}/>
                 <Route path="/MyBooking" element={<MyBooking/>}/>
                 <Route path="/WalletPage" element={<WalletPage/>}/>
