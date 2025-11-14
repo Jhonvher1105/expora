@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, MessageCircle } from "lucide-react";
+import { Search, MapPin, Calendar, Star, Heart, X, Share2, Users, MessageCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
 
@@ -65,6 +65,8 @@ function Body() {
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
     const { openChat } = useChat();
     const [serviceFee, setServiceFee] = useState(0);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [lightboxImageIndex, setLightboxImageIndex] = useState(null);
 
     // Auto-check availability when dates change
     useEffect(() => {
@@ -92,6 +94,45 @@ function Body() {
 
         return () => clearTimeout(timeoutId);
     }, [startDate, endDate, selectedDest?.id, checkAvailability]);
+
+    // Reset image index when selectedDest changes
+    useEffect(() => {
+        if (selectedDest?.images && selectedDest.images.length > 0) {
+            setSelectedImageIndex(0);
+            setLightboxImageIndex(null);
+        }
+    }, [selectedDest?.id]);
+
+    // Keyboard navigation for lightbox
+    useEffect(() => {
+        if (lightboxImageIndex === null) return;
+
+        const handleKeyDown = (e) => {
+            if (!selectedDest?.images || selectedDest.images.length === 0) return;
+
+            const displayImages = selectedDest.images.slice(0, Math.min(5, selectedDest.images.length));
+
+            if (e.key === "Escape") {
+                setLightboxImageIndex(null);
+            } else if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                setLightboxImageIndex((prev) => {
+                    if (prev === null) return null;
+                    return prev > 0 ? prev - 1 : displayImages.length - 1;
+                });
+            } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                setLightboxImageIndex((prev) => {
+                    if (prev === null) return null;
+                    return prev < displayImages.length - 1 ? prev + 1 : 0;
+                });
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [lightboxImageIndex, selectedDest?.images]);
+
     const { awardPoints } = usePoints();
     // Validation functions
     const validateBookingForm = () => {
@@ -912,13 +953,88 @@ function Body() {
                                 <X />
                             </button>
                             <div className="modal-content">
-                                {selectedDest.images && selectedDest.images.length > 0 && (
-                                    <img
-                                        src={selectedDest.images[0]}
-                                        alt={selectedDest.title}
-                                        className="w-60 h-60 object-cover rounded-xl"
-                                    />
-                                )}
+                                {/* Image Gallery Section */}
+                                {selectedDest.images && selectedDest.images.length > 0 && (() => {
+                                    const displayImages = selectedDest.images.slice(0, Math.min(5, selectedDest.images.length));
+                                    return (
+                                        <div style={{ marginBottom: "24px" }}>
+                                            {/* Main Image */}
+                                            <div
+                                                onClick={() => setLightboxImageIndex(selectedImageIndex)}
+                                                style={{
+                                                    cursor: "pointer",
+                                                    borderRadius: "12px",
+                                                    overflow: "hidden",
+                                                    marginBottom: "12px",
+                                                    transition: "transform 0.2s"
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = "scale(1.02)";
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = "scale(1)";
+                                                }}
+                                            >
+                                                <img
+                                                    src={selectedDest.images[selectedImageIndex]}
+                                                    alt={selectedDest.title}
+                                                    className="w-60 h-60 object-cover rounded-xl"
+                                                    style={{
+                                                        width: "100%",
+                                                        display: "block"
+                                                    }}
+                                                />
+                                            </div>
+
+                                            {/* Thumbnail Grid */}
+                                            {displayImages.length > 1 && (
+                                                <div style={{
+                                                    display: "grid",
+                                                    gridTemplateColumns: `repeat(${Math.min(displayImages.length, 5)}, 1fr)`,
+                                                    gap: "8px"
+                                                }}>
+                                                    {displayImages.map((image, index) => (
+                                                        <div
+                                                            key={index}
+                                                            onClick={() => {
+                                                                setSelectedImageIndex(index);
+                                                            }}
+                                                            style={{
+                                                                aspectRatio: "1",
+                                                                borderRadius: "8px",
+                                                                overflow: "hidden",
+                                                                cursor: "pointer",
+                                                                border: `2px solid ${selectedImageIndex === index ? "var(--primary, #ff6b35)" : "rgba(255, 255, 255, 0.1)"}`,
+                                                                transition: "transform 0.2s, border-color 0.2s",
+                                                                opacity: selectedImageIndex === index ? 1 : 0.8
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.transform = "scale(1.05)";
+                                                                e.currentTarget.style.borderColor = "var(--primary, #ff6b35)";
+                                                                e.currentTarget.style.opacity = "1";
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.transform = "scale(1)";
+                                                                e.currentTarget.style.borderColor = selectedImageIndex === index ? "var(--primary, #ff6b35)" : "rgba(255, 255, 255, 0.1)";
+                                                                e.currentTarget.style.opacity = selectedImageIndex === index ? "1" : "0.8";
+                                                            }}
+                                                        >
+                                                            <img
+                                                                src={image}
+                                                                alt={`Property image ${index + 1}`}
+                                                                style={{
+                                                                    width: "100%",
+                                                                    height: "100%",
+                                                                    objectFit: "cover"
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
                                 <div className="modal-body">
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -1498,6 +1614,178 @@ function Body() {
                         </div>
                     </div>
                 )}
+
+                {/* Image Lightbox Modal */}
+                {lightboxImageIndex !== null && selectedDest?.images && selectedDest.images.length > 0 && (() => {
+                    const displayImages = selectedDest.images.slice(0, Math.min(5, selectedDest.images.length));
+                    const currentImage = displayImages[lightboxImageIndex];
+                    
+                    const handlePrev = (e) => {
+                        e.stopPropagation();
+                        setLightboxImageIndex((prev) => {
+                            if (prev === null) return null;
+                            return prev > 0 ? prev - 1 : displayImages.length - 1;
+                        });
+                    };
+
+                    const handleNext = (e) => {
+                        e.stopPropagation();
+                        setLightboxImageIndex((prev) => {
+                            if (prev === null) return null;
+                            return prev < displayImages.length - 1 ? prev + 1 : 0;
+                        });
+                    };
+
+                    return (
+                        <div
+                            style={{
+                                position: "fixed",
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: "rgba(0, 0, 0, 0.95)",
+                                zIndex: 10001,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "20px"
+                            }}
+                            onClick={() => setLightboxImageIndex(null)}
+                        >
+                            {/* Close Button */}
+                            <button
+                                onClick={() => setLightboxImageIndex(null)}
+                                style={{
+                                    position: "absolute",
+                                    top: "20px",
+                                    right: "20px",
+                                    background: "rgba(255, 255, 255, 0.1)",
+                                    border: "none",
+                                    borderRadius: "50%",
+                                    width: "40px",
+                                    height: "40px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    color: "white",
+                                    zIndex: 10002,
+                                    transition: "background 0.2s"
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+                                }}
+                            >
+                                <X size={24} />
+                            </button>
+
+                            {/* Previous Button */}
+                            {displayImages.length > 1 && (
+                                <button
+                                    onClick={handlePrev}
+                                    style={{
+                                        position: "absolute",
+                                        left: "20px",
+                                        top: "50%",
+                                        transform: "translateY(-50%)",
+                                        background: "rgba(255, 255, 255, 0.1)",
+                                        border: "none",
+                                        borderRadius: "50%",
+                                        width: "50px",
+                                        height: "50px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        cursor: "pointer",
+                                        color: "white",
+                                        zIndex: 10002,
+                                        transition: "background 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+                                    }}
+                                >
+                                    <ChevronLeft size={28} />
+                                </button>
+                            )}
+
+                            {/* Next Button */}
+                            {displayImages.length > 1 && (
+                                <button
+                                    onClick={handleNext}
+                                    style={{
+                                        position: "absolute",
+                                        right: "20px",
+                                        top: "50%",
+                                        transform: "translateY(-50%)",
+                                        background: "rgba(255, 255, 255, 0.1)",
+                                        border: "none",
+                                        borderRadius: "50%",
+                                        width: "50px",
+                                        height: "50px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        cursor: "pointer",
+                                        color: "white",
+                                        zIndex: 10002,
+                                        transition: "background 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.2)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+                                    }}
+                                >
+                                    <ChevronRight size={28} />
+                                </button>
+                            )}
+
+                            {/* Image */}
+                            <img
+                                src={currentImage}
+                                alt={`Property image ${lightboxImageIndex + 1}`}
+                                style={{
+                                    maxWidth: "90%",
+                                    maxHeight: "90%",
+                                    objectFit: "contain",
+                                    borderRadius: "8px",
+                                    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.5)"
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+
+                            {/* Image Counter */}
+                            {displayImages.length > 1 && (
+                                <div
+                                    style={{
+                                        position: "absolute",
+                                        bottom: "20px",
+                                        left: "50%",
+                                        transform: "translateX(-50%)",
+                                        background: "rgba(0, 0, 0, 0.6)",
+                                        color: "white",
+                                        padding: "8px 16px",
+                                        borderRadius: "20px",
+                                        fontSize: "14px",
+                                        zIndex: 10002
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {lightboxImageIndex + 1} / {displayImages.length}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* Chat Modal - Rendered in body */}

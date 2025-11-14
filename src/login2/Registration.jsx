@@ -440,170 +440,199 @@ function Registration() {
             </div>
 
             <form className="form-scroll" onSubmit={handleProfileSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="firstName">First Name *</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    placeholder="First name"
-                    className="form-input"
-                    required
-                  />
-                </div>
+              {/* Personal Information Section */}
+              <div className="form-section">
+                <h3 className="section-title">Personal Information</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="firstName">First Name *</label>
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      placeholder="First name"
+                      className="form-input"
+                      required
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="middleName">Middle Name</label>
-                  <input
-                    type="text"
-                    name="middleName"
-                    value={formData.middleName}
-                    onChange={handleInputChange}
-                    placeholder="Middle name"
-                    className="form-input"
-                  />
-                </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="middleName">Middle Name</label>
+                    <input
+                      type="text"
+                      name="middleName"
+                      value={formData.middleName}
+                      onChange={handleInputChange}
+                      placeholder="Middle name"
+                      className="form-input"
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="lastName">Last Name</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    placeholder="Last name"
-                    className="form-input"
-                  />
-                </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="lastName">Last Name</label>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      placeholder="Last name"
+                      className="form-input"
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label className="form-label" htmlFor="dateOfBirth">Birthday</label>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="dateOfBirth">Birthday</label>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={formData.dateOfBirth}
+                      onChange={handleInputChange}
+                      className="form-input"
+                    />
+                  </div>
                 </div>
-
-                <div className="form-group full-width">
-                  <fieldset className="radioGender">
-                    <legend>Gender identity:</legend>
-                    <div>
-                      <input
-                        type="radio"
-                        id="gender-female"
-                        name="gender"
-                        value="Female"
-                        checked={gender === 'Female'}
-                        onChange={handleGenderChange}
-                      />
-                      <label htmlFor="gender-female">Female</label>
-                    </div>
-                    <div>
-                      <input
-                        type="radio"
-                        id="gender-male"
-                        name="gender"
-                        value="Male"
-                        checked={gender === 'Male'}
-                        onChange={handleGenderChange}
-                      />
-                      <label htmlFor="gender-male">Male</label>
-                    </div>
-                    <div>
-                      <input
-                        type="radio"
-                        id="gender-nonbinary"
-                        name="gender"
-                        value="Non-binary"
-                        checked={gender === 'Non-binary'}
-                        onChange={handleGenderChange}
-                      />
-                      <label htmlFor="gender-nonbinary">Non-binary</label>
-                    </div>
-                    <div>
-                      <input
-                        type="radio"
-                        id="gender-other"
-                        name="gender"
-                        value="other"
-                        checked={gender === 'other'}
-                        onChange={handleGenderChange}
-                      />
-                      <label htmlFor="gender-other">Other:</label>
-                      <input
-                        type="text"
-                        value={otherInput}
-                        onChange={handleOtherInputChange}
-                        disabled={gender !== 'other'}
-                      />
-                    </div>
-                  </fieldset>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="houseNumber">House Number</label>
-                  <input
-                    type="number"
-                    name="houseNumber"
-                    value={formData.houseNumber}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="city">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="state">State</label>
-                  <input
-                    type="text"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
-                
-                <div className="form-group">
-                  <label className="form-label" htmlFor="zipcode">Zipcode</label>
-                  <input
-                    type="text"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    placeholder="12345"
-                    className="form-input"
-                    maxLength={10}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="phoneNumber">Phone Number</label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleInputChange}
-                    placeholder="+1 (555) 123-4567"
-                    className="form-input"
-                  />
-                </div>
-
               </div>
+
+              {/* Gender Identity Section */}
+              <div className="form-section">
+                <h3 className="section-title">Gender Identity</h3>
+                <div className="form-group full-width">
+                  <div className="radioGender">
+                    <div className="gender-options">
+                      <div className="gender-option">
+                        <input
+                          type="radio"
+                          id="gender-female"
+                          name="gender"
+                          value="Female"
+                          checked={gender === 'Female'}
+                          onChange={handleGenderChange}
+                        />
+                        <label htmlFor="gender-female">Female</label>
+                      </div>
+                      <div className="gender-option">
+                        <input
+                          type="radio"
+                          id="gender-male"
+                          name="gender"
+                          value="Male"
+                          checked={gender === 'Male'}
+                          onChange={handleGenderChange}
+                        />
+                        <label htmlFor="gender-male">Male</label>
+                      </div>
+                      <div className="gender-option">
+                        <input
+                          type="radio"
+                          id="gender-nonbinary"
+                          name="gender"
+                          value="Non-binary"
+                          checked={gender === 'Non-binary'}
+                          onChange={handleGenderChange}
+                        />
+                        <label htmlFor="gender-nonbinary">Non-binary</label>
+                      </div>
+                      <div className="gender-option">
+                        <input
+                          type="radio"
+                          id="gender-other"
+                          name="gender"
+                          value="other"
+                          checked={gender === 'other'}
+                          onChange={handleGenderChange}
+                        />
+                        <label htmlFor="gender-other">Other</label>
+                      </div>
+                    </div>
+                    {gender === 'other' && (
+                      <div className="other-input-wrapper">
+                        <input
+                          type="text"
+                          value={otherInput}
+                          onChange={handleOtherInputChange}
+                          placeholder="Please specify"
+                          className="form-input"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Information Section */}
+              <div className="form-section">
+                <h3 className="section-title">Address Information</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="houseNumber">House Number</label>
+                    <input
+                      type="number"
+                      name="houseNumber"
+                      value={formData.houseNumber}
+                      onChange={handleInputChange}
+                      placeholder="123"
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="city">City</label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      placeholder="City"
+                      className="form-input"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="state">State</label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      placeholder="State"
+                      className="form-input"
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="zipcode">Zipcode</label>
+                    <input
+                      type="text"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleInputChange}
+                      placeholder="12345"
+                      className="form-input"
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information Section */}
+              <div className="form-section">
+                <h3 className="section-title">Contact Information</h3>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="phoneNumber">Phone Number</label>
+                    <input
+                      type="tel"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={handleInputChange}
+                      placeholder="+1 (555) 123-4567"
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <button type="submit" className="submit-btn" disabled={isLoading}>
                 {isLoading ? "Processing..." : "Next"}
               </button>

@@ -229,7 +229,7 @@ body {
     background-color: rgba(17, 24, 39, 0.7);
     border-radius: 16px;
     padding: 40px;
-    max-width: 600px;
+    max-width: 1200px;
     box-shadow: 0 10px 40px rgba(2,6,23,0.6);
     box-sizing: border-box;
     position: relative;
@@ -507,40 +507,81 @@ body {
     background: linear-gradient(135deg, #e55a2b 0%, #e68108 100%);
 }
 
+/* Form Sections */
+.form-section {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 24px;
+}
+
+.section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 20px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    border-radius: 2px;
+}
+
 /* Radio Gender Selection */
 .radioGender {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    background-color: #fafafa;
+    gap: 16px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.06);
     transition: all 0.3s ease;
+    color: #ffffff;
 }
 
 .radioGender:focus-within {
-    border-color: #ff6b35;
-    background-color: #fff;
+    border-color: rgba(255, 107, 53, 0.3);
+    background-color: rgba(255, 255, 255, 0.04);
     box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
-.radioGender legend {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.gender-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
-.radioGender > div {
+.gender-option {
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.radioGender input[type="radio"] {
+.gender-option:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 107, 53, 0.3);
+}
+
+.gender-option input[type="radio"] {
     width: 18px;
     height: 18px;
     margin: 0;
@@ -548,21 +589,44 @@ body {
     accent-color: #ff6b35;
 }
 
-.radioGender label {
-    margin: 0;
-    font-size: 14px;
-    font-weight: normal;
-    cursor: pointer;
-    color: #333;
+.gender-option input[type="radio"]:checked + label {
+    color: #ff6b35 !important;
 }
 
-.radioGender input[type="text"] {
-    flex: 1;
-    margin-left: 8px;
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
+.gender-option input[type="radio"]:checked {
+    accent-color: #ff6b35;
+}
+
+.gender-option:has(input[type="radio"]:checked) {
+    border-color: rgba(255, 107, 53, 0.4);
+    background-color: rgba(255, 107, 53, 0.1);
+}
+
+/* Fallback for browsers that don't support :has() */
+.gender-option input[type="radio"]:checked ~ label {
+    color: #ff6b35;
+}
+
+.gender-option label {
+    margin: 0;
     font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    color: #ffffff !important;
+    flex: 1;
+    transition: color 0.3s ease;
+    display: block;
+}
+
+.other-input-wrapper {
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    animation: slideDown 0.3s ease-out;
+}
+
+.other-input-wrapper .form-input {
+    margin-top: 0;
 }
 
 /* Password Input */
@@ -805,6 +869,26 @@ body {
     }
 }
 
+@media (min-width: 1024px) {
+    .form-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (min-width: 1400px) {
+    .form-row {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+}
+
 @media (max-width: 768px) {
     .registration-container {
         padding: 16px;
@@ -859,8 +943,27 @@ body {
         font-size: 11px;
     }
 
+    .form-section {
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+    }
+
+    .section-title {
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
     .radioGender {
-        padding: 12px;
+        padding: 16px;
+    }
+
+    .gender-options {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .gender-option {
+        padding: 10px 14px;
     }
 }
 
@@ -918,6 +1021,24 @@ body {
     .img-login-logo {
         width: 36px;
         height: 36px;
+    }
+
+    .form-section {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        margin-bottom: 14px;
+    }
+
+    .radioGender {
+        padding: 12px;
+    }
+
+    .gender-option {
+        padding: 8px 12px;
     }
 }
 
