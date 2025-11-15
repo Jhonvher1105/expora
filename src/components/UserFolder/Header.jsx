@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, User, Menu, Copy, MessageCircleMore, Settings, Heart, Ticket, Lightbulb, HelpCircle, LogOut, Home, ChevronRight, UserCircle, Building2, Sparkles } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Bell, User, Menu, Copy, MessageCircleMore, Settings, Heart, Ticket, Lightbulb, HelpCircle, LogOut, Home, ChevronRight, UserCircle, Building2, Sparkles, Bookmark, X } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
@@ -13,6 +14,8 @@ import {
     addDoc,
     doc,
     updateDoc,
+    getDoc,
+    setDoc,
 } from "firebase/firestore";
 
 import logo from "../pic/logo.png";
@@ -29,11 +32,16 @@ function Header() {
     const [userMenuOpen, setUserMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [isHost, setIsHost] = useState(false);
 
     // Coupon state
     const [showCoupon, setCoupon] = useState(false);
     const [voucher, setVoucher] = useState(null);
     const [copied, setCopied] = useState(false);
+
+    // Wishlist preferences state
+    const [showWishlistPreferences, setShowWishlistPreferences] = useState(false);
+    const [preferences, setPreferences] = useState("");
 
     const [showHostForm, setShowForm] = useState(false);
     const userMenuRef = useRef(null);
@@ -45,6 +53,35 @@ function Header() {
         const unsub = onAuthStateChanged(auth, (users) => setCurrentUser(users));
         return unsub;
     }, []);
+
+    // ---------------------------
+    // 🔹 CHECK IF USER IS HOST
+    // ---------------------------
+    useEffect(() => {
+        const checkHostRole = async () => {
+            if (!currentUser) {
+                setIsHost(false);
+                return;
+            }
+
+            try {
+                const userRef = doc(db, "users", currentUser.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    const userData = userSnap.data();
+                    setIsHost(userData.role === "host" || userData.accType === "host");
+                } else {
+                    setIsHost(false);
+                }
+            } catch (error) {
+                console.error("Error checking host role:", error);
+                setIsHost(false);
+            }
+        };
+
+        checkHostRole();
+    }, [currentUser]);
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -174,6 +211,51 @@ function Header() {
         setUserMenuOpen(false);
     };
 
+    const openWishlist = () => {
+        setUserMenuOpen(false);
+        setShowWishlistPreferences(true);
+    };
+
+    const handleSavePreferences = async () => {
+        if (!currentUser) {
+            alert("Please log in to save your preferences.");
+            navigate("/LogIn", { state: { from: location.pathname } });
+            return;
+        }
+
+        // If preferences are empty, just close the modal
+        if (!preferences.trim()) {
+            setShowWishlistPreferences(false);
+            setPreferences("");
+            return;
+        }
+
+        try {
+            // Save preferences to Firestore
+            const userRef = doc(db, "users", currentUser.uid);
+            const userSnap = await getDoc(userRef);
+            
+            if (userSnap.exists()) {
+                await updateDoc(userRef, {
+                    wishlistPreferences: preferences.trim(),
+                    preferencesUpdatedAt: serverTimestamp(),
+                });
+            } else {
+                // Create user document if it doesn't exist
+                await setDoc(userRef, {
+                    wishlistPreferences: preferences.trim(),
+                    preferencesUpdatedAt: serverTimestamp(),
+                });
+            }
+
+            setShowWishlistPreferences(false);
+            setPreferences("");
+        } catch (error) {
+            console.error("Error saving preferences:", error);
+            alert("Failed to save preferences. Please try again.");
+        }
+    };
+
     const handleBecomeHost = async (e) => {
         e.preventDefault();
         if (!currentUser) {
@@ -186,8 +268,8 @@ function Header() {
             const userRef = doc(db, "users", currentUser.uid);
             await updateDoc(userRef, {
                 role: "host",
-                accType: "host",
             });
+            console.log("User role updated to host");
             setUserMenuOpen(false);
             navigate("/HostPage");
         } catch (error) {
@@ -329,6 +411,16 @@ function Header() {
                                         <span>Suggestions</span>
                                         <ChevronRight size={16} className="menu-arrow" />
                                     </button>
+                                    <button 
+                                        className="user-menu-item" 
+                                        onClick={() => { openWishlist(); setUserMenuOpen(false); }}
+                                        type="button" 
+                                        role="menuitem"
+                                    >
+                                        <Bookmark size={18} />
+                                        <span>Wishlist</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
                                 </div>
                                 
                                 <div className="user-menu-divider" />
@@ -375,14 +467,124 @@ function Header() {
                 </div>
             )}
 
-            {showLogoutConfirm && (
-                <div className="modal-overlay">
-                    <div className="modal">
-                        <h3>Confirm Logout</h3>
-                        <button onClick={handleLogout}>Yes</button>
-                        <button onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+            {showLogoutConfirm && createPortal(
+                <div className="modal-overlay logout-modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+                    <div className="modal logout-modal" onClick={e => e.stopPropagation()}>
+                        <div className="logout-modal-content">
+                            <div className="logout-modal-icon">
+                                <LogOut size={48} />
+                            </div>
+                            <h3 className="logout-modal-title">Confirm Logout</h3>
+                            <p className="logout-modal-message">Are you sure you want to log out? You'll need to sign in again to access your account.</p>
+                            <div className="logout-modal-buttons">
+                                <button 
+                                    className="logout-confirm-btn" 
+                                    onClick={handleLogout}
+                                >
+                                    Yes, Log Out
+                                </button>
+                                <button 
+                                    className="logout-cancel-btn"
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </div>,
+                document.body
+            )}
+
+            {showWishlistPreferences && createPortal(
+                <div className="modal-overlay logout-modal-overlay" onClick={() => { setShowWishlistPreferences(false); setPreferences(""); }}>
+                    <div className="modal logout-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: "600px" }}>
+                        <div className="logout-modal-content">
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                                <div className="logout-modal-icon" style={{ marginBottom: "0" }}>
+                                    <Bookmark size={48} />
+                                </div>
+                                <button
+                                    onClick={() => { setShowWishlistPreferences(false); setPreferences(""); }}
+                                    style={{
+                                        background: "rgba(255, 255, 255, 0.1)",
+                                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                                        borderRadius: "50%",
+                                        width: "36px",
+                                        height: "36px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        cursor: "pointer",
+                                        color: "#ffffff",
+                                        transition: "all 0.2s ease"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.background = "rgba(255, 255, 255, 0.2)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                                    }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <h3 className="logout-modal-title">What do you like?</h3>
+                            <p className="logout-modal-message" style={{ marginBottom: "20px" }}>
+                                Tell us about your preferences, interests, or things you'd like to add to your wishlist. 
+                                This helps us personalize your experience!
+                            </p>
+                            <textarea
+                                value={preferences}
+                                onChange={(e) => setPreferences(e.target.value)}
+                                placeholder="For example: Beach destinations, mountain hikes, luxury hotels, adventure activities, spa treatments, local cuisine..."
+                                style={{
+                                    width: "100%",
+                                    minHeight: "150px",
+                                    padding: "12px",
+                                    borderRadius: "8px",
+                                    background: "rgba(255, 255, 255, 0.05)",
+                                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                                    color: "#ffffff",
+                                    fontSize: "14px",
+                                    fontFamily: "inherit",
+                                    resize: "vertical",
+                                    marginBottom: "20px",
+                                    outline: "none",
+                                    transition: "all 0.2s ease"
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.border = "1px solid rgba(255, 107, 53, 0.5)";
+                                    e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.border = "1px solid rgba(255, 255, 255, 0.2)";
+                                    e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                                }}
+                            />
+                            <div className="logout-modal-buttons" style={{ display: "flex", gap: "12px" }}>
+                                <button 
+                                    className="logout-confirm-btn" 
+                                    onClick={handleSavePreferences}
+                                    style={{ flex: 1 }}
+                                >
+                                    Save Preferences
+                                </button>
+                                <button 
+                                    className="logout-cancel-btn"
+                                    onClick={() => { 
+                                        setShowWishlistPreferences(false); 
+                                        setPreferences("");
+                                    }}
+                                    style={{ flex: 1 }}
+                                >
+                                    Skip
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </header>
     );

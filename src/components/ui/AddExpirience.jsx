@@ -77,10 +77,32 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
         hostInfo: "",
     });
 
-    // 🔹 Listen to auth changes
+    // 🔹 Listen to auth changes and load draft
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+            // Load draft if exists
+            if (user) {
+                const draftKey = `experience_draft_${user.uid}`;
+                const saved = localStorage.getItem(draftKey);
+                if (saved) {
+                    try {
+                        const draft = JSON.parse(saved);
+                        // Note: Images can't be restored from localStorage (File objects)
+                        if (draft.hasDraft) {
+                            const restore = window.confirm("You have a saved draft. Would you like to restore it?");
+                            if (restore) {
+                                setFormData(draft.formData);
+                                setCurrentStep(draft.currentStep || 1);
+                            } else {
+                                localStorage.removeItem(draftKey);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to load draft:", e);
+                    }
+                }
+            }
         });
         return unsubscribe;
     }, []);
@@ -210,6 +232,22 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
         setStepErrors({});
     };
 
+    // 🔹 Save Draft
+    const saveDraft = () => {
+        if (!currentUser) {
+            alert("Please sign in to save draft.");
+            return;
+        }
+        const draftKey = `experience_draft_${currentUser.uid}`;
+        localStorage.setItem(draftKey, JSON.stringify({
+            formData,
+            currentStep,
+            hasDraft: true,
+            savedAt: new Date().toISOString(),
+        }));
+        alert("Draft saved! You can continue later.");
+    };
+
     // 🔹 Submit Form
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -250,6 +288,12 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
 
             await addDoc(collection(db, "experiences"), finalData);
             console.log("✅ Experience saved:", finalData);
+
+            // Clear draft after successful submission
+            if (currentUser) {
+                const draftKey = `experience_draft_${currentUser.uid}`;
+                localStorage.removeItem(draftKey);
+            }
 
             if (onExperienceCreated) onExperienceCreated(finalData);
             if (onClose) onClose();
@@ -771,6 +815,14 @@ export default function AddExperience({ onExperienceCreated, onClose }) {
                             >
                                 <ArrowLeft size={18} style={{ marginRight: "8px" }} />
                                 {currentStep === 1 ? "Cancel" : "Back"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={saveDraft}
+                                className="host-form-draft-btn"
+                            >
+                                Save Draft
                             </button>
 
                             {currentStep < STEPS.length ? (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin, Calendar, Users, DollarSign, X, CheckCircle, Clock, XCircle, User, Mail, Phone } from "lucide-react";
+import { MapPin, Calendar, Users, DollarSign, X, CheckCircle, Clock, XCircle, User, Mail, Phone, Loader2 } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Hheader";
 import Footer from "../generalFile/Footer";
@@ -13,6 +13,8 @@ function HostBooking() {
     const [loading, setLoading] = useState(true);
     const [selectedTab, setSelectedTab] = useState("all"); // "all", "pending", "confirmed", "cancelled"
     const [guestInfo, setGuestInfo] = useState({}); // Store guest info by guestId
+    const [loadingGuests, setLoadingGuests] = useState({}); // Track loading state for each guest
+    const [selectedBooking, setSelectedBooking] = useState(null); // Selected booking for modal
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -25,6 +27,8 @@ function HostBooking() {
     const fetchGuestInfo = async (guestId) => {
         if (!guestId || guestInfo[guestId]) return; // Already fetched
         
+        setLoadingGuests(prev => ({ ...prev, [guestId]: true }));
+        
         try {
             const guestDoc = await getDoc(doc(db, "users", guestId));
             if (guestDoc.exists()) {
@@ -35,6 +39,8 @@ function HostBooking() {
             }
         } catch (error) {
             console.error("Error fetching guest info:", error);
+        } finally {
+            setLoadingGuests(prev => ({ ...prev, [guestId]: false }));
         }
     };
 
@@ -82,6 +88,13 @@ function HostBooking() {
 
         fetchBookings();
     }, [currentUser]);
+
+    // Fetch guest info when modal opens
+    useEffect(() => {
+        if (selectedBooking && selectedBooking.guestId && !guestInfo[selectedBooking.guestId] && !loadingGuests[selectedBooking.guestId]) {
+            fetchGuestInfo(selectedBooking.guestId);
+        }
+    }, [selectedBooking]);
 
     // Filter bookings based on selected tab
     const filteredBookings = bookings.filter((booking) => {
@@ -319,12 +332,17 @@ function HostBooking() {
                             {filteredBookings.map((booking) => {
                                 const statusBadge = getStatusBadge(booking.status);
                                 const guest = guestInfo[booking.guestId];
-                                const guestName = guest ? `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || guest.email : "Guest";
+                                const isLoadingGuest = loadingGuests[booking.guestId];
+                                const guestName = guest 
+                                    ? `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || guest.email 
+                                    : (isLoadingGuest ? "Loading..." : "Guest Information Not Available");
                                 
                                 return (
                                     <div
                                         key={booking.id}
                                         className="host-booking-card"
+                                        style={{ cursor: "pointer" }}
+                                        onClick={() => setSelectedBooking(booking)}
                                     >
                                         <div className="host-booking-header">
                                             <div className="host-booking-info">
@@ -339,20 +357,35 @@ function HostBooking() {
                                                         <span>Guest Information</span>
                                                     </div>
                                                     <div className="host-booking-guest-details">
-                                                        <div className="host-booking-guest-item">
-                                                            <User size={14} />
-                                                            <span>{guestName}</span>
-                                                        </div>
-                                                        {guest?.email && (
-                                                            <div className="host-booking-guest-item">
-                                                                <Mail size={14} />
-                                                                <span>{guest.email}</span>
+                                                        {isLoadingGuest ? (
+                                                            <div className="host-booking-guest-item" style={{ gap: "0.5rem" }}>
+                                                                <Loader2 size={14} className="spinning" />
+                                                                <span>Loading guest information...</span>
                                                             </div>
-                                                        )}
-                                                        {guest?.phoneNumber && (
+                                                        ) : guest ? (
+                                                            <>
+                                                                <div className="host-booking-guest-item">
+                                                                    <User size={14} />
+                                                                    <span>{guestName}</span>
+                                                                </div>
+                                                                {guest.email && (
+                                                                    <div className="host-booking-guest-item">
+                                                                        <Mail size={14} />
+                                                                        <span>{guest.email}</span>
+                                                                    </div>
+                                                                )}
+                                                                {guest.phoneNumber && (
+                                                                    <div className="host-booking-guest-item">
+                                                                        <Phone size={14} />
+                                                                        <span>{guest.phoneNumber}</span>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        ) : (
                                                             <div className="host-booking-guest-item">
-                                                                <Phone size={14} />
-                                                                <span>{guest.phoneNumber}</span>
+                                                                <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                                                                    {guestName}
+                                                                </span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -435,7 +468,11 @@ function HostBooking() {
 
                                         {/* Action Buttons */}
                                         {booking.status === "pending" && (
-                                            <div className="host-booking-action-buttons" style={{ marginTop: "1rem", justifyContent: "flex-end" }}>
+                                            <div 
+                                                className="host-booking-action-buttons" 
+                                                style={{ marginTop: "1rem", justifyContent: "flex-end" }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 <button
                                                     onClick={() => handleRejectBooking(booking.id)}
                                                     className="host-booking-btn host-booking-btn-reject"
@@ -459,6 +496,205 @@ function HostBooking() {
                     )}
                 </div>
             </div>
+            
+            {/* Detailed Booking Modal */}
+            {selectedBooking && (
+                <div 
+                    className="modal-overlay" 
+                    onClick={() => setSelectedBooking(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Booking details"
+                >
+                    <div className="modal" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                            className="modal-close" 
+                            onClick={() => setSelectedBooking(null)}
+                            aria-label="Close modal"
+                        >
+                            <X size={20} />
+                        </button>
+                        
+                        <div className="modal-content">
+                            <div style={{ marginBottom: "2rem" }}>
+                                <h2 className="modal-title" style={{ marginBottom: "0.5rem" }}>
+                                    {selectedBooking.listingTitle || "Unknown Property"}
+                                </h2>
+                                <div className={`host-booking-status-badge host-booking-status-${selectedBooking.status}`} style={{ display: "inline-flex" }}>
+                                    {getStatusBadge(selectedBooking.status).icon}
+                                    {getStatusBadge(selectedBooking.status).text}
+                                </div>
+                            </div>
+
+                            {/* Guest Information Section */}
+                            <div className="host-booking-guest-info" style={{ marginBottom: "2rem" }}>
+                                <div className="host-booking-guest-header">
+                                    <User size={18} />
+                                    <span>Guest Information</span>
+                                </div>
+                                {loadingGuests[selectedBooking.guestId] ? (
+                                    <div className="host-booking-guest-item" style={{ gap: "0.5rem", padding: "1rem 0" }}>
+                                        <Loader2 size={16} className="spinning" />
+                                        <span>Loading guest information...</span>
+                                    </div>
+                                ) : guestInfo[selectedBooking.guestId] ? (
+                                    <div className="host-booking-guest-details">
+                                        <div className="host-booking-guest-item">
+                                            <User size={16} />
+                                            <span>
+                                                {`${guestInfo[selectedBooking.guestId].firstName || ""} ${guestInfo[selectedBooking.guestId].lastName || ""}`.trim() || 
+                                                 guestInfo[selectedBooking.guestId].email || 
+                                                 "Guest"}
+                                            </span>
+                                        </div>
+                                        {guestInfo[selectedBooking.guestId].email && (
+                                            <div className="host-booking-guest-item">
+                                                <Mail size={16} />
+                                                <span>{guestInfo[selectedBooking.guestId].email}</span>
+                                            </div>
+                                        )}
+                                        {guestInfo[selectedBooking.guestId].phoneNumber && (
+                                            <div className="host-booking-guest-item">
+                                                <Phone size={16} />
+                                                <span>{guestInfo[selectedBooking.guestId].phoneNumber}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="host-booking-guest-item" style={{ padding: "1rem 0" }}>
+                                        <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
+                                            Guest Information Not Available
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Booking Details Section */}
+                            <div style={{ marginBottom: "2rem" }}>
+                                <h3 style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem", color: "var(--text)" }}>
+                                    Booking Details
+                                </h3>
+                                <div className="host-booking-meta" style={{ marginBottom: "1.5rem" }}>
+                                    <div className="host-booking-meta-item">
+                                        <MapPin size={18} />
+                                        <span>{selectedBooking.listingType || "Property"}</span>
+                                    </div>
+                                    <div className="host-booking-meta-item">
+                                        <Calendar size={18} />
+                                        <span>{formatDate(selectedBooking.startDate)} - {formatDate(selectedBooking.endDate)}</span>
+                                    </div>
+                                    <div className="host-booking-meta-item">
+                                        <Users size={18} />
+                                        <span>{selectedBooking.guests || 1} guest{selectedBooking.guests > 1 ? "s" : ""}</span>
+                                    </div>
+                                    <div className="host-booking-meta-item">
+                                        <DollarSign size={18} />
+                                        <span>{selectedBooking.nights || 0} night{selectedBooking.nights > 1 ? "s" : ""}</span>
+                                    </div>
+                                </div>
+
+                                <div className="host-booking-details">
+                                    <div className="host-booking-detail-item">
+                                        <div className="host-booking-detail-label">Price per Night</div>
+                                        <div className="host-booking-detail-value">
+                                            ₱{selectedBooking.pricePerNight?.toLocaleString() || "0"}
+                                        </div>
+                                    </div>
+                                    <div className="host-booking-detail-item">
+                                        <div className="host-booking-detail-label">Nights</div>
+                                        <div className="host-booking-detail-value">
+                                            {selectedBooking.nights || 0} night{selectedBooking.nights > 1 ? "s" : ""}
+                                        </div>
+                                    </div>
+                                    {selectedBooking.discountAmount > 0 && (
+                                        <div className="host-booking-detail-item">
+                                            <div className="host-booking-detail-label">Discount</div>
+                                            <div className="host-booking-detail-value host-booking-detail-value-success">
+                                                -₱{selectedBooking.discountAmount?.toFixed(2) || "0.00"}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedBooking.serviceFee > 0 && (
+                                        <div className="host-booking-detail-item">
+                                            <div className="host-booking-detail-label">Service Fee</div>
+                                            <div className="host-booking-detail-value">
+                                                ₱{selectedBooking.serviceFee?.toFixed(2) || "0.00"}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedBooking.couponCode && (
+                                        <div className="host-booking-detail-item">
+                                            <div className="host-booking-detail-label">Coupon Code</div>
+                                            <div className="host-booking-detail-value">
+                                                {selectedBooking.couponCode}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="host-booking-detail-item" style={{ borderTop: "2px solid var(--border)", paddingTop: "1rem", marginTop: "0.5rem" }}>
+                                        <div className="host-booking-detail-label" style={{ fontWeight: 600, fontSize: "1.1rem" }}>Total Price</div>
+                                        <div className="host-booking-detail-value" style={{ fontWeight: 600, fontSize: "1.25rem", color: "var(--primary)" }}>
+                                            ₱{selectedBooking.totalPrice?.toFixed(2) || "0.00"}
+                                        </div>
+                                    </div>
+                                    <div className="host-booking-detail-item">
+                                        <div className="host-booking-detail-label">Booking Date</div>
+                                        <div className="host-booking-detail-value">
+                                            {formatDate(selectedBooking.createdAt)}
+                                        </div>
+                                    </div>
+                                    {selectedBooking.paymentStatus && (
+                                        <div className="host-booking-detail-item">
+                                            <div className="host-booking-detail-label">Payment Status</div>
+                                            <div className={`host-booking-detail-value ${selectedBooking.paymentStatus === "paid" ? "host-booking-detail-value-success" : "host-booking-detail-value-warning"}`}>
+                                                {selectedBooking.paymentStatus === "paid" ? "Paid" : "Pending"}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {selectedBooking.hostEarnings && (
+                                        <div className="host-booking-detail-item">
+                                            <div className="host-booking-detail-label">Your Earnings</div>
+                                            <div className="host-booking-detail-value host-booking-detail-value-success">
+                                                ₱{selectedBooking.hostEarnings?.toFixed(2) || "0.00"}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            {selectedBooking.status === "pending" && (
+                                <div className="host-booking-action-buttons" style={{ marginTop: "2rem", gap: "1rem" }}>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRejectBooking(selectedBooking.id);
+                                            setSelectedBooking(null);
+                                        }}
+                                        className="host-booking-btn host-booking-btn-reject"
+                                        style={{ flex: 1 }}
+                                    >
+                                        <X size={18} />
+                                        Reject Booking
+                                    </button>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleConfirmBooking(selectedBooking.id);
+                                            setSelectedBooking(null);
+                                        }}
+                                        className="host-booking-btn host-booking-btn-confirm"
+                                        style={{ flex: 1 }}
+                                    >
+                                        <CheckCircle size={18} />
+                                        Confirm Booking
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <Footer />
         </>
     );

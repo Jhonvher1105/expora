@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Bell, User, Menu, X, Copy, MessageCircleMore, ChevronDown, ChevronRight, UserCircle, Settings, Ticket, Lightbulb, HelpCircle, LogOut, Home } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../firebase";
@@ -139,8 +140,8 @@ function Header() {
             const userRef = doc(db, "users", currentUser.uid);
             await updateDoc(userRef, {
                 role: "guest",
-                accType: "guest",
             });
+            console.log("User role updated to guest");
             setUserMenuOpen(false);
             navigate("/Home");
         } catch (error) {
@@ -379,24 +380,33 @@ function Header() {
             )}
 
             {/* logout confirmation modal */}
-            {showLogoutConfirm && (
-                <div className="modal-overlay">
-                    <div className="modal">
-                        <h3>Confirm Logout</h3>
-                        <p>Are you sure you want to log out?</p>
-                        <div className="modal-buttons">
-                            <button className="confirm-btn" onClick={handleLogout}>
-                                Yes, Log Out
-                            </button>
-                            <button
-                                className="cancel-btn"
-                                onClick={() => setShowLogoutConfirm(false)}
-                            >
-                                Cancel
-                            </button>
+            {showLogoutConfirm && createPortal(
+                <div className="modal-overlay logout-modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+                    <div className="modal logout-modal" onClick={e => e.stopPropagation()}>
+                        <div className="logout-modal-content">
+                            <div className="logout-modal-icon">
+                                <LogOut size={48} />
+                            </div>
+                            <h3 className="logout-modal-title">Confirm Logout</h3>
+                            <p className="logout-modal-message">Are you sure you want to log out? You'll need to sign in again to access your account.</p>
+                            <div className="logout-modal-buttons">
+                                <button 
+                                    className="logout-confirm-btn" 
+                                    onClick={handleLogout}
+                                >
+                                    Yes, Log Out
+                                </button>
+                                <button 
+                                    className="logout-cancel-btn"
+                                    onClick={() => setShowLogoutConfirm(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Become Host Form */}

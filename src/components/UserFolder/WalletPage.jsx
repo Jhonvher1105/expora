@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Wallet, TrendingUp, TrendingDown, Calendar, Filter, X, DollarSign } from "lucide-react";
 import "../cssFile/temp.css";
 import Header from "./Header";
+import HostHeader from "../hostFolder/Hheader";
 import Footer from "../generalFile/Footer";
 import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../../firebase";
@@ -107,35 +108,60 @@ function WalletPage() {
         const loadTransactions = async () => {
             try {
                 setLoading(true);
-                let transactionsQuery;
+                let allTransactions = [];
 
                 if (isHost) {
                     // Host: Get earnings transactions
-                    transactionsQuery = query(
+                    const transactionsQuery = query(
                         collection(db, "transactions"),
                         where("hostId", "==", currentUser.uid)
                     );
+                    const snapshot = await getDocs(transactionsQuery);
+                    const transactionsData = snapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }));
+                    allTransactions = [...allTransactions, ...transactionsData];
+
+                    // Host: Get withdrawal/payout transactions
+                    const payoutTransactionsQuery = query(
+                        collection(db, "payoutTransactions"),
+                        where("hostId", "==", currentUser.uid)
+                    );
+                    const payoutSnapshot = await getDocs(payoutTransactionsQuery);
+                    const payoutTransactionsData = payoutSnapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        type: "withdrawal", // Mark as withdrawal type
+                    }));
+                    allTransactions = [...allTransactions, ...payoutTransactionsData];
                 } else {
                     // Guest: Get payment transactions
-                    transactionsQuery = query(
+                    const transactionsQuery = query(
                         collection(db, "transactions"),
                         where("userId", "==", currentUser.uid)
                     );
+                    const snapshot = await getDocs(transactionsQuery);
+                    const transactionsData = snapshot.docs.map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }));
+                    allTransactions = [...allTransactions, ...transactionsData];
                 }
 
-                const snapshot = await getDocs(transactionsQuery);
-                const transactionsData = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })).sort((a, b) => {
-                    // Sort by createdAt descending (newest first)
-                    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
-                    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+                // Sort all transactions by createdAt/processedAt descending (newest first)
+                allTransactions.sort((a, b) => {
+                    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : 
+                                 a.processedAt?.toDate ? a.processedAt.toDate() : 
+                                 new Date(a.createdAt || a.processedAt || 0);
+                    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : 
+                                 b.processedAt?.toDate ? b.processedAt.toDate() : 
+                                 new Date(b.createdAt || b.processedAt || 0);
                     return dateB - dateA;
                 });
 
-                setTransactions(transactionsData);
-                setFilteredTransactions(transactionsData);
+                setTransactions(allTransactions);
+                setFilteredTransactions(allTransactions);
             } catch (error) {
                 console.error("Error loading transactions:", error);
             } finally {
@@ -171,7 +197,9 @@ function WalletPage() {
             const fromDate = new Date(filterDateFrom);
             fromDate.setHours(0, 0, 0, 0);
             filtered = filtered.filter((t) => {
-                const tDate = t.createdAt?.toDate() || new Date(t.createdAt);
+                const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : 
+                             t.processedAt?.toDate ? t.processedAt.toDate() : 
+                             new Date(t.createdAt || t.processedAt || 0);
                 return tDate >= fromDate;
             });
         }
@@ -180,7 +208,9 @@ function WalletPage() {
             const toDate = new Date(filterDateTo);
             toDate.setHours(23, 59, 59, 999);
             filtered = filtered.filter((t) => {
-                const tDate = t.createdAt?.toDate() || new Date(t.createdAt);
+                const tDate = t.createdAt?.toDate ? t.createdAt.toDate() : 
+                             t.processedAt?.toDate ? t.processedAt.toDate() : 
+                             new Date(t.createdAt || t.processedAt || 0);
                 return tDate <= toDate;
             });
         }
@@ -211,6 +241,9 @@ function WalletPage() {
             earnings: "Earnings",
             refund: "Refund",
             topup: "Top-up",
+            withdrawal: "Withdrawal",
+            payout: "Payout",
+            service_fee: "Service Fee",
         };
         return labels[type] || type;
     };
@@ -234,7 +267,7 @@ function WalletPage() {
     if (loading) {
         return (
             <div>
-                <Header />
+                {isHost ? <HostHeader /> : <Header />}
                 <div style={{ padding: "100px 20px", textAlign: "center" }}>
                     <p>Loading wallet...</p>
                 </div>
@@ -245,7 +278,7 @@ function WalletPage() {
 
     return (
         <div>
-            <Header />
+            {isHost ? <HostHeader /> : <Header />}
             <div className="wallet-page">
                 <div className="wallet-container">
                     <h1 className="wallet-title">
@@ -334,7 +367,9 @@ function WalletPage() {
                                             {isHost ? (
                                                 <>
                                                     <option value="earnings">Earnings</option>
+                                                    <option value="withdrawal">Withdrawal</option>
                                                     <option value="refund">Refund</option>
+                                                    <option value="service_fee">Service Fee</option>
                                                 </>
                                             ) : (
                                                 <>
@@ -394,7 +429,7 @@ function WalletPage() {
                                     filteredTransactions.map((transaction) => (
                                         <div key={transaction.id} className="transaction-item">
                                             <div className="transaction-icon">
-                                                {isHost && transaction.type === "earnings" ? (
+                                                {(isHost && (transaction.type === "earnings" || transaction.type === "service_fee")) ? (
                                                     <TrendingUp size={20} color="#10b981" />
                                                 ) : (
                                                     <TrendingDown size={20} color="#ef4444" />
@@ -405,19 +440,24 @@ function WalletPage() {
                                                     {getTransactionTypeLabel(transaction.type)}
                                                 </div>
                                                 <div className="transaction-meta">
-                                                    {formatDate(transaction.createdAt)}
+                                                    {formatDate(transaction.createdAt || transaction.processedAt)}
                                                     {transaction.bookingId && (
                                                         <span className="booking-id">
                                                             Booking: {transaction.bookingId.substring(0, 8)}...
+                                                        </span>
+                                                    )}
+                                                    {transaction.payoutRequestId && (
+                                                        <span className="booking-id">
+                                                            Payout: {transaction.payoutRequestId.substring(0, 8)}...
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
                                             <div className="transaction-amount">
                                                 <div
-                                                    className={`amount ${isHost && transaction.type === "earnings" ? "positive" : "negative"}`}
+                                                    className={`amount ${(isHost && (transaction.type === "earnings" || transaction.type === "service_fee")) ? "positive" : "negative"}`}
                                                 >
-                                                    {isHost && transaction.type === "earnings" ? "+" : "-"}
+                                                    {(isHost && (transaction.type === "earnings" || transaction.type === "service_fee")) ? "+" : "-"}
                                                     {formatAmount(transaction.amount)}
                                                 </div>
                                                 <div

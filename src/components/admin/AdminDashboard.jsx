@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [bookingFilter, setBookingFilter] = useState("all");
 
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
@@ -129,29 +130,50 @@ export default function AdminDashboard() {
 
             {/* Recent Bookings */}
             <div className="admin-card">
-              <h3 className="admin-card-title">Recent Bookings</h3>
-              {bookings.slice(0, 10).length === 0 ? (
-                <div className="admin-empty-state">No bookings found</div>
-              ) : (
-                <div className="admin-bookings-list">
-                  {bookings.slice(0, 10).map((booking) => (
-                    <div key={booking.id} className="admin-booking-item">
-                      <div className="admin-booking-info">
-                        <div className="admin-booking-title">{booking.listingTitle || "Unknown Listing"}</div>
-                        <div className="admin-booking-dates">
-                          {booking.startDate} → {booking.endDate}
+              <div className="admin-card-header">
+                <h3 className="admin-card-title">Recent Bookings</h3>
+                <select
+                  className="admin-booking-filter-dropdown"
+                  value={bookingFilter}
+                  onChange={(e) => setBookingFilter(e.target.value)}
+                >
+                  <option value="all">All Bookings</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              {(() => {
+                const filteredBookings = bookings.filter((booking) => {
+                  const status = (booking.status || "pending").toLowerCase();
+                  if (bookingFilter === "all") return true;
+                  if (bookingFilter === "confirmed") return status === "confirmed" || status === "completed";
+                  return status === bookingFilter;
+                });
+                
+                return filteredBookings.slice(0, 10).length === 0 ? (
+                  <div className="admin-empty-state">No bookings found</div>
+                ) : (
+                  <div className="admin-bookings-list">
+                    {filteredBookings.slice(0, 10).map((booking) => (
+                      <div key={booking.id} className="admin-booking-item">
+                        <div className="admin-booking-info">
+                          <div className="admin-booking-title">{booking.listingTitle || "Unknown Listing"}</div>
+                          <div className="admin-booking-dates">
+                            {booking.startDate} → {booking.endDate}
+                          </div>
+                        </div>
+                        <div className="admin-booking-details">
+                          <div className="admin-booking-price">₱{booking.totalPrice?.toLocaleString() || "0"}</div>
+                          <div className={`admin-status-badge admin-status-${booking.status || "pending"}`}>
+                            {booking.status || "pending"}
+                          </div>
                         </div>
                       </div>
-                      <div className="admin-booking-details">
-                        <div className="admin-booking-price">₱{booking.totalPrice?.toLocaleString() || "0"}</div>
-                        <div className={`admin-status-badge admin-status-${booking.status || "pending"}`}>
-                          {booking.status || "pending"}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         );

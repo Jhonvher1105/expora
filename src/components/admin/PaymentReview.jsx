@@ -92,6 +92,34 @@ export default function PaymentReview({ bookings }) {
         <h2>Payment Review</h2>
       </div>
 
+      {/* Summary */}
+      <div className="admin-summary-grid">
+        <div className="admin-summary-card">
+          <div className="admin-summary-value">
+            {filteredPayments.filter(p => p.status === "pending").length}
+          </div>
+          <div className="admin-summary-label">Pending</div>
+        </div>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value" style={{ color: "#10b981" }}>
+            {filteredPayments.filter(p => p.status === "completed" || p.status === "confirmed").length}
+          </div>
+          <div className="admin-summary-label">Confirmed</div>
+        </div>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value" style={{ color: "#ef4444" }}>
+            {filteredPayments.filter(p => p.status === "rejected" || p.status === "failed").length}
+          </div>
+          <div className="admin-summary-label">Rejected</div>
+        </div>
+        <div className="admin-summary-card">
+          <div className="admin-summary-value">
+            ₱{filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
+          </div>
+          <div className="admin-summary-label">Total Amount</div>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="admin-filters">
         <div className="admin-search-container">
@@ -279,33 +307,7 @@ export default function PaymentReview({ bookings }) {
         )}
       </div>
 
-      {/* Summary */}
-      <div className="admin-summary-grid">
-        <div className="admin-summary-card">
-          <div className="admin-summary-value">
-            {filteredPayments.filter(p => p.status === "pending").length}
-          </div>
-          <div className="admin-summary-label">Pending</div>
-        </div>
-        <div className="admin-summary-card">
-          <div className="admin-summary-value" style={{ color: "#10b981" }}>
-            {filteredPayments.filter(p => p.status === "completed" || p.status === "confirmed").length}
-          </div>
-          <div className="admin-summary-label">Confirmed</div>
-        </div>
-        <div className="admin-summary-card">
-          <div className="admin-summary-value" style={{ color: "#ef4444" }}>
-            {filteredPayments.filter(p => p.status === "rejected" || p.status === "failed").length}
-          </div>
-          <div className="admin-summary-label">Rejected</div>
-        </div>
-        <div className="admin-summary-card">
-          <div className="admin-summary-value">
-            ₱{filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0).toLocaleString()}
-          </div>
-          <div className="admin-summary-label">Total Amount</div>
-        </div>
-      </div>
+      
     </div>
   );
 }

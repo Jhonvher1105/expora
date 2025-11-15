@@ -159,7 +159,7 @@ function Body() {
             const checkOut = new Date(endDate);
             checkIn.setHours(0, 0, 0, 0);
             checkOut.setHours(0, 0, 0, 0);
-            
+
             if (checkOut <= checkIn) {
                 errors.endDate = "Check-out date must be after check-in date";
             }
@@ -177,25 +177,25 @@ function Body() {
             const start = new Date(startDate);
             const end = new Date(endDate);
             const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-            
+
             if (nights <= 0) {
                 errors.dates = "Invalid date range";
             }
-            
+
             const basePrice = (selectedDest.price || 0) * nights * (Number(numGuests) || 1);
-            
+
             // Validate base price is valid
             if (basePrice <= 0) {
                 errors.price = "Invalid price calculation";
             }
-            
+
             const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
             const priceAfterListingDiscount = basePrice - listingDiscount;
             // Total price includes service fee (coupon discount applied in payment)
             const totalPrice = priceAfterListingDiscount + serviceFee;
             // Final price after coupon discount (what guest actually pays)
             const finalPrice = totalPrice - couponDiscount;
-            
+
             // Balance validation for wallet payment (only check if payment method is wallet)
             if (paymentMethod === "wallet" && finalPrice > 0 && balance < finalPrice) {
                 errors.balance = `Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`;
@@ -209,7 +209,7 @@ function Body() {
     // Calculate total price (includes service fee, coupon discount applied later in payment)
     const calculateTotalPrice = () => {
         if (!startDate || !endDate || !selectedDest?.price) return 0;
-        
+
         const start = new Date(startDate);
         const end = new Date(endDate);
         const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -229,7 +229,7 @@ function Body() {
                 setServiceFee(0);
                 return;
             }
-            
+
             const start = new Date(startDate);
             const end = new Date(endDate);
             const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -237,7 +237,7 @@ function Body() {
             const listingDiscount = selectedDest.discountPercentage ? (basePrice * selectedDest.discountPercentage) / 100 : 0;
             // Service fee is calculated on price after listing discount, before coupon discount
             const priceAfterListingDiscount = basePrice - listingDiscount;
-            
+
             if (priceAfterListingDiscount > 0) {
                 const fee = await calculateServiceFee(priceAfterListingDiscount);
                 setServiceFee(fee);
@@ -245,7 +245,7 @@ function Body() {
                 setServiceFee(0);
             }
         };
-        
+
         calculateFee();
     }, [startDate, endDate, selectedDest?.price, selectedDest?.discountPercentage, numGuests, calculateServiceFee]);
 
@@ -330,7 +330,7 @@ function Body() {
             setFavorites([]);
             return;
         }
-        
+
         const fetchFavorites = async () => {
             try {
                 const q = query(collection(db, "favorites"), where("userId", "==", currentUser.uid));
@@ -341,7 +341,7 @@ function Body() {
                 console.error("Error loading favorites:", error);
             }
         };
-        
+
         fetchFavorites();
     }, [currentUser]);
 
@@ -392,7 +392,7 @@ function Body() {
                 // Set all properties and display them immediately
                 setAllProperties(data);
                 setProperties(data); // Show all properties by default
-                
+
                 // Extract unique locations for autocomplete
                 const uniqueLocations = [...new Set(data.map(p => {
                     const locationStr = p.location?.address || p.location;
@@ -417,7 +417,7 @@ function Body() {
                     return locationStr && typeof locationStr === 'string' ? locationStr : null;
                 })
                 .filter(Boolean)
-                .filter(loc => 
+                .filter(loc =>
                     loc.toLowerCase().includes(locationInput.toLowerCase())
                 );
             const uniqueLocations = [...new Set(filtered)];
@@ -538,17 +538,17 @@ function Body() {
         const aEnd = toTimestamp(endA);
         const bStart = toTimestamp(startB);
         const bEnd = toTimestamp(endB);
-        
+
         if (aStart === null || aEnd === null || bStart === null || bEnd === null) return false;
         if (Number.isNaN(aStart) || Number.isNaN(aEnd) || Number.isNaN(bStart) || Number.isNaN(bEnd)) return false;
-        
+
         // Overlap when ranges intersect: aStart <= bEnd && bStart <= aEnd
         return aStart <= bEnd && bStart <= aEnd;
     };
 
     // Calculate total guests
     const totalGuests = guests.adults + guests.children + guests.infants;
-    
+
     // Update filterGuests when guests state changes
     useEffect(() => {
         if (totalGuests > 0) {
@@ -572,7 +572,7 @@ function Body() {
         if (query.trim()) {
             filtered = filtered.filter((p) => {
                 const locationStr = p.location?.address || p.location;
-                const locationMatch = locationStr && typeof locationStr === 'string' 
+                const locationMatch = locationStr && typeof locationStr === 'string'
                     ? locationStr.toLowerCase().includes(query.toLowerCase())
                     : false;
                 const titleMatch = p.title?.toLowerCase().includes(query.toLowerCase()) || false;
@@ -593,19 +593,19 @@ function Body() {
             // Validate dates
             const start = new Date(checkInDate);
             const end = new Date(checkOutDate);
-            
+
             if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end > start) {
                 filtered = filtered.filter((p) => {
                     // Get bookings for this property
                     const propertyBookings = allBookings.filter(
                         (b) => b.listingId === p.id && b.status !== "cancelled"
                     );
-                    
+
                     // Check if search dates overlap with any existing booking
                     const hasConflict = propertyBookings.some((booking) =>
                         isOverlapping(checkInDate, checkOutDate, booking.startDate, booking.endDate)
                     );
-                    
+
                     // Only show properties that don't have conflicts
                     return !hasConflict;
                 });
@@ -631,13 +631,13 @@ function Body() {
     useEffect(() => {
         // Only run search if there are active filters
         const hasFilters = (searchQuery || locationInput || checkInDate || checkOutDate || filterGuests || totalGuests > 1);
-        
+
         if (!hasFilters && allProperties.length > 0) {
             // No filters - show all properties
             setProperties([...allProperties]);
             return;
         }
-        
+
         // Debounce search execution when filters are present
         const timeoutId = setTimeout(() => {
             if (hasFilters) {
@@ -810,8 +810,8 @@ function Body() {
                             </div>
 
                             {/* Search Button */}
-                            <button 
-                                className="airbnb-search-btn" 
+                            <button
+                                className="airbnb-search-btn"
                                 onClick={() => {
                                     handleSearch();
                                 }}
@@ -828,37 +828,36 @@ function Body() {
                 <main className="main-content">
                     <div className="container">
                         {/* TABS */}
-                        <div className="tabs">
-                            <button
-                                className={`tab ${activeTab === "all" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("all")}
-                            >
-                                All
-                            </button>
-                            <button
-                                className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("properties")}
-                            >
-                                Properties
-                            </button>
-                            <button
-                                className={`tab ${activeTab === "services" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("services")}
-                            >
-                                Services
-                            </button>
-                            <button
-                                className={`tab ${activeTab === "experiences" ? "tab-active" : ""}`}
-                                onClick={() => setActiveTab("experiences")}
-                            >
-                                Experiences
-                            </button>
+                        <div className="filter">
+                            <div className="tabs">
+                                <button
+                                    className={`tab ${activeTab === "all" ? "tab-active" : ""}`}
+                                    onClick={() => setActiveTab("all")}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    className={`tab ${activeTab === "properties" ? "tab-active" : ""}`}
+                                    onClick={() => setActiveTab("properties")}
+                                >
+                                    Properties
+                                </button>
+                                <button
+                                    className={`tab ${activeTab === "services" ? "tab-active" : ""}`}
+                                    onClick={() => setActiveTab("services")}
+                                >
+                                    Services
+                                </button>
+
+                            </div>
+                            
+
                         </div>
 
                         {/* DISCOVER TAB */}
                         {activeTab && (
                             <section className="section">
-                                
+
 
                                 <div className="destinations-grid">
                                     {properties.length > 0 ? (
@@ -881,8 +880,8 @@ function Body() {
                                                             handleFavBtn(property);
                                                         }}
                                                     >
-                                                        <Heart 
-                                                            size={20} 
+                                                        <Heart
+                                                            size={20}
                                                             fill={isFavorited(property.id) ? "#ff6b35" : "none"}
                                                             color={isFavorited(property.id) ? "#ff6b35" : "currentColor"}
                                                         />
@@ -941,7 +940,7 @@ function Body() {
                                 </div>
                             </section>
                         )}
-                        
+
                     </div>
                 </main>
 
@@ -1078,23 +1077,23 @@ function Body() {
                                     <p className="modal-location">
                                         <MapPin size={14} /> {selectedDest.location?.address || selectedDest.location || "Location not specified"}
                                     </p>
-                                    
+
                                     {/* Map Viewer */}
                                     {selectedDest.location && (selectedDest.location.lat && selectedDest.location.lng) && (
-                                        <MapViewer 
-                                            location={selectedDest.location} 
+                                        <MapViewer
+                                            location={selectedDest.location}
                                             propertyTitle={selectedDest.title}
                                         />
                                     )}
-                                    
+
                                     {/* Discount/Promo display */}
                                     {selectedDest.discountPercentage && (
-                                        <div style={{ 
-                                            background: "var(--primary-gradient, linear-gradient(135deg, #ff6b35 0%, #f7931e 100%))", 
-                                            color: "var(--text, #ffffff)", 
-                                            padding: "8px 12px", 
-                                            borderRadius: "var(--radius-sm, 4px)", 
-                                            marginTop: "8px", 
+                                        <div style={{
+                                            background: "var(--primary-gradient, linear-gradient(135deg, #ff6b35 0%, #f7931e 100%))",
+                                            color: "var(--text, #ffffff)",
+                                            padding: "8px 12px",
+                                            borderRadius: "var(--radius-sm, 4px)",
+                                            marginTop: "8px",
                                             display: "inline-block",
                                             fontWeight: "600",
                                             fontSize: "0.9rem",
@@ -1120,7 +1119,7 @@ function Body() {
                                     {selectedDest?.id && (
                                         <div style={{ marginTop: 16, marginBottom: 16 }}>
                                             <h3 style={{ marginBottom: 12, fontSize: "1.1rem", fontWeight: 600 }}>Availability Calendar</h3>
-                                            <AvailabilityCalendar 
+                                            <AvailabilityCalendar
                                                 listingId={selectedDest.id}
                                                 initialStartDate={startDate}
                                                 initialEndDate={endDate}
@@ -1144,9 +1143,9 @@ function Body() {
                                     <div className="booking-inputs" style={{ display: "grid", gap: 8, marginTop: 12 }}>
                                         <div style={{ display: "grid", gap: 4 }}>
                                             <label>Check-in <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
-                                            <input 
-                                                type="date" 
-                                                value={startDate} 
+                                            <input
+                                                type="date"
+                                                value={startDate}
                                                 onChange={(e) => {
                                                     setStartDate(e.target.value);
                                                     const { startDate: _, ...rest } = validationErrors;
@@ -1159,8 +1158,8 @@ function Body() {
                                                     }
                                                 }}
                                                 min={new Date().toISOString().split('T')[0]}
-                                                style={{ 
-                                                    borderColor: validationErrors.startDate ? "var(--error, #ef4444)" : undefined 
+                                                style={{
+                                                    borderColor: validationErrors.startDate ? "var(--error, #ef4444)" : undefined
                                                 }}
                                             />
                                             {validationErrors.startDate && (
@@ -1171,17 +1170,17 @@ function Body() {
                                         </div>
                                         <div style={{ display: "grid", gap: 4 }}>
                                             <label>Check-out <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
-                                            <input 
-                                                type="date" 
-                                                value={endDate} 
+                                            <input
+                                                type="date"
+                                                value={endDate}
                                                 onChange={(e) => {
                                                     setEndDate(e.target.value);
                                                     const { endDate: _, ...rest } = validationErrors;
                                                     setValidationErrors(rest);
-                                                }} 
+                                                }}
                                                 min={startDate || new Date().toISOString().split('T')[0]}
-                                                style={{ 
-                                                    borderColor: validationErrors.endDate ? "var(--error, #ef4444)" : undefined 
+                                                style={{
+                                                    borderColor: validationErrors.endDate ? "var(--error, #ef4444)" : undefined
                                                 }}
                                             />
                                             {validationErrors.endDate && (
@@ -1192,19 +1191,19 @@ function Body() {
                                         </div>
                                         <div style={{ display: "grid", gap: 4 }}>
                                             <label>Guests <span style={{ color: "var(--error, #ef4444)" }}>*</span></label>
-                                            <input 
-                                                type="number" 
-                                                min={1} 
+                                            <input
+                                                type="number"
+                                                min={1}
                                                 max={20}
-                                                value={numGuests} 
+                                                value={numGuests}
                                                 onChange={(e) => {
                                                     const value = parseInt(e.target.value) || "";
                                                     setNumGuests(value);
                                                     const { numGuests: _, ...rest } = validationErrors;
                                                     setValidationErrors(rest);
                                                 }}
-                                                style={{ 
-                                                    borderColor: validationErrors.numGuests ? "var(--error, #ef4444)" : undefined 
+                                                style={{
+                                                    borderColor: validationErrors.numGuests ? "var(--error, #ef4444)" : undefined
                                                 }}
                                             />
                                             {validationErrors.numGuests && (
@@ -1250,10 +1249,10 @@ function Body() {
                                         </div>
                                         {/* Price breakdown */}
                                         {startDate && endDate && selectedDest.price && (
-                                            <div style={{ 
-                                                border: "1px solid var(--border, rgba(255, 255, 255, 0.1))", 
-                                                padding: "12px", 
-                                                borderRadius: "var(--radius-md, 8px)", 
+                                            <div style={{
+                                                border: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
+                                                padding: "12px",
+                                                borderRadius: "var(--radius-md, 8px)",
                                                 background: "var(--bg-surface, rgba(255, 255, 255, 0.05))",
                                                 color: "var(--text, #ffffff)"
                                             }}>
@@ -1291,12 +1290,12 @@ function Body() {
                                                                     <span>-₱{couponDiscount.toFixed(2)}</span>
                                                                 </div>
                                                             )}
-                                                            <div style={{ 
-                                                                display: "flex", 
-                                                                justifyContent: "space-between", 
-                                                                fontWeight: "bold", 
-                                                                marginTop: "8px", 
-                                                                paddingTop: "8px", 
+                                                            <div style={{
+                                                                display: "flex",
+                                                                justifyContent: "space-between",
+                                                                fontWeight: "bold",
+                                                                marginTop: "8px",
+                                                                paddingTop: "8px",
                                                                 borderTop: "1px solid var(--border, rgba(255, 255, 255, 0.1))",
                                                                 color: "var(--text, #ffffff)",
                                                                 fontSize: "1.1rem"
@@ -1319,10 +1318,10 @@ function Body() {
                                         )}
                                         {/* Validation errors - only show after button click */}
                                         {showValidationErrors && Object.keys(validationErrors).length > 0 && (
-                                            <div style={{ 
-                                                padding: "12px", 
-                                                borderRadius: "var(--radius-md, 8px)", 
-                                                background: "rgba(239, 68, 68, 0.2)", 
+                                            <div style={{
+                                                padding: "12px",
+                                                borderRadius: "var(--radius-md, 8px)",
+                                                background: "rgba(239, 68, 68, 0.2)",
                                                 border: "1px solid rgba(239, 68, 68, 0.3)",
                                                 marginTop: "8px"
                                             }}>
@@ -1337,7 +1336,7 @@ function Body() {
                                             </div>
                                         )}
                                         {checkingAvailability && (
-                                            <div style={{ 
+                                            <div style={{
                                                 color: "var(--text-secondary, rgba(255, 255, 255, 0.6))",
                                                 padding: "8px",
                                                 borderRadius: "var(--radius-sm, 4px)",
@@ -1350,9 +1349,9 @@ function Body() {
                                             </div>
                                         )}
                                         {availabilityMsg && !checkingAvailability && (
-                                            <div style={{ 
-                                                color: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed") 
-                                                    ? "var(--success, #10b981)" 
+                                            <div style={{
+                                                color: availabilityMsg.startsWith("Available") || availabilityMsg.includes("successfully") || availabilityMsg.includes("confirmed")
+                                                    ? "var(--success, #10b981)"
                                                     : "var(--error, #ef4444)",
                                                 padding: "8px",
                                                 borderRadius: "var(--radius-sm, 4px)",
@@ -1479,11 +1478,11 @@ function Body() {
                                                 className="book-btn"
                                                 disabled={!startDate || !endDate || !numGuests || numGuests < 1 || creating || walletLoading}
                                                 onClick={async () => {
-                                                    if (!currentUser) { 
-                                                        alert("Please log in to book."); 
-                                                        return; 
+                                                    if (!currentUser) {
+                                                        alert("Please log in to book.");
+                                                        return;
                                                     }
-                                                    
+
                                                     // Validate form before proceeding
                                                     if (!validateBookingForm()) {
                                                         setShowValidationErrors(true);
@@ -1493,18 +1492,18 @@ function Body() {
                                                     setShowValidationErrors(false);
 
                                                     setAvailabilityMsg("");
-                                                    
+
                                                     try {
                                                         // Check availability
                                                         const res = await checkAvailability(selectedDest.id, startDate, endDate);
-                                                        if (!res.available) { 
-                                                            setAvailabilityMsg(res.reason || "Not available"); 
-                                                            return; 
+                                                        if (!res.available) {
+                                                            setAvailabilityMsg(res.reason || "Not available");
+                                                            return;
                                                         }
 
                                                         // Calculate final price
                                                         const finalPrice = calculateTotalPrice();
-                                                        
+
                                                         // Validate balance
                                                         if (balance < finalPrice) {
                                                             setAvailabilityMsg(`Insufficient balance. Required: ₱${finalPrice.toFixed(2)}, Available: ₱${balance.toFixed(2)}`);
@@ -1548,11 +1547,11 @@ function Body() {
                                                 className="book-btn"
                                                 disabled={!startDate || !endDate || !numGuests || numGuests < 1 || creating || bookingCreated}
                                                 onClick={async () => {
-                                                    if (!currentUser) { 
-                                                        alert("Please log in to book."); 
-                                                        return; 
+                                                    if (!currentUser) {
+                                                        alert("Please log in to book.");
+                                                        return;
                                                     }
-                                                    
+
                                                     // Validate form before proceeding
                                                     if (!validateBookingForm()) {
                                                         setShowValidationErrors(true);
@@ -1562,13 +1561,13 @@ function Body() {
                                                     setShowValidationErrors(false);
 
                                                     setAvailabilityMsg("");
-                                                    
+
                                                     try {
                                                         // Check availability
                                                         const res = await checkAvailability(selectedDest.id, startDate, endDate);
-                                                        if (!res.available) { 
-                                                            setAvailabilityMsg(res.reason || "Not available"); 
-                                                            return; 
+                                                        if (!res.available) {
+                                                            setAvailabilityMsg(res.reason || "Not available");
+                                                            return;
                                                         }
 
                                                         // Create booking first (payment will be processed via PayPal)
@@ -1619,7 +1618,7 @@ function Body() {
                 {lightboxImageIndex !== null && selectedDest?.images && selectedDest.images.length > 0 && (() => {
                     const displayImages = selectedDest.images.slice(0, Math.min(5, selectedDest.images.length));
                     const currentImage = displayImages[lightboxImageIndex];
-                    
+
                     const handlePrev = (e) => {
                         e.stopPropagation();
                         setLightboxImageIndex((prev) => {

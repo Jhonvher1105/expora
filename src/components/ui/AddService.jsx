@@ -72,10 +72,32 @@ export default function AddServiceForm({onClose}) {
         languages: "",
     });
 
-    // Track current user
+    // Track current user and load draft
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+            // Load draft if exists
+            if (user) {
+                const draftKey = `service_draft_${user.uid}`;
+                const saved = localStorage.getItem(draftKey);
+                if (saved) {
+                    try {
+                        const draft = JSON.parse(saved);
+                        // Note: Images can't be restored from localStorage (File objects)
+                        if (draft.hasDraft) {
+                            const restore = window.confirm("You have a saved draft. Would you like to restore it?");
+                            if (restore) {
+                                setFormData(draft.formData);
+                                setCurrentStep(draft.currentStep || 1);
+                            } else {
+                                localStorage.removeItem(draftKey);
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to load draft:", e);
+                    }
+                }
+            }
         });
         return unsubscribe;
     }, []);
@@ -172,6 +194,22 @@ export default function AddServiceForm({onClose}) {
     };
     const prevStep = () => setCurrentStep((p) => Math.max(p - 1, 1));
 
+    // Save Draft
+    const saveDraft = () => {
+        if (!currentUser) {
+            alert("Please sign in to save draft.");
+            return;
+        }
+        const draftKey = `service_draft_${currentUser.uid}`;
+        localStorage.setItem(draftKey, JSON.stringify({
+            formData,
+            currentStep,
+            hasDraft: true,
+            savedAt: new Date().toISOString(),
+        }));
+        alert("Draft saved! You can continue later.");
+    };
+
     const uploadToCloudinary = async (file) => {
         try {
             const data = new FormData();
@@ -243,6 +281,12 @@ export default function AddServiceForm({onClose}) {
 
             await addDoc(collection(db, "services"), finalData);
             setSuccess(true);
+            
+            // Clear draft after successful submission
+            if (currentUser) {
+                const draftKey = `service_draft_${currentUser.uid}`;
+                localStorage.removeItem(draftKey);
+            }
             
             // Clean up image preview URLs after successful upload
             images.forEach((img) => {
@@ -583,6 +627,14 @@ export default function AddServiceForm({onClose}) {
                         >
                             <ArrowLeft size={18} style={{ marginRight: "8px" }} />
                             Back
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={saveDraft}
+                            className="host-form-draft-btn"
+                        >
+                            Save Draft
                         </button>
 
                         {currentStep < STEPS.length ? (
