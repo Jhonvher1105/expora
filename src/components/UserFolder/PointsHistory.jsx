@@ -28,6 +28,9 @@ export default function PointsHistory() {
         switch (type) {
             case "booking":
             case "first_booking":
+            case "host_booking":
+            case "host_first_booking":
+            case "host_bonus":
             case "bonus":
                 return <ArrowUp size={20} color="var(--primary)" />;
             case "referral":
@@ -45,6 +48,12 @@ export default function PointsHistory() {
                 return "Booking Points";
             case "first_booking":
                 return "First Booking Bonus";
+            case "host_booking":
+                return "Host Booking Points";
+            case "host_first_booking":
+                return "First Confirmation Bonus";
+            case "host_bonus":
+                return "Repeat Confirmation Bonus";
             case "referral":
                 return "Referral Bonus";
             case "bonus":

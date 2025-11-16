@@ -24,6 +24,42 @@ import HostingType from "../ui/HostingType";
 import Earnings from "./Earnings";
 import { collection as fbCollection, getDocs as fbGetDocs, query as fbQuery, where as fbWhere } from "firebase/firestore";
 import HostBooking from "./HostBooking";
+import MapPicker from "../ui/MapPicker";
+
+// Cloudinary configuration
+const CLOUD_NAME = "dv42rw8m7";
+const UPLOAD_PRESET = "unsigned_preset";
+const MAX_IMAGE_COUNT = 10;
+
+// Helper function to format date for input field (handles Firestore Timestamps and strings)
+const formatDateForInput = (date) => {
+    if (!date) return "";
+    // If it's a Firestore Timestamp, convert to Date first
+    if (date.toDate && typeof date.toDate === 'function') {
+        const dateObj = date.toDate();
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    // If it's already a string in YYYY-MM-DD format, return as is
+    if (typeof date === 'string' && date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return date;
+    }
+    // If it's a Date object or other format, try to convert
+    try {
+        const dateObj = date instanceof Date ? date : new Date(date);
+        if (!isNaN(dateObj.getTime())) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+    } catch (e) {
+        console.error("Error formatting date:", e);
+    }
+    return "";
+};
 
 export default function HostBody() {
     const [activeTab, setActiveTab] = useState("all");
@@ -35,6 +71,8 @@ export default function HostBody() {
     const [loading, setLoading] = useState(true);
     const [showHostForm, setShowForm] = useState(false);
     const [showEditForm, setShowEditForm] = useState(false);
+    const [editImages, setEditImages] = useState([]); // Array of { url: string, isNew: boolean, file?: File }
+    const [isUploadingImages, setIsUploadingImages] = useState(false);
     const [todayBookings, setTodayBookings] = useState([]);
     const [upcomingBookings, setUpcomingBookings] = useState([]);
     const [dashboardFilter, setDashboardFilter] = useState("today"); // "today" or "upcoming"
@@ -348,44 +386,196 @@ export default function HostBody() {
 
     // ✅ Safe delete: Firestore only (no Cloudinary deletion)
     const handleDelete = async (property) => {
-        if (!window.confirm("Are you sure you want to delete this property?")) return;
+        const propertyName = property.category === "services" ? "service" : 
+                            property.category === "experiences" ? "experience" : "property";
+        
+        if (!window.confirm(`Are you sure you want to delete this ${propertyName}? This action cannot be undone.`)) return;
 
         try {
-            // 1. Delete Firestore document
-            await deleteDoc(doc(db, "properties", property.id));
+            // Determine the collection based on category
+            const categoryValue = property.category || "properties";
+            const collectionName = categoryValue === "services" 
+                ? "services" 
+                : categoryValue === "experiences" 
+                ? "experiences" 
+                : "properties";
+            
+            // 1. Delete Firestore document from the correct collection
+            await deleteDoc(doc(db, collectionName, property.id));
 
-            // 2. Update UI instantly
+            // 2. Update UI instantly - update both properties and allProperties
             setProperties((prev) => prev.filter((p) => p.id !== property.id));
+            setAllProperties((prev) => prev.filter((p) => p.id !== property.id));
 
-            alert("Property deleted successfully! (Images remain in Cloudinary for safety)");
+            alert(`${propertyName.charAt(0).toUpperCase() + propertyName.slice(1)} deleted successfully! (Images remain in Cloudinary for safety)`);
         } catch (error) {
             console.error("Error deleting property:", error);
-            alert("Failed to delete property. Please try again.");
+            alert("Failed to delete. Please try again.");
         }
+    };
+
+    // Initialize images when edit form opens
+    useEffect(() => {
+        if (selectedDest && showEditForm) {
+            // Initialize editImages with existing images
+            const existingImages = selectedDest.images || [];
+            setEditImages(existingImages.map(url => ({ url, isNew: false })));
+        } else {
+            setEditImages([]);
+        }
+    }, [selectedDest, showEditForm]);
+
+    // Handle image selection for edit form
+    const handleEditImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        
+        if (editImages.length + files.length > MAX_IMAGE_COUNT) {
+            alert(`Maximum ${MAX_IMAGE_COUNT} images allowed.`);
+            return;
+        }
+
+        const validFiles = files.filter((file) => {
+            const isValid = file.type.startsWith("image/");
+            const isUnderLimit = file.size <= 3 * 1024 * 1024; // 3MB limit
+            return isValid && isUnderLimit;
+        });
+
+        if (validFiles.length !== files.length) {
+            alert("Some files were skipped. Must be valid images under 3MB.");
+        }
+
+        const newImages = validFiles.map((file) => ({
+            url: URL.createObjectURL(file),
+            isNew: true,
+            file: file,
+        }));
+
+        setEditImages((prev) => [...prev, ...newImages]);
+    };
+
+    // Remove image from edit form
+    const removeEditImage = (index) => {
+        setEditImages((prev) => {
+            const newImages = [...prev];
+            // Revoke object URL if it's a new image
+            if (newImages[index].isNew && newImages[index].url.startsWith('blob:')) {
+                URL.revokeObjectURL(newImages[index].url);
+            }
+            newImages.splice(index, 1);
+            return newImages;
+        });
+    };
+
+    // Upload new images to Cloudinary
+    const uploadNewImagesToCloudinary = async () => {
+        const newImageFiles = editImages.filter(img => img.isNew && img.file);
+        if (newImageFiles.length === 0) return [];
+
+        const uploadedUrls = [];
+        for (const image of newImageFiles) {
+            const formData = new FormData();
+            formData.append("file", image.file);
+            formData.append("upload_preset", UPLOAD_PRESET);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) throw new Error("Failed to upload to Cloudinary");
+            const data = await res.json();
+            uploadedUrls.push(data.secure_url);
+        }
+        return uploadedUrls;
     };
 
     // ✅ Handle editing and saving changes
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         try {
-            const propertyRef = doc(db, "properties", selectedDest.id);
-            await updateDoc(propertyRef, {
-                title: selectedDest.title,
-                location: typeof selectedDest.location === 'string'
-                    ? selectedDest.location
-                    : (selectedDest.location?.address || ""),
-                price: selectedDest.price,
-                description: selectedDest.description,
+            setIsUploadingImages(true);
+            
+            // Determine the collection based on category
+            // Map category values: "home" or "properties" -> "properties" collection
+            const categoryValue = selectedDest.category || "home";
+            const collectionName = categoryValue === "services" 
+                ? "services" 
+                : categoryValue === "experiences" 
+                ? "experiences" 
+                : "properties";
+            
+            const propertyRef = doc(db, collectionName, selectedDest.id);
+            
+            // Prepare location data - ensure it's an object with lat, lng, and address
+            let locationData;
+            if (selectedDest.location && typeof selectedDest.location === 'object') {
+                // Already an object, use it directly
+                locationData = {
+                    lat: selectedDest.location.lat || null,
+                    lng: selectedDest.location.lng || null,
+                    address: selectedDest.location.address || ""
+                };
+            } else if (typeof selectedDest.location === 'string' && selectedDest.location.trim()) {
+                // String location (backward compatibility) - no coordinates available
+                locationData = { address: selectedDest.location };
+            } else {
+                // No location provided
+                locationData = { address: "" };
+            }
+            
+            // Prepare amenities (convert string to array if needed)
+            let amenitiesArray = selectedDest.amenities;
+            if (typeof amenitiesArray === 'string') {
+                amenitiesArray = amenitiesArray.split(",").map((a) => a.trim()).filter((a) => a);
+            }
+            
+            // Upload new images and get all image URLs
+            const newImageUrls = await uploadNewImagesToCloudinary();
+            const existingImageUrls = editImages.filter(img => !img.isNew).map(img => img.url);
+            const allImageUrls = [...existingImageUrls, ...newImageUrls];
+            
+            const updateData = {
+                title: selectedDest.title || "",
+                location: locationData,
+                price: selectedDest.price ? Number(selectedDest.price) : 0,
+                description: selectedDest.description || "",
+                type: selectedDest.type || "",
+                category: categoryValue === "home" ? "properties" : categoryValue,
+                day_night: selectedDest.day_night || "",
+                maxGuests: selectedDest.maxGuests ? Number(selectedDest.maxGuests) : null,
+                bedrooms: selectedDest.bedrooms ? Number(selectedDest.bedrooms) : null,
+                bathrooms: selectedDest.bathrooms ? Number(selectedDest.bathrooms) : null,
+                amenities: amenitiesArray || [],
+                discountPercentage: selectedDest.discountPercentage ? Number(selectedDest.discountPercentage) : null,
+                promoCode: selectedDest.promoCode || null,
+                promoStartDate: selectedDest.promoStartDate || null,
+                promoEndDate: selectedDest.promoEndDate || null,
+                images: allImageUrls,
+            };
+
+            await updateDoc(propertyRef, updateData);
+
+            // Clean up blob URLs
+            editImages.forEach(img => {
+                if (img.isNew && img.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(img.url);
+                }
             });
 
             setProperties((prev) =>
-                prev.map((p) => (p.id === selectedDest.id ? { ...p, ...selectedDest } : p))
+                prev.map((p) => (p.id === selectedDest.id ? { ...p, ...selectedDest, images: allImageUrls } : p))
+            );
+            setAllProperties((prev) =>
+                prev.map((p) => (p.id === selectedDest.id ? { ...p, ...selectedDest, images: allImageUrls } : p))
             );
 
             setShowEditForm(false);
+            setEditImages([]);
+            setIsUploadingImages(false);
             alert("Property updated successfully!");
         } catch (error) {
             console.error("Error updating property:", error);
+            setIsUploadingImages(false);
             alert("Failed to update property.");
         }
     };
@@ -1014,7 +1204,7 @@ export default function HostBody() {
                                             <input
                                                 id="edit-title"
                                                 type="text"
-                                                value={selectedDest.title}
+                                                value={selectedDest.title || ""}
                                                 onChange={(e) =>
                                                     setSelectedDest({ ...selectedDest, title: e.target.value })
                                                 }
@@ -1024,20 +1214,21 @@ export default function HostBody() {
                                         </div>
 
                                         <div className="edit-form-group">
-                                            <label htmlFor="edit-location">
-                                                Location
-                                            </label>
-                                            <input
-                                                id="edit-location"
-                                                type="text"
-                                                value={typeof selectedDest.location === 'string'
-                                                    ? selectedDest.location
-                                                    : (selectedDest.location?.address || "")}
-                                                onChange={(e) =>
-                                                    setSelectedDest({ ...selectedDest, location: e.target.value })
+                                            <label>Location</label>
+                                            <MapPicker
+                                                onLocationSelect={(locationData) => {
+                                                    setSelectedDest({ 
+                                                        ...selectedDest, 
+                                                        location: locationData 
+                                                    });
+                                                }}
+                                                initialLocation={
+                                                    selectedDest.location && typeof selectedDest.location === 'object'
+                                                        ? selectedDest.location
+                                                        : (selectedDest.location && typeof selectedDest.location === 'string'
+                                                            ? { address: selectedDest.location }
+                                                            : null)
                                                 }
-                                                placeholder="Enter property location"
-                                                required
                                             />
                                         </div>
 
@@ -1050,9 +1241,9 @@ export default function HostBody() {
                                                 type="number"
                                                 step="0.01"
                                                 min="0"
-                                                value={selectedDest.price}
+                                                value={selectedDest.price || ""}
                                                 onChange={(e) =>
-                                                    setSelectedDest({ ...selectedDest, price: parseFloat(e.target.value) })
+                                                    setSelectedDest({ ...selectedDest, price: parseFloat(e.target.value) || 0 })
                                                 }
                                                 placeholder="Enter price per night"
                                                 required
@@ -1065,13 +1256,269 @@ export default function HostBody() {
                                             </label>
                                             <textarea
                                                 id="edit-description"
-                                                value={selectedDest.description}
+                                                value={selectedDest.description || ""}
                                                 onChange={(e) =>
                                                     setSelectedDest({ ...selectedDest, description: e.target.value })
                                                 }
                                                 placeholder="Enter property description"
                                                 rows="5"
                                                 required
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label>Property Images</label>
+                                            <div style={{ 
+                                                display: "grid", 
+                                                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", 
+                                                gap: "1rem",
+                                                marginTop: "0.5rem"
+                                            }}>
+                                                {editImages.map((img, idx) => (
+                                                    <div key={idx} style={{ position: "relative", aspectRatio: "1", borderRadius: "8px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+                                                        <img
+                                                            src={img.url}
+                                                            alt={`Property image ${idx + 1}`}
+                                                            style={{
+                                                                width: "100%",
+                                                                height: "100%",
+                                                                objectFit: "cover",
+                                                                display: "block"
+                                                            }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeEditImage(idx)}
+                                                            style={{
+                                                                position: "absolute",
+                                                                top: "4px",
+                                                                right: "4px",
+                                                                background: "rgba(0, 0, 0, 0.7)",
+                                                                color: "white",
+                                                                border: "none",
+                                                                borderRadius: "50%",
+                                                                width: "28px",
+                                                                height: "28px",
+                                                                cursor: "pointer",
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                                padding: 0
+                                                            }}
+                                                            aria-label="Remove image"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {editImages.length < MAX_IMAGE_COUNT && (
+                                                    <label
+                                                        style={{
+                                                            aspectRatio: "1",
+                                                            border: "2px dashed #ccc",
+                                                            borderRadius: "8px",
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            cursor: "pointer",
+                                                            background: "#f9f9f9",
+                                                            transition: "all 0.2s"
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.borderColor = "#3b82f6";
+                                                            e.currentTarget.style.background = "#f0f7ff";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.borderColor = "#ccc";
+                                                            e.currentTarget.style.background = "#f9f9f9";
+                                                        }}
+                                                    >
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            multiple
+                                                            onChange={handleEditImageChange}
+                                                            style={{ display: "none" }}
+                                                        />
+                                                        <Plus size={24} style={{ color: "#666", marginBottom: "4px" }} />
+                                                        <span style={{ fontSize: "12px", color: "#666" }}>Add Image</span>
+                                                    </label>
+                                                )}
+                                            </div>
+                                            {isUploadingImages && (
+                                                <p style={{ marginTop: "0.5rem", color: "#3b82f6", fontSize: "14px" }}>
+                                                    Uploading images...
+                                                </p>
+                                            )}
+                                            <p style={{ marginTop: "0.5rem", fontSize: "12px", color: "#666" }}>
+                                                {editImages.length} / {MAX_IMAGE_COUNT} images
+                                            </p>
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-type">
+                                                Type
+                                            </label>
+                                            <input
+                                                id="edit-type"
+                                                type="text"
+                                                value={selectedDest.type || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, type: e.target.value })
+                                                }
+                                                placeholder="e.g., Home, Apartment, Hotel, Resort"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-category">
+                                                Category
+                                            </label>
+                                            <select
+                                                id="edit-category"
+                                                value={selectedDest.category === "properties" ? "home" : (selectedDest.category || "home")}
+                                                onChange={(e) => {
+                                                    // Map "home" to "properties" for database consistency
+                                                    const dbCategory = e.target.value === "home" ? "properties" : e.target.value;
+                                                    setSelectedDest({ ...selectedDest, category: dbCategory });
+                                                }}
+                                            >
+                                                <option value="home">Home</option>
+                                                <option value="services">Services</option>
+                                                <option value="experiences">Experiences</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-day-night">
+                                                Day/Night
+                                            </label>
+                                            <select
+                                                id="edit-day-night"
+                                                value={selectedDest.day_night || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, day_night: e.target.value })
+                                                }
+                                            >
+                                                <option value="">Select</option>
+                                                <option value="Day">Day</option>
+                                                <option value="Night">Night</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-max-guests">
+                                                Max Guests
+                                            </label>
+                                            <input
+                                                id="edit-max-guests"
+                                                type="number"
+                                                min="1"
+                                                value={selectedDest.maxGuests || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, maxGuests: parseInt(e.target.value) || null })
+                                                }
+                                                placeholder="Maximum number of guests"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-bedrooms">
+                                                Bedrooms
+                                            </label>
+                                            <input
+                                                id="edit-bedrooms"
+                                                type="number"
+                                                min="0"
+                                                value={selectedDest.bedrooms || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, bedrooms: parseInt(e.target.value) || null })
+                                                }
+                                                placeholder="Number of bedrooms"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-bathrooms">
+                                                Bathrooms
+                                            </label>
+                                            <input
+                                                id="edit-bathrooms"
+                                                type="number"
+                                                min="0"
+                                                step="0.5"
+                                                value={selectedDest.bathrooms || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, bathrooms: parseFloat(e.target.value) || null })
+                                                }
+                                                placeholder="Number of bathrooms"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-amenities">
+                                                Amenities
+                                            </label>
+                                            <input
+                                                id="edit-amenities"
+                                                type="text"
+                                                value={Array.isArray(selectedDest.amenities) 
+                                                    ? selectedDest.amenities.join(", ") 
+                                                    : (selectedDest.amenities || "")}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, amenities: e.target.value })
+                                                }
+                                                placeholder="WiFi, Pool, Parking, etc. (comma separated)"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-discount">
+                                                Discount Percentage
+                                            </label>
+                                            <input
+                                                id="edit-discount"
+                                                type="number"
+                                                min="0"
+                                                max="100"
+                                                step="0.01"
+                                                value={selectedDest.discountPercentage || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, discountPercentage: parseFloat(e.target.value) || null })
+                                                }
+                                                placeholder="Discount percentage (0-100)"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label htmlFor="edit-promo-code">
+                                                Promo Code
+                                            </label>
+                                            <input
+                                                id="edit-promo-code"
+                                                type="text"
+                                                value={selectedDest.promoCode || ""}
+                                                onChange={(e) =>
+                                                    setSelectedDest({ ...selectedDest, promoCode: e.target.value || null })
+                                                }
+                                                placeholder="Promotional code"
+                                            />
+                                        </div>
+
+                                        <div className="edit-form-group">
+                                            <label>Promo Date Range</label>
+                                            <DateRangePicker
+                                                checkInDate={formatDateForInput(selectedDest.promoStartDate)}
+                                                checkOutDate={formatDateForInput(selectedDest.promoEndDate)}
+                                                onDateChange={(dates) => {
+                                                    setSelectedDest({ 
+                                                        ...selectedDest, 
+                                                        promoStartDate: dates.checkIn || null,
+                                                        promoEndDate: dates.checkOut || null
+                                                    });
+                                                }}
+                                                minDate={new Date().toISOString().split('T')[0]}
                                             />
                                         </div>
 

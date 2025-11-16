@@ -6,8 +6,10 @@ import Footer from "../generalFile/Footer";
 import { collection, query, where, getDocs, doc, updateDoc, getDoc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { usePoints } from "../../context/PointsContext";
 
 function HostBooking() {
+    const { awardPoints } = usePoints();
     const [currentUser, setCurrentUser] = useState(null);
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -224,6 +226,54 @@ function HostBooking() {
                             createdAt: serverTimestamp(),
                         });
                     }
+
+                    // Award points to host for confirmed booking
+                    try {
+                        // Check if this is host's first confirmed booking (exclude current booking)
+                        const hostBookingsQuery = query(
+                            collection(db, "bookings"),
+                            where("hostId", "==", currentUser.uid),
+                            where("status", "==", "confirmed")
+                        );
+                        const hostBookingsSnap = await getDocs(hostBookingsQuery);
+                        // Filter out the current booking to check if it's truly the first
+                        const otherHostBookings = hostBookingsSnap.docs.filter(doc => doc.id !== bookingId);
+                        const isFirstConfirmedBooking = otherHostBookings.length === 0;
+
+                        // Calculate base points based on host earnings (10 points per ₱100 earned)
+                        const basePoints = Math.floor((hostEarningsAmount / 100) * 10);
+
+                        // Award base points
+                        if (basePoints > 0) {
+                            await awardPoints(
+                                basePoints,
+                                "host_booking",
+                                `Points earned from confirmed booking: ${booking.listingTitle || booking.listingId}`,
+                                bookingId
+                            );
+                        }
+
+                        // Award first booking confirmation bonus
+                        if (isFirstConfirmedBooking) {
+                            await awardPoints(
+                                50,
+                                "host_first_booking",
+                                "First booking confirmation bonus!",
+                                bookingId
+                            );
+                        } else {
+                            // Award repeat booking confirmation bonus
+                            await awardPoints(
+                                20,
+                                "host_bonus",
+                                "Repeat booking confirmation bonus!",
+                                bookingId
+                            );
+                        }
+                    } catch (pointsError) {
+                        console.error("Error awarding points to host:", pointsError);
+                        // Don't fail the confirmation if points awarding fails
+                    }
                 } catch (earningsError) {
                     console.error("Error adding host earnings:", earningsError);
                     // Don't fail the confirmation if earnings fail
@@ -234,7 +284,7 @@ function HostBooking() {
             setBookings(bookings.map(b => 
                 b.id === bookingId ? { ...b, status: "confirmed", confirmedAt: new Date() } : b
             ));
-            alert("Booking confirmed successfully! Earnings have been added to your wallet.");
+            alert("Booking confirmed successfully! Earnings and points have been added to your account.");
         } catch (error) {
             console.error("Error confirming booking:", error);
             alert("Failed to confirm booking. Please try again.");

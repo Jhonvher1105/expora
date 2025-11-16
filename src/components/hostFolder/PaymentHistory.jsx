@@ -31,22 +31,65 @@ export default function PaymentHistory() {
         );
       } else if (filter === "payout") {
         // Load payout requests
-        const payoutRef = collection(db, "payoutRequests");
-        const payoutQuery = query(
-          payoutRef,
-          where("hostId", "==", userId),
-          orderBy("createdAt", "desc"),
-          limit(50)
-        );
-        const payoutSnap = await getDocs(payoutQuery);
-        const payoutData = payoutSnap.docs.map(doc => ({
-          id: doc.id,
-          type: "payout",
-          ...doc.data()
-        }));
-        setTransactions(payoutData);
-        setLoading(false);
-        return;
+        try {
+          const payoutRef = collection(db, "payoutRequests");
+          const payoutQuery = query(
+            payoutRef,
+            where("hostId", "==", userId),
+            orderBy("createdAt", "desc"),
+            limit(50)
+          );
+          const payoutSnap = await getDocs(payoutQuery);
+          const payoutData = payoutSnap.docs.map(doc => ({
+            id: doc.id,
+            type: "payout",
+            ...doc.data()
+          }));
+          setTransactions(payoutData);
+          setLoading(false);
+          return;
+        } catch (payoutError) {
+          // If index is missing or building, try fallback query without orderBy
+          const isIndexError = payoutError.code === "failed-precondition" || 
+                              payoutError.message?.includes("index") ||
+                              payoutError.message?.includes("currently building") ||
+                              payoutError.message?.includes("cannot be used yet");
+          
+          if (isIndexError) {
+            try {
+              console.log("Index is building or missing, using fallback query...");
+              const payoutRef = collection(db, "payoutRequests");
+              const fallbackQuery = query(
+                payoutRef,
+                where("hostId", "==", userId),
+                limit(50)
+              );
+              const payoutSnap = await getDocs(fallbackQuery);
+              let payoutData = payoutSnap.docs.map(doc => ({
+                id: doc.id,
+                type: "payout",
+                ...doc.data()
+              }));
+              // Sort in memory
+              payoutData.sort((a, b) => {
+                const aTime = a.createdAt?.toDate?.()?.getTime() || a.createdAt || 0;
+                const bTime = b.createdAt?.toDate?.()?.getTime() || b.createdAt || 0;
+                return bTime - aTime;
+              });
+              setTransactions(payoutData);
+              setLoading(false);
+              if (payoutError.message?.includes("currently building")) {
+                console.log("Using temporary workaround while index builds. This may take a few minutes.");
+              }
+              return;
+            } catch (fallbackError) {
+              console.error("Fallback query also failed:", fallbackError);
+              throw payoutError; // Re-throw original error
+            }
+          } else {
+            throw payoutError;
+          }
+        }
       } else {
         q = query(
           transactionsRef,

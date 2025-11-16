@@ -18,7 +18,6 @@ import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { useBooking } from "../../context/BookingContext.jsx";
 import { useWallet } from "../../context/WalletContext.jsx";
-import { usePoints } from "../../context/PointsContext.jsx";
 import { useChat } from "../../context/ChatContext.jsx";
 import PayPalPayment from "../ui/PayPalPayment";
 import ReviewList from "../ui/ReviewList";
@@ -133,7 +132,6 @@ function Body() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [lightboxImageIndex, selectedDest?.images]);
 
-    const { awardPoints } = usePoints();
     // Validation functions
     const validateBookingForm = () => {
         const errors = {};
@@ -248,56 +246,6 @@ function Body() {
 
         calculateFee();
     }, [startDate, endDate, selectedDest?.price, selectedDest?.discountPercentage, numGuests, calculateServiceFee]);
-
-    // Award points after successful booking
-    const awardBookingPoints = async (booking, totalPrice) => {
-        if (!currentUser) return;
-
-        try {
-            // Check if this is user's first booking (exclude current booking)
-            const bookingsQuery = query(
-                collection(db, "bookings"),
-                where("guestId", "==", currentUser.uid),
-                where("status", "==", "confirmed")
-            );
-            const bookingsSnap = await getDocs(bookingsQuery);
-            // Filter out the current booking to check if it's truly the first
-            const otherBookings = bookingsSnap.docs.filter(doc => doc.id !== booking.id);
-            const isFirstBooking = otherBookings.length === 0;
-
-            // Calculate base points (10 points per ₱100 spent)
-            const basePoints = Math.floor((totalPrice / 100) * 10);
-
-            // Award base points
-            await awardPoints(
-                basePoints,
-                "booking",
-                `Points earned from booking: ${booking.listingTitle || booking.listingId}`,
-                booking.id
-            );
-
-            // Award first booking bonus
-            if (isFirstBooking) {
-                await awardPoints(
-                    50,
-                    "first_booking",
-                    "First booking bonus!",
-                    booking.id
-                );
-            } else {
-                // Award repeat booking bonus
-                await awardPoints(
-                    20,
-                    "bonus",
-                    "Repeat booking bonus!",
-                    booking.id
-                );
-            }
-        } catch (error) {
-            console.error("Error awarding points:", error);
-            // Don't fail the booking if points awarding fails
-        }
-    };
 
     // ✅ Track current user
     useEffect(() => {
@@ -1417,10 +1365,6 @@ function Body() {
                                                 bookingId={bookingCreated.id}
                                                 couponCode={couponCode || null}
                                                 onSuccess={async (result) => {
-                                                    // Award points after successful PayPal payment
-                                                    if (bookingCreated) {
-                                                        await awardBookingPoints(bookingCreated, bookingCreated.totalPrice);
-                                                    }
                                                     setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. (Order ID: ${result.orderId})`);
                                                     setCouponCode("");
                                                     setCouponDiscount(0);
@@ -1523,8 +1467,6 @@ function Body() {
                                                         // Process payment
                                                         try {
                                                             await pay(booking.totalPrice, booking.id, couponCode || null, booking.hostId || null);
-                                                            // Award points after successful payment
-                                                            await awardBookingPoints(booking, booking.totalPrice);
                                                             setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. Amount: ₱${booking.totalPrice.toFixed(2)}`);
                                                             setCouponCode("");
                                                             setCouponDiscount(0);

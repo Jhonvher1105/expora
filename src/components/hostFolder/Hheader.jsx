@@ -240,7 +240,7 @@ function Header() {
                                                     <span>Settings</span>
                                                 </Link>
                                                 <Link
-                                                    to="/Profile"
+                                                    to="/HostProfile"
                                                     className="user-menu-item"
                                                     role="menuitem"
                                                     onClick={() => setUserMenuOpen(false)}

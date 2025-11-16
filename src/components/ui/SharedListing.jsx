@@ -11,7 +11,6 @@ import ReviewForm from "./ReviewForm";
 import ShareMenu from "./ShareMenu";
 import { useBooking } from "../../context/BookingContext";
 import { useWallet } from "../../context/WalletContext";
-import { usePoints } from "../../context/PointsContext";
 import { useChat } from "../../context/ChatContext";
 import PayPalPayment from "./PayPalPayment";
 import Header from "../UserFolder/Header";
@@ -43,7 +42,6 @@ export default function SharedListing({ listing: propListing }) {
     const { checkAvailability, createBooking, creating, calculateServiceFee } = useBooking();
     const { balance, pay, applyCoupon, loading: walletLoading } = useWallet();
     const { openChat } = useChat();
-    const { awardPoints } = usePoints();
     // const { show}
 
     // Fetch listing from Firestore if ID is provided
@@ -316,38 +314,6 @@ export default function SharedListing({ listing: propListing }) {
         const listingDiscount = listing.discountPercentage ? (basePrice * listing.discountPercentage) / 100 : 0;
         const priceAfterListingDiscount = basePrice - listingDiscount;
         return priceAfterListingDiscount + serviceFee;
-    };
-
-    const awardBookingPoints = async (booking, totalPrice) => {
-        if (!currentUser) return;
-
-        try {
-            const bookingsQuery = query(
-                collection(db, "bookings"),
-                where("guestId", "==", currentUser.uid),
-                where("status", "==", "confirmed")
-            );
-            const bookingsSnap = await getDocs(bookingsQuery);
-            const otherBookings = bookingsSnap.docs.filter(doc => doc.id !== booking.id);
-            const isFirstBooking = otherBookings.length === 0;
-
-            const basePoints = Math.floor((totalPrice / 100) * 10);
-
-            await awardPoints(
-                basePoints,
-                "booking",
-                `Points earned from booking: ${booking.listingTitle || booking.listingId}`,
-                booking.id
-            );
-
-            if (isFirstBooking) {
-                await awardPoints(50, "first_booking", "First booking bonus!", booking.id);
-            } else {
-                await awardPoints(20, "bonus", "Repeat booking bonus!", booking.id);
-            }
-        } catch (error) {
-            console.error("Error awarding points:", error);
-        }
     };
 
     const handleFavBtn = async () => {
@@ -1255,9 +1221,6 @@ export default function SharedListing({ listing: propListing }) {
                                         bookingId={bookingCreated.id}
                                         couponCode={couponCode || null}
                                         onSuccess={async (result) => {
-                                            if (bookingCreated) {
-                                                await awardBookingPoints(bookingCreated, bookingCreated.totalPrice);
-                                            }
                                             setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. (Order ID: ${result.orderId})`);
                                             setCouponCode("");
                                             setCouponDiscount(0);
@@ -1315,7 +1278,6 @@ export default function SharedListing({ listing: propListing }) {
 
                                             try {
                                                 await pay(booking.totalPrice, booking.id, couponCode || null, booking.hostId || null);
-                                                await awardBookingPoints(booking, booking.totalPrice);
                                                 setAvailabilityMsg(`Payment successful! Booking is pending host confirmation. Amount: ₱${booking.totalPrice.toFixed(2)}`);
                                                 setCouponCode("");
                                                 setCouponDiscount(0);

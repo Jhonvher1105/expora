@@ -75,6 +75,45 @@ export default function Earnings({ showHeader = true }) {
       setPayoutRequests(payoutSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error loading payout requests:", error);
+      // If index is missing or building, try fallback query without orderBy
+      const isIndexError = error.code === "failed-precondition" || 
+                          error.message?.includes("index") ||
+                          error.message?.includes("currently building") ||
+                          error.message?.includes("cannot be used yet");
+      
+      if (isIndexError) {
+        try {
+          console.log("Index is building or missing, using fallback query...");
+          const payoutRef = collection(db, "payoutRequests");
+          const fallbackQuery = query(
+            payoutRef,
+            where("hostId", "==", userId),
+            limit(10)
+          );
+          const payoutSnap = await getDocs(fallbackQuery);
+          const requests = payoutSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Sort in memory
+          requests.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.()?.getTime() || a.createdAt || 0;
+            const bTime = b.createdAt?.toDate?.()?.getTime() || b.createdAt || 0;
+            return bTime - aTime;
+          });
+          setPayoutRequests(requests);
+          // Clear any previous error since fallback worked
+          if (error.message?.includes("currently building")) {
+            console.log("Using temporary workaround while index builds. This may take a few minutes.");
+          }
+        } catch (fallbackError) {
+          console.error("Fallback query also failed:", fallbackError);
+          if (error.message?.includes("currently building")) {
+            setError("Firestore index is building. Please wait a few minutes and refresh the page.");
+          } else {
+            setError("Failed to load payout requests. Please ensure Firestore indexes are created.");
+          }
+        }
+      } else {
+        setError("Failed to load payout requests. Please try again.");
+      }
     }
   };
 
