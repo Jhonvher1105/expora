@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Cancelled - Explora</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .email-header {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            padding: 40px 30px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .email-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .email-header .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .email-content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            color: #555555;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+            border-left: 4px solid #ef4444;
+        }
+        .booking-details h2 {
+            margin: 0 0 20px 0;
+            font-size: 20px;
+            color: #333333;
+            font-weight: 600;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #666666;
+            font-size: 14px;
+        }
+        .detail-value {
+            color: #333333;
+            font-size: 14px;
+            text-align: right;
+        }
+        .total-price {
+            background-color: #fee2e2;
+            color: #991b1b;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .total-price .label {
+            font-size: 14px;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        .total-price .amount {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .refund-info {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .refund-info h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #92400e;
+            font-weight: 600;
+        }
+        .refund-info p {
+            margin: 0;
+            color: #78350f;
+            line-height: 1.8;
+        }
+        .next-steps {
+            background-color: #f0f9ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .next-steps h3 {
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            color: #0369a1;
+            font-weight: 600;
+        }
+        .next-steps ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #555555;
+        }
+        .next-steps li {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: #ffffff;
+            padding: 14px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button:hover {
+            opacity: 0.9;
+        }
+        .button-secondary {
+            background-color: #6b7280;
+            margin-left: 10px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            color: #666666;
+            font-size: 14px;
+        }
+        .footer p {
+            margin: 5px 0;
+        }
+        .footer a {
+            color: #ff6b35;
+            text-decoration: none;
+        }
+        .cancelled-badge {
+            display: inline-block;
+            background-color: #ef4444;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .payment-status {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .payment-status.paid {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .payment-status.pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <div class="icon">✕</div>
+            <h1>Booking Cancelled</h1>
+        </div>
+        
+        <div class="email-content">
+            <div class="cancelled-badge">CANCELLED</div>
+            
+            <div class="greeting">
+                Hello {{user_name}},
+            </div>
+            
+            <div class="message">
+                We're sorry to inform you that your booking has been cancelled by the host. We understand this may be disappointing, and we're here to help you find alternative accommodations.
+            </div>
+            
+            <div class="booking-details">
+                <h2>Cancelled Booking Details</h2>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{booking_id}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Property:</span>
+                    <span class="detail-value">{{listing_title}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Check-in / Check-out:</span>
+                    <span class="detail-value">{{booking_dates}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Guests:</span>
+                    <span class="detail-value">{{guests}} guest(s)</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Nights:</span>
+                    <span class="detail-value">{{nights}} night(s)</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Payment Status:</span>
+                    <span class="detail-value">
+                        <span class="payment-status {{payment_status}}">{{payment_status}}</span>
+                    </span>
+                </div>
+                
+                <div class="total-price">
+                    <div class="label">Total Amount</div>
+                    <div class="amount">{{total_price}}</div>
+                </div>
+            </div>
+            
+            <div class="refund-info">
+                <h3>💰 Refund Information</h3>
+                <p>{{refund_info}}</p>
+            </div>
+            
+            <div class="next-steps">
+                <h3>What's Next?</h3>
+                <ul>
+                    <li>If a payment was made, your refund will be processed automatically</li>
+                    <li>You can browse and book alternative properties on our platform</li>
+                    <li>Contact our support team if you need assistance finding a replacement booking</li>
+                    <li>We apologize for any inconvenience this may have caused</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="#" class="button">Browse Properties</a>
+                <a href="#" class="button button-secondary">Contact Support</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Explora</strong></p>
+            <p>Your trusted travel companion</p>
+            <p>
+                <a href="#">Visit our website</a> | 
+                <a href="#">Contact Support</a>
+            </p>
+            <p style="font-size: 12px; margin-top: 20px; color: #999999;">
+                This is an automated email. Please do not reply to this message.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+

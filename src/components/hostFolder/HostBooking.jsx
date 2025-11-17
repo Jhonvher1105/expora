@@ -7,6 +7,8 @@ import { collection, query, where, getDocs, doc, updateDoc, getDoc, addDoc, serv
 import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { usePoints } from "../../context/PointsContext";
+import { createNotification, formatBookingDates } from "../../utils/notificationService";
+import { sendBookingConfirmationEmail, sendBookingCancellationEmail } from "../../utils/emailService";
 
 function HostBooking() {
     const { awardPoints } = usePoints();
@@ -229,44 +231,15 @@ function HostBooking() {
 
                     // Award points to host for confirmed booking
                     try {
-                        // Check if this is host's first confirmed booking (exclude current booking)
-                        const hostBookingsQuery = query(
-                            collection(db, "bookings"),
-                            where("hostId", "==", currentUser.uid),
-                            where("status", "==", "confirmed")
-                        );
-                        const hostBookingsSnap = await getDocs(hostBookingsQuery);
-                        // Filter out the current booking to check if it's truly the first
-                        const otherHostBookings = hostBookingsSnap.docs.filter(doc => doc.id !== bookingId);
-                        const isFirstConfirmedBooking = otherHostBookings.length === 0;
-
                         // Calculate base points based on host earnings (10 points per ₱100 earned)
                         const basePoints = Math.floor((hostEarningsAmount / 100) * 10);
 
-                        // Award base points
+                        // Award base points only (no bonuses)
                         if (basePoints > 0) {
                             await awardPoints(
                                 basePoints,
                                 "host_booking",
                                 `Points earned from confirmed booking: ${booking.listingTitle || booking.listingId}`,
-                                bookingId
-                            );
-                        }
-
-                        // Award first booking confirmation bonus
-                        if (isFirstConfirmedBooking) {
-                            await awardPoints(
-                                50,
-                                "host_first_booking",
-                                "First booking confirmation bonus!",
-                                bookingId
-                            );
-                        } else {
-                            // Award repeat booking confirmation bonus
-                            await awardPoints(
-                                20,
-                                "host_bonus",
-                                "Repeat booking confirmation bonus!",
                                 bookingId
                             );
                         }
@@ -278,6 +251,47 @@ function HostBooking() {
                     console.error("Error adding host earnings:", earningsError);
                     // Don't fail the confirmation if earnings fail
                 }
+            }
+
+            // Send notification to guest
+            try {
+                // Fetch guest info if not already loaded
+                if (!guestInfo[booking.guestId]) {
+                    await fetchGuestInfo(booking.guestId);
+                }
+                
+                const guest = guestInfo[booking.guestId];
+                const guestEmail = guest?.email || null;
+                const guestName = guest ? `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || guest.email?.split('@')[0] || 'Guest' : 'Guest';
+                
+                // Format booking dates
+                const bookingDates = formatBookingDates(booking.startDate, booking.endDate);
+                
+                // Create in-app notification
+                await createNotification({
+                    userId: booking.guestId,
+                    type: "booking_confirmed",
+                    bookingId: bookingId,
+                    title: "Booking Confirmed! 🎉",
+                    message: `Your booking for "${booking.listingTitle || 'Property'}" has been confirmed by the host.`,
+                    listingTitle: booking.listingTitle || "Property",
+                    bookingDates: bookingDates,
+                });
+                
+                // Send email notification
+                if (guestEmail) {
+                    await sendBookingConfirmationEmail(guestEmail, guestName, {
+                        bookingId: bookingId,
+                        listingTitle: booking.listingTitle || "Property",
+                        bookingDates: bookingDates,
+                        totalPrice: booking.totalPrice || 0,
+                        guests: booking.guests || 1,
+                        nights: booking.nights || 0,
+                    });
+                }
+            } catch (notificationError) {
+                console.error("Error sending notification:", notificationError);
+                // Don't fail the confirmation if notification fails
             }
 
             // Update local state
@@ -296,12 +310,68 @@ function HostBooking() {
         if (!window.confirm("Are you sure you want to reject this booking? If payment was made, a refund may be required.")) return;
 
         try {
+            // Get booking data
+            const booking = bookings.find(b => b.id === bookingId);
+            if (!booking) {
+                alert("Booking not found");
+                return;
+            }
+
             const bookingRef = doc(db, "bookings", bookingId);
             await updateDoc(bookingRef, {
                 status: "cancelled",
                 updatedAt: serverTimestamp(),
                 cancelledAt: serverTimestamp()
             });
+
+            // Send notification to guest
+            try {
+                // Fetch guest info if not already loaded
+                if (!guestInfo[booking.guestId]) {
+                    await fetchGuestInfo(booking.guestId);
+                }
+                
+                const guest = guestInfo[booking.guestId];
+                const guestEmail = guest?.email || null;
+                const guestName = guest ? `${guest.firstName || ""} ${guest.lastName || ""}`.trim() || guest.email?.split('@')[0] || 'Guest' : 'Guest';
+                
+                // Format booking dates
+                const bookingDates = formatBookingDates(booking.startDate, booking.endDate);
+                
+                // Determine refund information
+                const wasPaid = booking.paymentStatus === "paid";
+                const refundInfo = wasPaid 
+                    ? "A refund will be processed to your original payment method within 5-7 business days. You will receive a confirmation email once the refund is initiated."
+                    : "No payment was made for this booking, so no refund is required.";
+                
+                // Create in-app notification
+                await createNotification({
+                    userId: booking.guestId,
+                    type: "booking_cancelled",
+                    bookingId: bookingId,
+                    title: "Booking Cancelled",
+                    message: `Your booking for "${booking.listingTitle || 'Property'}" has been cancelled by the host.`,
+                    listingTitle: booking.listingTitle || "Property",
+                    bookingDates: bookingDates,
+                });
+                
+                // Send email notification
+                if (guestEmail) {
+                    await sendBookingCancellationEmail(guestEmail, guestName, {
+                        bookingId: bookingId,
+                        listingTitle: booking.listingTitle || "Property",
+                        bookingDates: bookingDates,
+                        totalPrice: booking.totalPrice || 0,
+                        guests: booking.guests || 1,
+                        nights: booking.nights || 0,
+                        paymentStatus: booking.paymentStatus || "pending",
+                        refundInfo: refundInfo,
+                    });
+                }
+            } catch (notificationError) {
+                console.error("Error sending notification:", notificationError);
+                // Don't fail the cancellation if notification fails
+            }
 
             // Update local state
             setBookings(bookings.map(b => 

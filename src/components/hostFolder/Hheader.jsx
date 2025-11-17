@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Bell, User, Menu, X, Copy, MessageCircleMore, ChevronDown, ChevronRight, UserCircle, Settings, Ticket, Lightbulb, HelpCircle, LogOut, Home } from "lucide-react";
+import { Bell, User, Menu, X, Copy, MessageCircleMore, ChevronDown, ChevronRight, UserCircle, Settings, Ticket, Lightbulb, HelpCircle, LogOut, Home, Bookmark } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
@@ -149,6 +149,11 @@ function Header() {
             alert("Failed to update role. Please try again.");
         }
     };
+
+    const openGuestWishlist = () => {
+        navigate("/HostGuestWishlist");
+        setUserMenuOpen(false);
+    };
     
     return (
         <header className="header" role="banner">
@@ -290,6 +295,16 @@ function Header() {
                                     >
                                         <Lightbulb size={18} />
                                         <span>Suggestions</span>
+                                        <ChevronRight size={16} className="menu-arrow" />
+                                    </button>
+                                    <button 
+                                        className="user-menu-item" 
+                                        type="button" 
+                                        role="menuitem"
+                                        onClick={() => { openGuestWishlist(); setUserMenuOpen(false); }}
+                                    >
+                                        <Bookmark size={18} />
+                                        <span>Wishlist</span>
                                         <ChevronRight size={16} className="menu-arrow" />
                                     </button>
                                 </div>

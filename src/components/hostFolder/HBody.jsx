@@ -25,6 +25,7 @@ import Earnings from "./Earnings";
 import { collection as fbCollection, getDocs as fbGetDocs, query as fbQuery, where as fbWhere } from "firebase/firestore";
 import HostBooking from "./HostBooking";
 import MapPicker from "../ui/MapPicker";
+import StatisticsAnalytics from "./StatisticsAnalytics";
 
 // Cloudinary configuration
 const CLOUD_NAME = "dv42rw8m7";
@@ -77,6 +78,7 @@ export default function HostBody() {
     const [upcomingBookings, setUpcomingBookings] = useState([]);
     const [dashboardFilter, setDashboardFilter] = useState("today"); // "today" or "upcoming"
     const [statusFilter, setStatusFilter] = useState("all"); // "all", "confirmed", "pending", "cancelled"
+    const [listingStatusFilter, setListingStatusFilter] = useState("completed"); // "completed" or "drafts"
     const [selectedBooking, setSelectedBooking] = useState(null); // Selected booking for modal
     const [guestInfo, setGuestInfo] = useState({}); // Store guest info by guestId
     const [loadingGuests, setLoadingGuests] = useState({}); // Track loading state for each guest
@@ -149,12 +151,26 @@ export default function HostBody() {
                     }));
                 }
 
-                setAllProperties(data);
+                // Filter by draft status - works for all listing types (properties, services, experiences)
+                const filteredByStatus = data.filter((listing) => {
+                    const isDraft = listing.isDraft === true;
+                    if (listingStatusFilter === "completed") {
+                        // Show completed (published) listings: isDraft is false or undefined
+                        // This works for all types: properties, services, and experiences
+                        return !isDraft;
+                    } else {
+                        // Show drafts: isDraft is true
+                        // This works for all types: properties, services, and experiences
+                        return isDraft;
+                    }
+                });
+
+                setAllProperties(filteredByStatus);
                 // Initially show all properties (will be filtered by handleSearch if there are active filters)
-                setProperties(data);
+                setProperties(filteredByStatus);
 
                 // Extract unique locations for autocomplete
-                const uniqueLocations = [...new Set(data.map(p => {
+                const uniqueLocations = [...new Set(filteredByStatus.map(p => {
                     const locationStr = p.location?.address || p.location;
                     return locationStr && typeof locationStr === 'string' ? locationStr : null;
                 }).filter(Boolean))];
@@ -166,7 +182,7 @@ export default function HostBody() {
             }
         };
         fetchProperties();
-    }, [currentUser, activeTab]);
+    }, [currentUser, activeTab, listingStatusFilter]);
 
     // Fetch all bookings for date filtering
     useEffect(() => {
@@ -815,6 +831,54 @@ export default function HostBody() {
                                 </div>
                             )}
                         </div>
+                        
+                        {/* Completed/Drafts Filter Buttons */}
+                        {activeBodyTab === "listing" && (
+                            <div style={{ 
+                                display: "flex", 
+                                gap: "1rem", 
+                                marginTop: "1rem", 
+                                padding: "0 1rem",
+                                alignItems: "center"
+                            }}>
+                                <button
+                                    className={`tab ${listingStatusFilter === "completed" ? "tab-active" : ""}`}
+                                    onClick={() => setListingStatusFilter("completed")}
+                                    style={{
+                                        padding: "0.5rem 1.5rem",
+                                        borderRadius: "8px",
+                                        border: "2px solid",
+                                        borderColor: listingStatusFilter === "completed" ? "#3b82f6" : "#e5e7eb",
+                                        backgroundColor: listingStatusFilter === "completed" ? "#3b82f6" : "transparent",
+                                        color: listingStatusFilter === "completed" ? "white" : "#4b5563",
+                                        cursor: "pointer",
+                                        fontWeight: 600,
+                                        transition: "all 0.2s",
+                                        fontSize: "0.9375rem"
+                                    }}
+                                >
+                                    Completed
+                                </button>
+                                <button
+                                    className={`tab ${listingStatusFilter === "drafts" ? "tab-active" : ""}`}
+                                    onClick={() => setListingStatusFilter("drafts")}
+                                    style={{
+                                        padding: "0.5rem 1.5rem",
+                                        borderRadius: "8px",
+                                        border: "2px solid",
+                                        borderColor: listingStatusFilter === "drafts" ? "#3b82f6" : "#e5e7eb",
+                                        backgroundColor: listingStatusFilter === "drafts" ? "#3b82f6" : "transparent",
+                                        color: listingStatusFilter === "drafts" ? "white" : "#4b5563",
+                                        cursor: "pointer",
+                                        fontWeight: 600,
+                                        transition: "all 0.2s",
+                                        fontSize: "0.9375rem"
+                                    }}
+                                >
+                                    Drafts
+                                </button>
+                            </div>
+                        )}
                     </article>
 
                     <article>
@@ -908,6 +972,9 @@ export default function HostBody() {
                                     <h1 style={{ fontSize: "2rem", fontWeight: 600, marginBottom: "1.5rem", color: "#ffffff" }}>
                                         Dashboard
                                     </h1>
+                                    
+                                    {/* Statistics & Analytics Section */}
+                                    <StatisticsAnalytics />
                                     
                                     {/* Filter Buttons and Dropdown */}
                                     <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap", alignItems: "center" }}>

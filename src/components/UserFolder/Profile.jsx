@@ -309,7 +309,7 @@ export default function ProfileForm() {
                     </div>
 
                     {/* Points Display Section */}
-                    <div style={{
+                    {/* <div style={{
                         padding: "1.5rem",
                         background: "rgba(255,255,255,0.05)",
                         borderBottom: "1px solid rgba(255,255,255,0.1)",
@@ -392,7 +392,7 @@ export default function ProfileForm() {
                                 History
                             </Link>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Form */}
                     <div className="form-section">

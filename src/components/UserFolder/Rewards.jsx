@@ -207,7 +207,7 @@ export default function Rewards() {
                             <Gift size={30} color="#fff" />
                         </div>
                         <div>
-                            <h1 style={{ fontSize: "2.5rem", margin: 0, background: "var(--primary-gradient)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                            <h1 style={{ fontSize: "2.5rem", margin: 0, background: "var(--primary-gradient)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginTop: "10rem" }}>
                                 Rewards & Redemptions
                             </h1>
                             <p style={{ fontSize: "1rem", color: "var(--text-muted)", margin: 0 }}>
@@ -395,41 +395,6 @@ export default function Rewards() {
                                     Redemption Type:
                                 </label>
                                 <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setRedemptionType("both")}
-                                        disabled={redeeming}
-                                        style={{
-                                            padding: "0.75rem 1.5rem",
-                                            background: redemptionType === "both" 
-                                                ? "rgba(255,107,53,0.2)" 
-                                                : "var(--bg-surface)",
-                                            border: `1px solid ${redemptionType === "both" 
-                                                ? "var(--primary)" 
-                                                : "var(--border)"}`,
-                                            borderRadius: "8px",
-                                            color: "var(--text)",
-                                            cursor: redeeming ? "not-allowed" : "pointer",
-                                            fontSize: "0.9rem",
-                                            fontWeight: redemptionType === "both" ? "600" : "400",
-                                            transition: "all 0.2s ease",
-                                            opacity: redeeming ? 0.5 : 1
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!redeeming && redemptionType !== "both") {
-                                                e.currentTarget.style.background = "var(--bg-surface-hover)";
-                                                e.currentTarget.style.borderColor = "var(--border-strong)";
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!redeeming && redemptionType !== "both") {
-                                                e.currentTarget.style.background = "var(--bg-surface)";
-                                                e.currentTarget.style.borderColor = "var(--border)";
-                                            }
-                                        }}
-                                    >
-                                        Both (Wallet + Coupon)
-                                    </button>
                                     <button
                                         type="button"
                                         onClick={() => setRedemptionType("wallet")}

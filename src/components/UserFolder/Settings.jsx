@@ -1,4 +1,4 @@
-import { User, Calendar, Users, Gift, Sparkles, MapPin, DollarSign, X, CheckCircle, Clock, XCircle, Wallet, TrendingUp, TrendingDown, Filter } from "lucide-react";
+import { User, Calendar, Users, Gift, Sparkles, MapPin, DollarSign, X, CheckCircle, Clock, XCircle, Wallet, TrendingUp, TrendingDown, Filter, CreditCard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { auth, db } from "../../firebase";
@@ -39,6 +39,7 @@ export default function Settings() {
     const [profileImageUrl, setProfileImageUrl] = useState(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [showImageUpload, setShowImageUpload] = useState(false);
+    const [userRole, setUserRole] = useState(null);
     const [profileFormData, setProfileFormData] = useState({
         email: "",
         firstName: "",
@@ -76,6 +77,8 @@ export default function Settings() {
     const [hostEarnings, setHostEarnings] = useState(0);
     const [monthlyEarnings, setMonthlyEarnings] = useState(0);
     const [pendingEarnings, setPendingEarnings] = useState(0);
+    const [paypalBalance, setPaypalBalance] = useState(0);
+    const [eWalletBalance, setEWalletBalance] = useState(0);
 
     // Track current user
     useEffect(() => {
@@ -100,6 +103,10 @@ export default function Settings() {
 
                 if (userDoc.exists()) {
                     const userData = userDoc.data();
+                    // Get user role
+                    const role = userData.role || userData.accType || "guest";
+                    setUserRole(role);
+                    
                     const userFormData = {
                         email: userData.email || currentUser.email || "",
                         firstName: userData.firstName || "",
@@ -120,6 +127,8 @@ export default function Settings() {
                         setProfileImageUrl(userData.profileImage);
                     }
                 } else {
+                    // If no user document, assume guest
+                    setUserRole("guest");
                     const defaultData = {
                         email: currentUser.email || "",
                         firstName: "",
@@ -289,6 +298,56 @@ export default function Settings() {
 
         loadTransactions();
     }, [currentUser, isHost]);
+
+    // Calculate PayPal and E-wallet balances
+    useEffect(() => {
+        const calculateBalances = async () => {
+            if (!currentUser) {
+                setPaypalBalance(0);
+                setEWalletBalance(balance);
+                return;
+            }
+
+            let paypalTotal = 0;
+            
+            if (isHost) {
+                // For hosts: Calculate total earnings from PayPal payments
+                // Query bookings with PayPal payment method
+                try {
+                    const bookingsQuery = query(
+                        collection(db, "bookings"),
+                        where("hostId", "==", currentUser.uid),
+                        where("paymentMethod", "==", "paypal"),
+                        where("paymentStatus", "==", "paid")
+                    );
+                    const bookingsSnap = await getDocs(bookingsQuery);
+                    
+                    bookingsSnap.forEach((doc) => {
+                        const booking = doc.data();
+                        // Use hostEarnings if available, otherwise calculate from totalPrice - serviceFee
+                        const earnings = booking.hostEarnings !== undefined 
+                            ? Number(booking.hostEarnings)
+                            : (Number(booking.totalPrice || 0) - Number(booking.serviceFee || 0));
+                        paypalTotal += earnings;
+                    });
+                } catch (error) {
+                    console.error("Error calculating PayPal balance for host:", error);
+                }
+            } else {
+                // For guests: Calculate total amount paid via PayPal
+                const paypalPayments = transactions.filter(t => 
+                    t.type === "paypal_payment" && 
+                    t.status === "completed"
+                );
+                paypalTotal = paypalPayments.reduce((sum, t) => sum + (t.amount || 0), 0);
+            }
+
+            setPaypalBalance(paypalTotal);
+            setEWalletBalance(balance); // Current wallet balance
+        };
+
+        calculateBalances();
+    }, [transactions, balance, isHost, currentUser]);
 
     // Apply wallet filters
     useEffect(() => {
@@ -659,43 +718,45 @@ export default function Settings() {
                                             </div>
                                         </div>
 
-                                        {/* Points Display */}
-                                        <div style={{
-                                            padding: "1.5rem",
-                                            background: "rgba(255,255,255,0.05)",
-                                            borderBottom: "1px solid rgba(255,255,255,0.1)",
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            gap: "1rem"
-                                        }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                                                <div style={{
-                                                    width: "50px",
-                                                    height: "50px",
-                                                    borderRadius: "50%",
-                                                    background: "var(--primary-gradient)",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center"
-                                                }}>
-                                                    <Sparkles size={24} color="#fff" />
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", marginBottom: "0.3rem" }}>
-                                                        Points Balance
+                                        {/* Points Display - Only show for non-guests */}
+                                        {userRole && userRole !== "guest" && (
+                                            <div style={{
+                                                padding: "1.5rem",
+                                                background: "rgba(255,255,255,0.05)",
+                                                borderBottom: "1px solid rgba(255,255,255,0.1)",
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
+                                                gap: "1rem"
+                                            }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                                                    <div style={{
+                                                        width: "50px",
+                                                        height: "50px",
+                                                        borderRadius: "50%",
+                                                        background: "var(--primary-gradient)",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "center"
+                                                    }}>
+                                                        <Sparkles size={24} color="#fff" />
                                                     </div>
-                                                    {pointsLoading ? (
-                                                        <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Loading...</div>
-                                                    ) : (
-                                                        <div style={{ fontSize: "1.8rem", fontWeight: "bold" }}>
-                                                            {points.toLocaleString()} points
+                                                    <div>
+                                                        <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.6)", marginBottom: "0.3rem" }}>
+                                                            Points Balance
                                                         </div>
-                                                    )}
+                                                        {pointsLoading ? (
+                                                            <div style={{ fontSize: "1.5rem", fontWeight: "bold" }}>Loading...</div>
+                                                        ) : (
+                                                            <div style={{ fontSize: "1.8rem", fontWeight: "bold" }}>
+                                                                {points.toLocaleString()} points
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
+                                                
                                             </div>
-                                            
-                                        </div>
+                                        )}
 
                                         {/* Form */}
                                         <div className="form-section">
@@ -1181,16 +1242,58 @@ export default function Settings() {
                                                     <div className="stat-value">{formatAmount(pendingEarnings)}</div>
                                                 </div>
                                             </div>
+
+                                            {/* PayPal and E-wallet Balance */}
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "2rem" }}>
+                                                <div className="balance-card">
+                                                    <div className="balance-card-header">
+                                                        <CreditCard size={24} color="#0070ba" />
+                                                        <h3>PayPal Balance</h3>
+                                                    </div>
+                                                    <div className="balance-amount">{formatAmount(paypalBalance)}</div>
+                                                    <p className="balance-label">Total earnings from PayPal</p>
+                                                </div>
+                                                <div className="balance-card">
+                                                    <div className="balance-card-header">
+                                                        <Wallet size={24} color="#f97316" />
+                                                        <h3>E-Wallet Balance</h3>
+                                                    </div>
+                                                    <div className="balance-amount">{formatAmount(eWalletBalance)}</div>
+                                                    <p className="balance-label">Available wallet balance</p>
+                                                </div>
+                                            </div>
                                         </>
                                     ) : (
-                                        <div className="balance-card">
-                                            <div className="balance-card-header">
-                                                <Wallet size={24} color="#f97316" />
-                                                <h3>Current Balance</h3>
+                                        <>
+                                            <div className="balance-card">
+                                                <div className="balance-card-header">
+                                                    <Wallet size={24} color="#f97316" />
+                                                    <h3>Current Balance</h3>
+                                                </div>
+                                                <div className="balance-amount">{formatAmount(balance)}</div>
+                                                <p className="balance-label">Available for bookings</p>
                                             </div>
-                                            <div className="balance-amount">{formatAmount(balance)}</div>
-                                            <p className="balance-label">Available for bookings</p>
-                                        </div>
+
+                                            {/* PayPal and E-wallet Balance */}
+                                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "2rem" }}>
+                                                <div className="balance-card">
+                                                    <div className="balance-card-header">
+                                                        <CreditCard size={24} color="#0070ba" />
+                                                        <h3>PayPal Balance</h3>
+                                                    </div>
+                                                    <div className="balance-amount">{formatAmount(paypalBalance)}</div>
+                                                    <p className="balance-label">Total paid via PayPal</p>
+                                                </div>
+                                                <div className="balance-card">
+                                                    <div className="balance-card-header">
+                                                        <Wallet size={24} color="#f97316" />
+                                                        <h3>E-Wallet Balance</h3>
+                                                    </div>
+                                                    <div className="balance-amount">{formatAmount(eWalletBalance)}</div>
+                                                    <p className="balance-label">Current wallet balance</p>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             )}

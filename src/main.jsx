@@ -5,6 +5,7 @@ import { BookingProvider } from "./context/BookingContext.jsx";
 import { WalletProvider } from "./context/WalletContext.jsx";
 import { ChatProvider } from "./context/ChatContext.jsx";
 import { PointsProvider } from "./context/PointsContext.jsx";
+import { NotificationProvider } from "./context/NotificationContext.jsx";
 import "leaflet/dist/leaflet.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <PointsProvider>
         <WalletProvider>
           <BookingProvider>
-            <App />
+            <NotificationProvider>
+              <App />
+            </NotificationProvider>
           </BookingProvider>
         </WalletProvider>
       </PointsProvider>

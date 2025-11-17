@@ -21,18 +21,62 @@ export function PointsProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [points, setPoints] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [isGuest, setIsGuest] = useState(false);
 
-    useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (user) => {
-            setCurrentUser(user);
-            if (user) {
-                loadPoints(user.uid);
-            } else {
-                setPoints(0);
-                setLoading(false);
+    // Check if user is a guest
+    const checkUserRole = useCallback(async (userId) => {
+        try {
+            const userDocRef = doc(db, "users", userId);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const role = userData.role || userData.accType || "guest";
+                
+                // If role is "host" or "admin", they're not a guest
+                if (role === "host" || role === "admin") {
+                    return false;
+                }
+                
+                // If role is "guest", check if they have any properties (they might be a host)
+                if (role === "guest") {
+                    // Check if user has any properties (is a host)
+                    const propertiesQuery = query(
+                        collection(db, "properties"),
+                        where("ownerId", "==", userId),
+                        limit(1)
+                    );
+                    const propertiesSnap = await getDocs(propertiesQuery);
+                    
+                    // Also check experiences and services
+                    const experiencesQuery = query(
+                        collection(db, "experiences"),
+                        where("ownerId", "==", userId),
+                        limit(1)
+                    );
+                    const experiencesSnap = await getDocs(experiencesQuery);
+                    
+                    const servicesQuery = query(
+                        collection(db, "services"),
+                        where("ownerId", "==", userId),
+                        limit(1)
+                    );
+                    const servicesSnap = await getDocs(servicesQuery);
+                    
+                    // If they have any listings, they're a host and should have points
+                    if (!propertiesSnap.empty || !experiencesSnap.empty || !servicesSnap.empty) {
+                        return false; // Not a guest (they're a host)
+                    }
+                }
+                
+                return role === "guest";
             }
-        });
-        return unsub;
+            // If no user document, assume guest
+            return true;
+        } catch (error) {
+            console.error("Error checking user role:", error);
+            // Default to guest if error
+            return true;
+        }
     }, []);
 
     const loadPoints = useCallback(async (userId) => {
@@ -45,7 +89,7 @@ export function PointsProvider({ children }) {
                 const data = pointsSnap.data();
                 setPoints(data.balance || 0);
             } else {
-                // Initialize points if doesn't exist
+                // Initialize points if doesn't exist (only for non-guests)
                 await setDoc(pointsRef, {
                     balance: 0,
                     userId,
@@ -62,9 +106,38 @@ export function PointsProvider({ children }) {
         }
     }, []);
 
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, async (user) => {
+            setCurrentUser(user);
+            if (user) {
+                const guestStatus = await checkUserRole(user.uid);
+                setIsGuest(guestStatus);
+                // Only load points if user is not a guest
+                if (!guestStatus) {
+                    loadPoints(user.uid);
+                } else {
+                    // Guests have no points system
+                    setPoints(0);
+                    setLoading(false);
+                }
+            } else {
+                setPoints(0);
+                setLoading(false);
+                setIsGuest(false);
+            }
+        });
+        return unsub;
+    }, [checkUserRole, loadPoints]);
+
     const awardPoints = useCallback(async (amount, type, description, bookingId = null) => {
         if (!currentUser || amount <= 0) {
             throw new Error("Invalid amount or user");
+        }
+
+        // Guests should not have a points system
+        if (isGuest) {
+            // Silently skip for guests - no error thrown
+            return { success: false, message: "Guests do not have a points system" };
         }
 
         try {
@@ -103,16 +176,27 @@ export function PointsProvider({ children }) {
             });
 
             setPoints(newBalance);
+            
+            // Reload points from Firestore to ensure sync
+            if (currentUser) {
+                await loadPoints(currentUser.uid);
+            }
+            
             return { success: true, newBalance, pointsAwarded: amount };
         } catch (error) {
             console.error("Error awarding points:", error);
             throw error;
         }
-    }, [currentUser]);
+    }, [currentUser, isGuest, loadPoints]);
 
     const redeemPoints = useCallback(async (pointsToRedeem, discountAmount, description, redemptionType = "both") => {
         if (!currentUser || pointsToRedeem <= 0) {
             throw new Error("Invalid redemption amount");
+        }
+
+        // Guests should not have a points system
+        if (isGuest) {
+            throw new Error("Guests do not have a points system");
         }
 
         if (points < pointsToRedeem) {
@@ -267,10 +351,10 @@ export function PointsProvider({ children }) {
             console.error("Error redeeming points:", error);
             throw error;
         }
-    }, [currentUser, points]);
+    }, [currentUser, points, isGuest]);
 
     const getPointsHistory = useCallback(async (limitCount = 50) => {
-        if (!currentUser) return [];
+        if (!currentUser || isGuest) return [];
 
         try {
             const q = query(
@@ -288,7 +372,7 @@ export function PointsProvider({ children }) {
             console.error("Error loading points history:", error);
             return [];
         }
-    }, [currentUser]);
+    }, [currentUser, isGuest]);
 
     const getConversionRate = useCallback(() => {
         // Default: 100 points = ₱10 discount
@@ -304,6 +388,15 @@ export function PointsProvider({ children }) {
         return (pointsAmount / rate.pointsToPeso).toFixed(2);
     }, [getConversionRate]);
 
+    // Refresh points from Firestore
+    const refreshPoints = useCallback(async () => {
+        if (!currentUser) return;
+        const guestStatus = await checkUserRole(currentUser.uid);
+        if (!guestStatus) {
+            await loadPoints(currentUser.uid);
+        }
+    }, [currentUser, checkUserRole, loadPoints]);
+
     return (
         <PointsContext.Provider
             value={{
@@ -314,6 +407,7 @@ export function PointsProvider({ children }) {
                 getPointsHistory,
                 getConversionRate,
                 convertPointsToDiscount,
+                refreshPoints,
             }}
         >
             {children}

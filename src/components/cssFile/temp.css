@@ -2620,6 +2620,7 @@ header.scrolled {
     flex-direction: column;
     z-index: var(--z-modal);
     position: relative;
+    overflow: hidden;
 }
 
 .logout-modal-content {
@@ -2629,6 +2630,11 @@ header.scrolled {
     align-items: center;
     text-align: center;
     gap: 1.5rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    max-height: 90vh;
 }
 
 .logout-modal-icon {
@@ -2731,14 +2737,39 @@ header.scrolled {
     transform: translateY(0);
 }
 
-/* Responsive adjustments for logout modal */
-@media (max-width: 480px) {
+/* Responsive adjustments for logout modal and wishlist preferences */
+@media (max-width: 1024px) {
+    .logout-modal-overlay {
+        padding: 1rem;
+    }
+
     .logout-modal {
-        max-width: 95%;
+        max-width: 90%;
     }
 
     .logout-modal-content {
-        padding: 2rem 1.5rem;
+        padding: 2rem 1.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .logout-modal-overlay {
+        padding: 0.75rem;
+    }
+
+    .logout-modal {
+        max-width: 95%;
+        max-height: 95vh;
+    }
+
+    .logout-modal-content {
+        padding: 1.75rem 1.5rem;
+        gap: 1.25rem;
+        max-height: 90vh;
+    }
+
+    .wishlist-modal .logout-modal-content {
+        max-height: 88vh;
     }
 
     .logout-modal-icon {
@@ -2757,15 +2788,293 @@ header.scrolled {
 
     .logout-modal-message {
         font-size: 0.95rem;
+        line-height: 1.5;
     }
 
     .logout-modal-buttons {
         flex-direction: column;
+        gap: 0.75rem;
     }
 
     .logout-confirm-btn,
     .logout-cancel-btn {
         width: 100%;
+        padding: 0.75rem 1.25rem;
+        font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .logout-modal-overlay {
+        padding: 0.5rem;
+    }
+
+    .logout-modal {
+        max-width: 95%;
+        max-height: 95vh;
+    }
+
+    .logout-modal-content {
+        padding: 1.5rem 1.25rem;
+        gap: 1rem;
+        max-height: 90vh;
+    }
+
+    .wishlist-modal .logout-modal-content {
+        max-height: 88vh;
+    }
+
+    /* Thinner scrollbar on mobile */
+    .logout-modal-content::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .logout-modal-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .logout-modal-icon svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .logout-modal-title {
+        font-size: 1.25rem;
+        line-height: 1.2;
+    }
+
+    .logout-modal-message {
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+
+    .logout-modal-buttons {
+        flex-direction: column;
+        gap: 0.625rem;
+        margin-top: 0.25rem;
+    }
+
+    .logout-confirm-btn,
+    .logout-cancel-btn {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+}
+
+/* Responsive styles for wishlist preferences modal textarea */
+@media (max-width: 768px) {
+    .logout-modal-content textarea,
+    .wishlist-modal-textarea {
+        min-height: 120px;
+        padding: 10px;
+        font-size: 0.9rem;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+
+    .logout-modal-content .logout-modal-message {
+        margin-bottom: 15px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .logout-modal-content textarea,
+    .wishlist-modal-textarea {
+        min-height: 100px;
+        padding: 10px;
+        font-size: 0.875rem;
+        border-radius: 8px;
+        margin-bottom: 12px;
+    }
+
+    .logout-modal-content .logout-modal-message {
+        margin-bottom: 12px !important;
+    }
+}
+
+/* Wishlist preferences modal specific styles */
+.wishlist-modal {
+    max-width: 600px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.wishlist-modal .logout-modal-content {
+    max-height: 85vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom scrollbar styling for modal content */
+.logout-modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.logout-modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.logout-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.logout-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Firefox scrollbar styling */
+.logout-modal-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
+}
+
+.wishlist-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    width: 100%;
+}
+
+.wishlist-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #ffffff;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.wishlist-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.wishlist-modal-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    margin-bottom: 20px;
+    outline: none;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.wishlist-modal-textarea:focus {
+    border: 1px solid rgba(255, 107, 53, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.wishlist-modal-textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+/* Responsive styles for wishlist preferences modal header */
+@media (max-width: 768px) {
+    .wishlist-modal {
+        max-width: 95%;
+    }
+
+    .wishlist-modal-header {
+        margin-bottom: 15px;
+    }
+
+    .wishlist-modal-header .logout-modal-icon {
+        width: 70px;
+        height: 70px;
+    }
+
+    .wishlist-modal-header .logout-modal-icon svg {
+        width: 36px;
+        height: 36px;
+    }
+
+    .wishlist-modal-close-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .wishlist-modal-close-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .logout-modal-content > div:first-child {
+        margin-bottom: 15px !important;
+    }
+
+    .logout-modal-content > div:first-child button {
+        width: 32px !important;
+        height: 32px !important;
+    }
+
+    .logout-modal-content > div:first-child button svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .wishlist-modal {
+        max-width: 95%;
+    }
+
+    .wishlist-modal-header {
+        margin-bottom: 12px;
+    }
+
+    .wishlist-modal-header .logout-modal-icon {
+        width: 60px;
+        height: 60px;
+    }
+
+    .wishlist-modal-header .logout-modal-icon svg {
+        width: 32px;
+        height: 32px;
+    }
+
+    .wishlist-modal-close-btn {
+        width: 30px;
+        height: 30px;
+    }
+
+    .wishlist-modal-close-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .logout-modal-content > div:first-child {
+        margin-bottom: 12px !important;
+    }
+
+    .logout-modal-content > div:first-child button {
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    .logout-modal-content > div:first-child button svg {
+        width: 16px !important;
+        height: 16px !important;
     }
 }
 
@@ -3495,7 +3804,9 @@ header.scrolled {
 .section {
     /* displ */
     margin-bottom: 48px;
+    padding-bottom: 2rem;
     width: 90vw;
+    min-height: fit-content;
 }
 
 .section-header {
@@ -3541,6 +3852,8 @@ header.scrolled {
     justify-content: center;
     align-items: start;
     margin-top: 3rem;
+    margin-bottom: 2rem;
+    min-height: fit-content;
 }
 
 /* Individual card styling (no longer makes the card itself a grid) */
@@ -4742,13 +5055,14 @@ img {
 /* Host */
 
 .host_Body {
-    height: 100%;
+    min-height: 100vh;
     width: 100%;
     padding: 2rem;
     display: flex;
     align-items: center;
     flex-direction: column;
     padding-top: 8rem;
+    padding-bottom: 4rem;
     
 
     .floater-container {
@@ -6849,4 +7163,240 @@ img {
 
 .host-booking-detail-value-warning {
     color: var(--warning);
+}
+
+/* ============================================
+   NOTIFICATION DROPDOWN STYLES
+   ============================================ */
+
+.notification-btn {
+    position: relative;
+}
+
+.notification-dropdown {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    right: 0;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.98) 0%, rgba(22, 33, 62, 0.98) 100%);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    min-width: 380px;
+    max-width: 420px;
+    max-height: 600px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 40px rgba(255, 107, 53, 0.1);
+    animation: fadeInSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: var(--z-dropdown, 1000);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-dropdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.notification-dropdown-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.notification-unread-badge {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: #fff;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 20px;
+    text-align: center;
+}
+
+.notification-mark-all-read {
+    background: transparent;
+    border: none;
+    color: var(--primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.notification-mark-all-read:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.notification-dropdown-content {
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.notification-dropdown-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.notification-dropdown-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.notification-dropdown-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 107, 53, 0.3);
+    border-radius: 3px;
+}
+
+.notification-dropdown-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 107, 53, 0.5);
+}
+
+.notification-empty-state {
+    padding: 3rem 2rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.notification-empty-state p {
+    margin: 0.5rem 0;
+}
+
+.notification-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.notification-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.notification-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-item.notification-unread {
+    background: rgba(255, 107, 53, 0.05);
+    border-left: 3px solid var(--primary);
+}
+
+.notification-item.notification-unread:hover {
+    background: rgba(255, 107, 53, 0.1);
+}
+
+.notification-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 2px;
+}
+
+.notification-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.notification-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+    flex: 1;
+}
+
+.notification-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.notification-message {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0.5rem 0;
+    line-height: 1.5;
+}
+
+.notification-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 0.5rem;
+}
+
+.notification-meta svg {
+    flex-shrink: 0;
+}
+
+.notification-time {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 0.5rem;
+}
+
+.notification-dropdown-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+}
+
+.notification-view-all {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    color: #fff;
+    border: none;
+    padding: 0.625rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.notification-view-all:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+/* Responsive styles for notification dropdown */
+@media (max-width: 768px) {
+    .notification-dropdown {
+        min-width: 320px;
+        max-width: 90vw;
+        right: -10px;
+    }
+
+    .notification-item {
+        padding: 0.875rem 1.25rem;
+    }
+
+    .notification-dropdown-header {
+        padding: 1rem 1.25rem;
+    }
 }

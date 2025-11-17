@@ -25,6 +25,7 @@ import HostingType from './components/ui/HostingType';
 import Service from './components/ui/AddService';
 import SharedListing from './components/ui/SharedListing';
 import RandomAddBtn from './components/ui/RandomAddBtn';
+import HostGuestWishlist from './components/hostFolder/HostGuestWishlist';
 
 function App() {
     return (
@@ -49,6 +50,7 @@ function App() {
                 <Route path="/PointsHistory" element={<PointsHistory/>}/>
                 <Route path="/MyBooking" element={<MyBooking/>}/>
                 <Route path="/WalletPage" element={<WalletPage/>}/>
+                <Route path="/HostGuestWishlist" element={<HostGuestWishlist/>}/>
                 
                 <Route path="/HostingType" element={<HostingType/>}/>
                 <Route path="/Service" element={<Service/>}/>

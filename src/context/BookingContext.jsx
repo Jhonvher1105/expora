@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { addDoc, collection, doc, getDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
+import { createNotification, formatBookingDates } from "../utils/notificationService";
+import { sendHostBookingNotificationEmail } from "../utils/emailService";
 
 const BookingContext = createContext(null);
 
@@ -190,7 +192,67 @@ export function BookingProvider({ children }) {
         updatedAt: serverTimestamp(),
       };
       const ref = await addDoc(collection(db, "bookings"), payload);
-      return { id: ref.id, ...payload };
+      const bookingId = ref.id;
+      const booking = { id: bookingId, ...payload };
+
+      // Send notification to host
+      if (listing.ownerId) {
+        try {
+          // Fetch host information
+          const hostDoc = await getDoc(doc(db, "users", listing.ownerId));
+          if (hostDoc.exists()) {
+            const hostData = hostDoc.data();
+            const hostEmail = hostData.email || null;
+            const hostName = hostData.firstName && hostData.lastName 
+              ? `${hostData.firstName} ${hostData.lastName}`.trim() 
+              : hostData.email?.split('@')[0] || 'Host';
+            
+            // Fetch guest information
+            const guestDoc = await getDoc(doc(db, "users", guestUser.uid));
+            let guestName = 'Guest';
+            if (guestDoc.exists()) {
+              const guestData = guestDoc.data();
+              guestName = guestData.firstName && guestData.lastName 
+                ? `${guestData.firstName} ${guestData.lastName}`.trim() 
+                : guestData.email?.split('@')[0] || guestUser.email?.split('@')[0] || 'Guest';
+            } else {
+              guestName = guestUser.displayName || guestUser.email?.split('@')[0] || 'Guest';
+            }
+
+            // Format booking dates
+            const bookingDates = formatBookingDates(startDate, endDate);
+
+            // Create in-app notification for host
+            await createNotification({
+              userId: listing.ownerId,
+              type: "new_booking",
+              bookingId: bookingId,
+              title: "New Booking Request! 🎉",
+              message: `${guestName} has requested to book "${listing.title || 'your property'}".`,
+              listingTitle: listing.title || "Property",
+              bookingDates: bookingDates,
+            });
+
+            // Send email notification to host
+            if (hostEmail) {
+              await sendHostBookingNotificationEmail(hostEmail, hostName, {
+                bookingId: bookingId,
+                listingTitle: listing.title || "Property",
+                bookingDates: bookingDates,
+                totalPrice: totalPrice,
+                guests: Number(guests) || 1,
+                nights: nights,
+                guestName: guestName,
+              });
+            }
+          }
+        } catch (notificationError) {
+          console.error("Error sending host notification:", notificationError);
+          // Don't fail the booking if notification fails
+        }
+      }
+
+      return booking;
     } finally {
       setCreating(false);
     }

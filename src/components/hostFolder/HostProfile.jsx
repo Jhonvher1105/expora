@@ -14,7 +14,7 @@ const CLOUD_NAME = "dv42rw8m7";
 const UPLOAD_PRESET = "unsigned_preset";
 
 export default function HostProfile() {
-    const { points, loading: pointsLoading } = usePoints();
+    const { points, loading: pointsLoading, refreshPoints } = usePoints();
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [profileImage, setProfileImage] = useState(null);
@@ -54,6 +54,26 @@ export default function HostProfile() {
         });
         return unsubscribe;
     }, []);
+
+    // ✅ Refresh points when component mounts or becomes visible
+    useEffect(() => {
+        if (currentUser) {
+            // Refresh points on mount
+            refreshPoints();
+            
+            // Refresh points when page becomes visible (user returns to tab)
+            const handleVisibilityChange = () => {
+                if (!document.hidden) {
+                    refreshPoints();
+                }
+            };
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            return () => {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
+        }
+    }, [currentUser, refreshPoints]);
 
     // ✅ Fetch user data from Firestore
     useEffect(() => {

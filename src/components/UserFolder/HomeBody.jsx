@@ -796,6 +796,12 @@ function Body() {
                                 >
                                     Services
                                 </button>
+                                <button
+                                    className={`tab ${activeTab === "experiences" ? "tab-active" : ""}`}
+                                    onClick={() => setActiveTab("experiences")}
+                                >
+                                    Experiences
+                                </button>
 
                             </div>
                             

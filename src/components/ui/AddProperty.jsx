@@ -168,6 +168,67 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
         return Object.keys(errors).length === 0;
     }, [formData, images]);
 
+    // 🔹 Save Draft to Firestore
+    const handleSaveDraft = async () => {
+        if (!currentUser) {
+            alert("Please sign in to save draft.");
+            return;
+        }
+
+        try {
+            setIsUploading(true);
+            setUploadError("");
+
+            // Upload images to Cloudinary (even for drafts, save images)
+            let cloudinaryUrls = [];
+            if (images.length > 0) {
+                cloudinaryUrls = await uploadImagesToCloudinary();
+            }
+
+            // Prepare draft data - less strict validation for drafts
+            const draftData = {
+                ...formData,
+                price: formData.price ? Number(formData.price) : 0,
+                maxGuests: formData.maxGuests ? Number(formData.maxGuests) : 0,
+                bedrooms: formData.bedrooms ? Number(formData.bedrooms) : 0,
+                bathrooms: formData.bathrooms ? Number(formData.bathrooms) : 0,
+                amenities: formData.amenities ? formData.amenities.split(",").map((a) => a.trim()).filter((a) => a) : [],
+                discountPercentage: formData.discountPercentage ? Number(formData.discountPercentage) : null,
+                promoCode: formData.promoCode || null,
+                promoStartDate: formData.promoStartDate || null,
+                promoEndDate: formData.promoEndDate || null,
+                images: cloudinaryUrls,
+                // Store location data in Firestore
+                location: formData.locationData ? {
+                    lat: formData.locationData.lat,
+                    lng: formData.locationData.lng,
+                    address: formData.locationData.address
+                } : (formData.location ? { address: formData.location } : null),
+                ownerId: currentUser.uid,
+                createdAt: new Date(),
+                isDraft: true, // Mark as draft
+            };
+
+            await addDoc(collection(db, "properties"), draftData);
+            console.log("✅ Draft saved to Firestore:", draftData);
+
+            // Clear localStorage draft after successful Firestore save
+            const draftKey = `property_draft_${currentUser.uid}`;
+            localStorage.removeItem(draftKey);
+
+            alert("Draft saved successfully! You can find it in the Drafts section.");
+            
+            if (onPropertyCreated) onPropertyCreated(draftData);
+            if (onClose) onClose();
+        } catch (error) {
+            console.error("❌ Error saving draft:", error);
+            setUploadError("Failed to save draft. Please try again.");
+            alert("Failed to save draft. Please try again.");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     // 🔹 Submit Form
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -519,22 +580,11 @@ export default function AddProperty({ onPropertyCreated, onClose }) {
                         </button>
                         <button
                             type="button"
-                            onClick={() => {
-                                if (!currentUser) {
-                                    alert("Please sign in to save draft.");
-                                    return;
-                                }
-                                const draftKey = `property_draft_${currentUser.uid}`;
-                                localStorage.setItem(draftKey, JSON.stringify({
-                                    formData,
-                                    hasDraft: true,
-                                    savedAt: new Date().toISOString(),
-                                }));
-                                alert("Draft saved! You can continue later.");
-                            }}
+                            onClick={handleSaveDraft}
+                            disabled={isUploading}
                             className="host-form-draft-btn"
                         >
-                            Save Draft
+                            {isUploading ? "Saving Draft..." : "Save Draft"}
                         </button>
                         <button
                             type="button"

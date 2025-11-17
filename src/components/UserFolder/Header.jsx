@@ -5,6 +5,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, db } from "../../firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { useChat } from "../../context/ChatContext";
+import { useNotifications } from "../../context/NotificationContext";
+import NotificationDropdown from "../ui/NotificationDropdown";
 import {
     collection,
     query,
@@ -44,7 +46,9 @@ function Header() {
     const [preferences, setPreferences] = useState("");
 
     const [showHostForm, setShowForm] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
     const userMenuRef = useRef(null);
+    const notificationRef = useRef(null);
 
     // ---------------------------
     // 🔹 AUTH STATE
@@ -280,6 +284,9 @@ function Header() {
 
     // Chat system - use context
     const { openChat } = useChat();
+    
+    // Notifications - use context
+    const { unreadCount } = useNotifications();
 
     const handleOpenChat = () => {
         if (!currentUser) {
@@ -321,6 +328,28 @@ function Header() {
                     <button className="icon-btn" onClick={handleOpenChat}>
                         <MessageCircleMore size={20} />
                     </button>
+
+                    {/* 🔔 Notifications Button */}
+                    {currentUser && (
+                        <div style={{ position: "relative" }} ref={notificationRef}>
+                            <button
+                                className="icon-btn notification-btn"
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                aria-label="Notifications"
+                            >
+                                <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+                                )}
+                            </button>
+                            {showNotifications && (
+                                <NotificationDropdown
+                                    isOpen={showNotifications}
+                                    onClose={() => setShowNotifications(false)}
+                                />
+                            )}
+                        </div>
+                    )}
 
                     {/* 👤 User Menu */}
                     <div style={{ position: "relative" }}>
@@ -498,33 +527,16 @@ function Header() {
 
             {showWishlistPreferences && createPortal(
                 <div className="modal-overlay logout-modal-overlay" onClick={() => { setShowWishlistPreferences(false); setPreferences(""); }}>
-                    <div className="modal logout-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: "600px" }}>
+                    <div className="modal logout-modal wishlist-modal" onClick={e => e.stopPropagation()}>
                         <div className="logout-modal-content">
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                            <div className="wishlist-modal-header">
                                 <div className="logout-modal-icon" style={{ marginBottom: "0" }}>
                                     <Bookmark size={48} />
                                 </div>
                                 <button
+                                    className="wishlist-modal-close-btn"
                                     onClick={() => { setShowWishlistPreferences(false); setPreferences(""); }}
-                                    style={{
-                                        background: "rgba(255, 255, 255, 0.1)",
-                                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                                        borderRadius: "50%",
-                                        width: "36px",
-                                        height: "36px",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        cursor: "pointer",
-                                        color: "#ffffff",
-                                        transition: "all 0.2s ease"
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.background = "rgba(255, 255, 255, 0.2)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.background = "rgba(255, 255, 255, 0.1)";
-                                    }}
+                                    aria-label="Close modal"
                                 >
                                     <X size={20} />
                                 </button>
@@ -535,32 +547,10 @@ function Header() {
                                 This helps us personalize your experience!
                             </p>
                             <textarea
+                                className="wishlist-modal-textarea"
                                 value={preferences}
                                 onChange={(e) => setPreferences(e.target.value)}
                                 placeholder="For example: Beach destinations, mountain hikes, luxury hotels, adventure activities, spa treatments, local cuisine..."
-                                style={{
-                                    width: "100%",
-                                    minHeight: "150px",
-                                    padding: "12px",
-                                    borderRadius: "8px",
-                                    background: "rgba(255, 255, 255, 0.05)",
-                                    border: "1px solid rgba(255, 255, 255, 0.2)",
-                                    color: "#ffffff",
-                                    fontSize: "14px",
-                                    fontFamily: "inherit",
-                                    resize: "vertical",
-                                    marginBottom: "20px",
-                                    outline: "none",
-                                    transition: "all 0.2s ease"
-                                }}
-                                onFocus={(e) => {
-                                    e.target.style.border = "1px solid rgba(255, 107, 53, 0.5)";
-                                    e.target.style.background = "rgba(255, 255, 255, 0.08)";
-                                }}
-                                onBlur={(e) => {
-                                    e.target.style.border = "1px solid rgba(255, 255, 255, 0.2)";
-                                    e.target.style.background = "rgba(255, 255, 255, 0.05)";
-                                }}
                             />
                             <div className="logout-modal-buttons" style={{ display: "flex", gap: "12px" }}>
                                 <button 
