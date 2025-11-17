@@ -1540,40 +1540,47 @@ export default function HostBody() {
                                             />
                                         </div>
 
-                                        <div className="edit-form-group">
-                                            <label htmlFor="edit-discount">
-                                                Discount Percentage
-                                            </label>
-                                            <input
-                                                id="edit-discount"
-                                                type="number"
-                                                min="0"
-                                                max="100"
-                                                step="0.01"
-                                                value={selectedDest.discountPercentage || ""}
-                                                onChange={(e) =>
-                                                    setSelectedDest({ ...selectedDest, discountPercentage: parseFloat(e.target.value) || null })
-                                                }
-                                                placeholder="Discount percentage (0-100)"
-                                            />
+                                        {/* Promotional Section */}
+                                        <div className="edit-form-section-divider">
+                                            <h3 className="edit-form-section-title">Promotional Details</h3>
                                         </div>
 
-                                        <div className="edit-form-group">
-                                            <label htmlFor="edit-promo-code">
-                                                Promo Code
-                                            </label>
-                                            <input
-                                                id="edit-promo-code"
-                                                type="text"
-                                                value={selectedDest.promoCode || ""}
-                                                onChange={(e) =>
-                                                    setSelectedDest({ ...selectedDest, promoCode: e.target.value || null })
-                                                }
-                                                placeholder="Promotional code"
-                                            />
+                                        <div className="edit-form-promo-grid">
+                                            <div className="edit-form-group">
+                                                <label htmlFor="edit-discount">
+                                                    Discount Percentage
+                                                </label>
+                                                <input
+                                                    id="edit-discount"
+                                                    type="number"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.01"
+                                                    value={selectedDest.discountPercentage || ""}
+                                                    onChange={(e) =>
+                                                        setSelectedDest({ ...selectedDest, discountPercentage: parseFloat(e.target.value) || null })
+                                                    }
+                                                    placeholder="0"
+                                                />
+                                            </div>
+
+                                            <div className="edit-form-group">
+                                                <label htmlFor="edit-promo-code">
+                                                    Promo Code
+                                                </label>
+                                                <input
+                                                    id="edit-promo-code"
+                                                    type="text"
+                                                    value={selectedDest.promoCode || ""}
+                                                    onChange={(e) =>
+                                                        setSelectedDest({ ...selectedDest, promoCode: e.target.value || null })
+                                                    }
+                                                    placeholder="Promotional code"
+                                                />
+                                            </div>
                                         </div>
 
-                                        <div className="edit-form-group">
+                                        <div className="edit-form-group edit-form-group-full">
                                             <label>Promo Date Range</label>
                                             <DateRangePicker
                                                 checkInDate={formatDateForInput(selectedDest.promoStartDate)}

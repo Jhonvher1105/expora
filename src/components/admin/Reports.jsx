@@ -12,6 +12,15 @@ export default function Reports({ bookings, users, listings }) {
     filterData();
   }, [reportType, dateRange, bookings, users, listings]);
 
+  // Helper function to get user name from userId
+  const getUserName = (userId) => {
+    if (!userId || !users || users.length === 0) return "N/A";
+    const user = users.find(u => u.id === userId);
+    if (!user) return "N/A";
+    const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    return fullName || user.email || "N/A";
+  };
+
   const filterData = () => {
     let data = [];
     
@@ -52,12 +61,12 @@ export default function Reports({ bookings, users, listings }) {
 
     switch (reportType) {
       case "bookings":
-        headers = ["ID", "Listing Title", "Guest ID", "Host ID", "Start Date", "End Date", "Guests", "Total Price", "Status", "Created At"];
+        headers = ["ID", "Listing Title", "Guest Name", "Host Name", "Start Date", "End Date", "Guests", "Total Price", "Status", "Created At"];
         rows = filteredData.map(b => [
           b.id,
           b.listingTitle || "",
-          b.guestId || "",
-          b.hostId || "",
+          getUserName(b.guestId),
+          getUserName(b.hostId),
           b.startDate || "",
           b.endDate || "",
           b.guests || 0,
@@ -115,27 +124,148 @@ export default function Reports({ bookings, users, listings }) {
   };
 
   const generatePDFReport = () => {
-    // Simple PDF generation using window.print or a library
+    // Enhanced PDF generation with improved design
     const printWindow = window.open("", "_blank");
+    const currentDate = new Date().toLocaleString();
+    const reportTitle = reportType.charAt(0).toUpperCase() + reportType.slice(1) + " Report";
+    
     printWindow.document.write(`
+      <!DOCTYPE html>
       <html>
         <head>
-          <title>${reportType} Report</title>
+          <title>${reportTitle}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            h1 { color: #333; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
+            @page {
+              margin: 1cm;
+              size: A4;
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body { 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+              padding: 30px;
+              background: #ffffff;
+              color: #333;
+              line-height: 1.6;
+            }
+            .header {
+              border-bottom: 3px solid #ff6b35;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            h1 { 
+              color: #1a1a2e;
+              font-size: 28px;
+              font-weight: 700;
+              margin-bottom: 10px;
+            }
+            .report-info {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 15px;
+              font-size: 14px;
+              color: #666;
+            }
+            .report-info-item {
+              display: flex;
+              flex-direction: column;
+            }
+            .report-info-label {
+              font-weight: 600;
+              color: #ff6b35;
+              margin-bottom: 4px;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 20px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            th { 
+              background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+              color: #ffffff;
+              padding: 12px 10px;
+              text-align: left;
+              font-weight: 600;
+              font-size: 13px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+              border: 1px solid #e0e0e0;
+            }
+            td { 
+              border: 1px solid #e0e0e0; 
+              padding: 10px;
+              text-align: left;
+              font-size: 12px;
+              color: #333;
+            }
+            tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            tr:hover {
+              background-color: #fff5f0;
+            }
+            .summary {
+              margin-top: 30px;
+              padding: 20px;
+              background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+              border-radius: 8px;
+              border-left: 4px solid #ff6b35;
+            }
+            .summary-title {
+              font-weight: 700;
+              color: #1a1a2e;
+              margin-bottom: 10px;
+              font-size: 16px;
+            }
+            .summary-content {
+              color: #666;
+              font-size: 14px;
+            }
+            @media print {
+              body {
+                padding: 15px;
+              }
+              .no-print {
+                display: none;
+              }
+            }
           </style>
         </head>
         <body>
-          <h1>${reportType.toUpperCase()} Report</h1>
-          <p>Generated on: ${new Date().toLocaleString()}</p>
-          <p>Total Records: ${filteredData.length}</p>
+          <div class="header">
+            <h1>${reportTitle}</h1>
+            <div class="report-info">
+              <div class="report-info-item">
+                <span class="report-info-label">Generated On</span>
+                <span>${currentDate}</span>
+              </div>
+              <div class="report-info-item">
+                <span class="report-info-label">Total Records</span>
+                <span>${filteredData.length}</span>
+              </div>
+              ${dateRange.start && dateRange.end ? `
+              <div class="report-info-item">
+                <span class="report-info-label">Date Range</span>
+                <span>${dateRange.start} to ${dateRange.end}</span>
+              </div>
+              ` : ''}
+            </div>
+          </div>
           <table>
             ${generateTableHTML()}
           </table>
+          <div class="summary">
+            <div class="summary-title">Report Summary</div>
+            <div class="summary-content">
+              This report contains ${filteredData.length} ${reportType} record${filteredData.length !== 1 ? 's' : ''} 
+              ${dateRange.start && dateRange.end ? `for the period from ${dateRange.start} to ${dateRange.end}` : ''}.
+              Generated by Explora Admin Dashboard.
+            </div>
+          </div>
         </body>
       </html>
     `);
@@ -151,12 +281,12 @@ export default function Reports({ bookings, users, listings }) {
 
     switch (reportType) {
       case "bookings":
-        headers = ["ID", "Listing", "Guest", "Host", "Start Date", "End Date", "Price", "Status"];
+        headers = ["ID", "Listing", "Guest Name", "Host Name", "Start Date", "End Date", "Price", "Status"];
         rows = filteredData.map(b => [
           b.id.substring(0, 8),
           b.listingTitle || "N/A",
-          b.guestId?.substring(0, 8) || "N/A",
-          b.hostId?.substring(0, 8) || "N/A",
+          getUserName(b.guestId),
+          getUserName(b.hostId),
           b.startDate || "N/A",
           b.endDate || "N/A",
           `₱${b.totalPrice || 0}`,

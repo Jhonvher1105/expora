@@ -291,7 +291,7 @@ export default function DateRangePicker({
         <div className="search-section-label">Check in - Check out</div>
         <div className="search-section-input-field date-range-display" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <Calendar size={18} style={{ opacity: 0.7 }} />
-          <span style={{ color: (checkInDate && checkInDate.trim()) || (checkOutDate && checkOutDate.trim()) ? "inherit" : "#717171" }}>
+          <span className="date-range-text" style={{ color: (checkInDate && checkInDate.trim()) || (checkOutDate && checkOutDate.trim()) ? "inherit" : "var(--text-muted, rgba(255, 255, 255, 0.5))" }}>
             {formatDateRange()}
           </span>
         </div>
